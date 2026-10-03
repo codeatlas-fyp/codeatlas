@@ -1,0 +1,19 @@
+# Each folder has an owner, who GitHub requests as reviewer automatically.
+# TODO: replace @YUSRA_GH and @SALEHA_GH with real GitHub usernames.
+# The last matching line wins, so the order below matters.
+
+*                               @SALEHA_GH
+
+/src/codeatlas/collect/github/  @YUSRA_GH
+/src/codeatlas/analyze/         @YUSRA_GH
+
+/src/codeatlas/collect/jira/    @areej8
+/src/codeatlas/evaluate/rules/  @areej8
+
+/src/codeatlas/bundle/          @SALEHA_GH
+/src/codeatlas/api/             @SALEHA_GH
+/web/                           @SALEHA_GH
+/.github/                       @SALEHA_GH
+
+# Shared: the evidence schema belongs to all three of us.
+/src/codeatlas/schema/          @SALEHA_GH @YUSRA_GH @areej8
