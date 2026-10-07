@@ -237,3 +237,15 @@ issue with the `requires-test-evidence` label for C7.
   one sample of every model.
 - AC6 (whole bundle) and the `CaseId`/`Outcome`/`VerdictValue` literal checks move to PR 2b with
   `bundle.py`.
+
+## Mutation check (PR 2a)
+
+Each line was changed by hand, the schema tests were run, and the file was restored.
+
+| File | Mutation | Result |
+|---|---|---|
+| `schema/types.py` | `extra="forbid"` → `extra="ignore"` | 1 failed (AC2 unknown field) |
+| `schema/evidence.py` | `content_resolved == bool(...)` → `!=` | collection error: the samples themselves fail validation |
+| `schema/types.py` | `return value.astimezone(UTC)` → `return value` | 1 failed (AC4 conversion to UTC) |
+
+Branch coverage of `codeatlas.schema` after PR 2a: 100% (165 statements, 6 branches).
