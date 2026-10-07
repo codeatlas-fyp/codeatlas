@@ -168,8 +168,9 @@ def test_ac7_sample_bundle_replays_with_the_default_rules() -> None:
     result_ = replay(folder, evaluate_bundle)
 
     assert result_.match
-    assert load_verdict(folder).value == "PASS"
-    assert load_verdict(folder).ruleset_version == ruleset_version(default_rules()) == "none"
+    # The sample's lifecycle was approved at T0 and edited at T1, so C3 sees a stale approval.
+    assert load_verdict(folder).value == "FAIL"
+    assert load_verdict(folder).ruleset_version == ruleset_version(default_rules())
 
 
 def test_ac7_stored_verdict_survives_a_round_trip(tmp_path: Path) -> None:
