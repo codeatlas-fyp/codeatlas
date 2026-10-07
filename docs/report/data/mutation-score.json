@@ -1,0 +1,533 @@
+{
+  "tool": "scripts/mutation_score.py (AST mutations; mutmut does not run on native Windows)",
+  "targets": [
+    "src/codeatlas/analyze/lifecycle.py",
+    "src/codeatlas/evaluate/rules/base.py",
+    "src/codeatlas/evaluate/rules/c1_changed_after_impl.py",
+    "src/codeatlas/evaluate/rules/c3_not_approved.py",
+    "src/codeatlas/evaluate/rules/c6_superseded_version.py",
+    "src/codeatlas/evaluate/rules/c7_test_evidence.py",
+    "src/codeatlas/evaluate/rules/c8_priority_authority.py"
+  ],
+  "mutants": 103,
+  "killed": 97,
+  "survived": 6,
+  "score": 0.9417,
+  "results": [
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 94: Or swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 141: And swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 154: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 156: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 189: Is flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 191: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 284: False negated",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 288: `not` removed",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 34: True negated",
+      "killed": false
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 42: True negated",
+      "killed": false
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 52: True negated",
+      "killed": false
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 58: True negated",
+      "killed": false
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 141: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 149: Or swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 150: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 185: IsNot flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 185: Or swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 192: Or swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 211: NotIn flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 292: LtE flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 353: NotEq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 85: Or swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 114: Or swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 123: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 204: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 208: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 220: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 268: Lt flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 275: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 278: Gt flipped",
+      "killed": false
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 287: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 315: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 316: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 350: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 357: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 359: And swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 113: Or swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 115: Or swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 231: Lt flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 232: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 266: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 359: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 359: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 243: Or swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 248: `not` removed",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 340: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 344: Or swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 368: And swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 227: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 239: Lt flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 322: Is flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 331: And swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 368: IsNot flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 368: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 246: True negated",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 331: IsNot flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 331: Gt flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 334: Or swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 335: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 334: Is flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/analyze/lifecycle.py",
+      "mutation": "line 334: Is flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/base.py",
+      "mutation": "line 51: And swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/base.py",
+      "mutation": "line 85: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/base.py",
+      "mutation": "line 60: `not` removed",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/base.py",
+      "mutation": "line 65: And swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/base.py",
+      "mutation": "line 74: True negated",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/base.py",
+      "mutation": "line 87: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/base.py",
+      "mutation": "line 96: True negated",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/base.py",
+      "mutation": "line 55: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/base.py",
+      "mutation": "line 60: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/base.py",
+      "mutation": "line 65: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/base.py",
+      "mutation": "line 65: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c1_changed_after_impl.py",
+      "mutation": "line 30: `not` removed",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c1_changed_after_impl.py",
+      "mutation": "line 32: `not` removed",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c1_changed_after_impl.py",
+      "mutation": "line 41: Is flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c1_changed_after_impl.py",
+      "mutation": "line 40: Gt flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c3_not_approved.py",
+      "mutation": "line 31: `not` removed",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c3_not_approved.py",
+      "mutation": "line 38: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c3_not_approved.py",
+      "mutation": "line 41: Is flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c3_not_approved.py",
+      "mutation": "line 44: Is flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c3_not_approved.py",
+      "mutation": "line 53: And swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c3_not_approved.py",
+      "mutation": "line 53: IsNot flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c3_not_approved.py",
+      "mutation": "line 53: Gt flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c3_not_approved.py",
+      "mutation": "line 50: And swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c3_not_approved.py",
+      "mutation": "line 54: Gt flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c3_not_approved.py",
+      "mutation": "line 50: Eq flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c3_not_approved.py",
+      "mutation": "line 50: Is flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c6_superseded_version.py",
+      "mutation": "line 33: `not` removed",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c6_superseded_version.py",
+      "mutation": "line 35: `not` removed",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c6_superseded_version.py",
+      "mutation": "line 42: Is flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c6_superseded_version.py",
+      "mutation": "line 41: Gt flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c7_test_evidence.py",
+      "mutation": "line 13: False negated",
+      "killed": false
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c7_test_evidence.py",
+      "mutation": "line 36: False negated",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c7_test_evidence.py",
+      "mutation": "line 22: And swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c7_test_evidence.py",
+      "mutation": "line 28: True negated",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c7_test_evidence.py",
+      "mutation": "line 22: In flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c8_priority_authority.py",
+      "mutation": "line 22: `not` removed",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c8_priority_authority.py",
+      "mutation": "line 27: Is flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c8_priority_authority.py",
+      "mutation": "line 34: And swapped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c8_priority_authority.py",
+      "mutation": "line 36: Is flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c8_priority_authority.py",
+      "mutation": "line 37: Is flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c8_priority_authority.py",
+      "mutation": "line 34: IsNot flipped",
+      "killed": true
+    },
+    {
+      "file": "src/codeatlas/evaluate/rules/c8_priority_authority.py",
+      "mutation": "line 36: False negated",
+      "killed": true
+    }
+  ]
+}

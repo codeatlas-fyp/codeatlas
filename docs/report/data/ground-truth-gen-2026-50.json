@@ -1,0 +1,2372 @@
+{
+  "seed": 2026,
+  "count": 50,
+  "label": "gen-2026-50",
+  "actor": "the generator's Jira account (account id not stored)",
+  "issues": [
+    {
+      "key": "SBX-10",
+      "summary": "Generated requirement 001: search a fine",
+      "initial_description": "A member can register a reservation within 14 days.",
+      "actions": [
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:45:53Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:45:57Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:46:01Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:46:05Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:46:09Z",
+          "text": "A member can return a book at most twice.\nA member can return a member within 14 days.\nA member can notify the catalogue at most twice."
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can register a reservation within 14 days.",
+          "A member can return a book at most twice.\nA member can return a member within 14 days.\nA member can notify the catalogue at most twice."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-11",
+      "summary": "Generated requirement 002: notify a reservation",
+      "initial_description": "A member can pay the catalogue within 14 days.\nA member can register a book at most twice.",
+      "actions": [
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:46:17Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:46:22Z",
+          "text": "A member can register a fine with a receipt.\nA member can pay a book with a receipt.\nA member can notify a book with a receipt."
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:46:26Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:46:30Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:46:32Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can pay the catalogue within 14 days.\nA member can register a book at most twice.",
+          "A member can register a fine with a receipt.\nA member can pay a book with a receipt.\nA member can notify a book with a receipt."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-12",
+      "summary": "Generated requirement 003: borrow a loan",
+      "initial_description": "A member can borrow a reservation before the due date.\nA member can renew a book within 14 days.\nA member can pay a member before the due date.",
+      "actions": [
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:46:42Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:46:47Z",
+          "text": "A member can notify the catalogue with a receipt.\nA member can search a reservation with a receipt.\nA member can search a reservation with a receipt."
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:46:52Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:46:52Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:46:58Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T17:47:03Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can borrow a reservation before the due date.\nA member can renew a book within 14 days.\nA member can pay a member before the due date.",
+          "A member can notify the catalogue with a receipt.\nA member can search a reservation with a receipt.\nA member can search a reservation with a receipt."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-13",
+      "summary": "Generated requirement 004: reserve a book",
+      "initial_description": "A member can notify a reservation with a receipt.\nA member can register a loan at most twice.\nA member can notify a member with a receipt.",
+      "actions": [
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:47:11Z",
+          "text": "A member can register a member within 14 days.\nA member can notify the catalogue at most twice."
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:47:16Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:47:21Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:47:26Z",
+          "text": "A member can search a member at most twice.\nA member can return a loan with a receipt.\nA member can renew a member within 14 days."
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:47:31Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:47:31Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:47:37Z",
+          "text": "A member can notify a reservation within 14 days."
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can notify a reservation with a receipt.\nA member can register a loan at most twice.\nA member can notify a member with a receipt.",
+          "A member can register a member within 14 days.\nA member can notify the catalogue at most twice.",
+          "A member can search a member at most twice.\nA member can return a loan with a receipt.\nA member can renew a member within 14 days.",
+          "A member can notify a reservation within 14 days."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-14",
+      "summary": "Generated requirement 005: return a book",
+      "initial_description": "A member can borrow a reservation at most twice.\nA member can register a loan within 14 days.\nA member can register the catalogue with a receipt.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:47:43Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:47:48Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:47:53Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T17:47:59Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:48:03Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:48:07Z",
+          "text": "A member can renew a loan at most twice.\nA member can pay a member before the due date."
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:48:13Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:48:18Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can borrow a reservation at most twice.\nA member can register a loan within 14 days.\nA member can register the catalogue with a receipt.",
+          "A member can renew a loan at most twice.\nA member can pay a member before the due date."
+        ],
+        "c1": "VIOLATED",
+        "c3": "SATISFIED",
+        "c3_reason": "approved",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-15",
+      "summary": "Generated requirement 006: renew the catalogue",
+      "initial_description": "A member can register a book within 14 days.\nA member can notify a fine at most twice.",
+      "actions": [
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:48:26Z",
+          "text": "A member can notify a reservation before the due date.\nA member can renew a reservation before the due date."
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:48:30Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:48:35Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:48:40Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:48:40Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:48:46Z",
+          "text": "A member can pay a book before the due date.\nA member can renew a book within 14 days.\nA member can notify the catalogue before the due date."
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can register a book within 14 days.\nA member can notify a fine at most twice.",
+          "A member can notify a reservation before the due date.\nA member can renew a reservation before the due date.",
+          "A member can pay a book before the due date.\nA member can renew a book within 14 days.\nA member can notify the catalogue before the due date."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-16",
+      "summary": "Generated requirement 007: pay a fine",
+      "initial_description": "A member can reserve a reservation before the due date.\nA member can renew the catalogue before the due date.\nA member can pay a fine with a receipt.",
+      "actions": [
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:48:54Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:48:59Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:49:04Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:49:08Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T17:49:13Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:49:18Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T17:49:24Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:49:26Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can reserve a reservation before the due date.\nA member can renew the catalogue before the due date.\nA member can pay a fine with a receipt."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-17",
+      "summary": "Generated requirement 008: notify the catalogue",
+      "initial_description": "A member can renew a fine with a receipt.\nA member can notify a book at most twice.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:49:35Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:49:35Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:49:42Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can renew a fine with a receipt.\nA member can notify a book at most twice."
+        ],
+        "c1": "SATISFIED",
+        "c3": "SATISFIED",
+        "c3_reason": "approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-18",
+      "summary": "Generated requirement 009: search a member",
+      "initial_description": "A member can pay a reservation before the due date.\nA member can borrow a fine before the due date.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:49:49Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:49:54Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:49:58Z",
+          "text": "A member can search a reservation before the due date.\nA member can search a reservation at most twice.\nA member can renew a book at most twice."
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:50:03Z",
+          "text": "A member can renew a book within 14 days.\nA member can register the catalogue before the due date."
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:50:07Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:50:12Z",
+          "text": "A member can register a fine within 14 days.\nA member can search a fine before the due date.\nA member can search a fine within 14 days."
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can pay a reservation before the due date.\nA member can borrow a fine before the due date.",
+          "A member can search a reservation before the due date.\nA member can search a reservation at most twice.\nA member can renew a book at most twice.",
+          "A member can renew a book within 14 days.\nA member can register the catalogue before the due date.",
+          "A member can register a fine within 14 days.\nA member can search a fine before the due date.\nA member can search a fine within 14 days."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "stale approval",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-19",
+      "summary": "Generated requirement 010: register a reservation",
+      "initial_description": "A member can borrow a book before the due date.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:50:18Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:50:23Z",
+          "text": "A member can register a fine with a receipt."
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:50:25Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can borrow a book before the due date.",
+          "A member can register a fine with a receipt."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-20",
+      "summary": "Generated requirement 011: pay a reservation",
+      "initial_description": "A member can notify a member within 14 days.",
+      "actions": [
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:50:34Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:50:39Z",
+          "text": "A member can pay a book at most twice.\nA member can register a fine within 14 days.\nA member can search a member at most twice."
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:50:44Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:50:44Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:50:50Z",
+          "text": "A member can register a loan within 14 days.\nA member can return a loan within 14 days.\nA member can return a book before the due date."
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can notify a member within 14 days.",
+          "A member can pay a book at most twice.\nA member can register a fine within 14 days.\nA member can search a member at most twice.",
+          "A member can register a loan within 14 days.\nA member can return a loan within 14 days.\nA member can return a book before the due date."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-21",
+      "summary": "Generated requirement 012: register a loan",
+      "initial_description": "A member can register a member with a receipt.",
+      "actions": [
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:50:59Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:51:04Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:51:09Z",
+          "text": "A member can pay a fine before the due date.\nA member can reserve a book within 14 days.\nA member can search a reservation with a receipt."
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:51:11Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:51:11Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can register a member with a receipt.",
+          "A member can pay a fine before the due date.\nA member can reserve a book within 14 days.\nA member can search a reservation with a receipt."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "stale approval",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-22",
+      "summary": "Generated requirement 013: register a fine",
+      "initial_description": "A member can return a loan within 14 days.\nA member can search a fine at most twice.\nA member can borrow the catalogue within 14 days.",
+      "actions": [
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:51:23Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:51:28Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:51:34Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:51:34Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:51:40Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T17:51:45Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can return a loan within 14 days.\nA member can search a fine at most twice.\nA member can borrow the catalogue within 14 days."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-23",
+      "summary": "Generated requirement 014: pay a fine",
+      "initial_description": "A member can notify a reservation with a receipt.\nA member can search a loan before the due date.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:51:51Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:51:56Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:52:00Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:52:04Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:52:09Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:52:15Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:52:20Z",
+          "text": "A member can register a reservation at most twice.\nA member can renew the catalogue within 14 days."
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:52:24Z",
+          "text": "A member can reserve the catalogue at most twice.\nA member can borrow a member with a receipt.\nA member can renew a reservation within 14 days."
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can notify a reservation with a receipt.\nA member can search a loan before the due date.",
+          "A member can register a reservation at most twice.\nA member can renew the catalogue within 14 days.",
+          "A member can reserve the catalogue at most twice.\nA member can borrow a member with a receipt.\nA member can renew a reservation within 14 days."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "stale approval",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-24",
+      "summary": "Generated requirement 015: borrow a fine",
+      "initial_description": "A member can search a fine within 14 days.\nA member can reserve a loan at most twice.\nA member can search a reservation at most twice.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:52:33Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:52:33Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:52:39Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:52:44Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:52:49Z",
+          "text": "A member can notify a member at most twice.\nA member can renew the catalogue within 14 days.\nA member can renew a fine before the due date."
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can search a fine within 14 days.\nA member can reserve a loan at most twice.\nA member can search a reservation at most twice.",
+          "A member can notify a member at most twice.\nA member can renew the catalogue within 14 days.\nA member can renew a fine before the due date."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "stale approval",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-25",
+      "summary": "Generated requirement 016: return a member",
+      "initial_description": "A member can register a fine before the due date.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:52:57Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:52:57Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:53:04Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:53:09Z",
+          "text": "A member can notify a book within 14 days.\nA member can pay a fine at most twice."
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:53:13Z",
+          "text": "A member can notify a member within 14 days.\nA member can reserve a fine with a receipt."
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T17:53:19Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can register a fine before the due date.",
+          "A member can notify a book within 14 days.\nA member can pay a fine at most twice.",
+          "A member can notify a member within 14 days.\nA member can reserve a fine with a receipt."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-26",
+      "summary": "Generated requirement 017: register a fine",
+      "initial_description": "A member can search the catalogue before the due date.\nA member can renew a fine with a receipt.",
+      "actions": [
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:53:27Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:53:32Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:53:32Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:53:38Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can search the catalogue before the due date.\nA member can renew a fine with a receipt."
+        ],
+        "c1": "SATISFIED",
+        "c3": "SATISFIED",
+        "c3_reason": "approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-27",
+      "summary": "Generated requirement 018: return a fine",
+      "initial_description": "A member can pay a loan before the due date.\nA member can notify the catalogue before the due date.",
+      "actions": [
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:53:46Z",
+          "text": "A member can search a member at most twice.\nA member can renew a reservation at most twice."
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:53:50Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:53:55Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T17:54:00Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:54:02Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can pay a loan before the due date.\nA member can notify the catalogue before the due date.",
+          "A member can search a member at most twice.\nA member can renew a reservation at most twice."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-28",
+      "summary": "Generated requirement 019: notify a reservation",
+      "initial_description": "A member can notify the catalogue with a receipt.\nA member can pay a book at most twice.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:54:10Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:54:15Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:54:18Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:54:22Z",
+          "text": "A member can notify the catalogue before the due date.\nA member can pay a fine at most twice.\nA member can borrow a member before the due date."
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:54:27Z",
+          "text": "A member can search a loan at most twice.\nA member can pay a member with a receipt."
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:54:32Z",
+          "text": "A member can reserve the catalogue within 14 days."
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can notify the catalogue with a receipt.\nA member can pay a book at most twice.",
+          "A member can notify the catalogue before the due date.\nA member can pay a fine at most twice.\nA member can borrow a member before the due date.",
+          "A member can search a loan at most twice.\nA member can pay a member with a receipt.",
+          "A member can reserve the catalogue within 14 days."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-29",
+      "summary": "Generated requirement 020: renew a book",
+      "initial_description": "A member can register a book before the due date.\nA member can borrow a book before the due date.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:54:39Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:54:44Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:54:49Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T17:54:54Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:54:56Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can register a book before the due date.\nA member can borrow a book before the due date."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-30",
+      "summary": "Generated requirement 021: notify a fine",
+      "initial_description": "A member can search a member within 14 days.",
+      "actions": [
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:55:06Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:55:11Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:55:15Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T17:55:19Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:55:21Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can search a member within 14 days."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-31",
+      "summary": "Generated requirement 022: reserve a reservation",
+      "initial_description": "A member can register a fine within 14 days.\nA member can notify a loan within 14 days.",
+      "actions": [
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:55:30Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:55:32Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:55:32Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can register a fine within 14 days.\nA member can notify a loan within 14 days."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-32",
+      "summary": "Generated requirement 023: notify a loan",
+      "initial_description": "A member can pay a book at most twice.",
+      "actions": [
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:55:44Z",
+          "text": "A member can register a member at most twice.\nA member can register a fine before the due date.\nA member can return a reservation before the due date."
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:55:49Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:55:53Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:55:57Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:56:02Z",
+          "text": "A member can reserve a loan with a receipt.\nA member can renew a reservation before the due date."
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:56:04Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can pay a book at most twice.",
+          "A member can register a member at most twice.\nA member can register a fine before the due date.\nA member can return a reservation before the due date.",
+          "A member can reserve a loan with a receipt.\nA member can renew a reservation before the due date."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "stale approval",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-33",
+      "summary": "Generated requirement 024: borrow a member",
+      "initial_description": "A member can register a fine with a receipt.\nA member can reserve a loan before the due date.\nA member can renew a loan within 14 days.",
+      "actions": [
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:56:13Z",
+          "text": "A member can search a loan before the due date.\nA member can search a reservation at most twice."
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:56:19Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:56:23Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:56:27Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:56:31Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:56:35Z",
+          "text": "A member can renew a member with a receipt."
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:56:40Z",
+          "text": "A member can reserve a reservation at most twice.\nA member can return a member with a receipt."
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can register a fine with a receipt.\nA member can reserve a loan before the due date.\nA member can renew a loan within 14 days.",
+          "A member can search a loan before the due date.\nA member can search a reservation at most twice.",
+          "A member can renew a member with a receipt.",
+          "A member can reserve a reservation at most twice.\nA member can return a member with a receipt."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "stale approval",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-34",
+      "summary": "Generated requirement 025: notify a loan",
+      "initial_description": "A member can borrow a book at most twice.",
+      "actions": [
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:56:48Z",
+          "text": "A member can reserve a book with a receipt."
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:56:52Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:56:56Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:57:02Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:57:04Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can borrow a book at most twice.",
+          "A member can reserve a book with a receipt."
+        ],
+        "c1": "SATISFIED",
+        "c3": "SATISFIED",
+        "c3_reason": "approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-35",
+      "summary": "Generated requirement 026: borrow a reservation",
+      "initial_description": "A member can renew a reservation with a receipt.\nA member can pay a member at most twice.",
+      "actions": [
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:57:13Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:57:17Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T17:57:22Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:57:27Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:57:31Z",
+          "text": "A member can reserve a book within 14 days."
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:57:35Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:57:40Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:57:45Z",
+          "text": "A member can reserve the catalogue with a receipt."
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can renew a reservation with a receipt.\nA member can pay a member at most twice.",
+          "A member can reserve a book within 14 days.",
+          "A member can reserve the catalogue with a receipt."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "stale approval",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-36",
+      "summary": "Generated requirement 027: register a fine",
+      "initial_description": "A member can search a fine at most twice.",
+      "actions": [
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:57:53Z",
+          "text": "A member can notify a fine at most twice.\nA member can notify a loan within 14 days."
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:57:58Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T17:58:04Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:58:09Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:58:11Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:58:11Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can search a fine at most twice.",
+          "A member can notify a fine at most twice.\nA member can notify a loan within 14 days."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-37",
+      "summary": "Generated requirement 028: borrow a loan",
+      "initial_description": "A member can return a member with a receipt.\nA member can register a reservation within 14 days.\nA member can search a fine within 14 days.",
+      "actions": [
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:58:23Z",
+          "text": "A member can notify a reservation within 14 days."
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:58:28Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:58:30Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:58:30Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can return a member with a receipt.\nA member can register a reservation within 14 days.\nA member can search a fine within 14 days.",
+          "A member can notify a reservation within 14 days."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-38",
+      "summary": "Generated requirement 029: notify the catalogue",
+      "initial_description": "A member can renew a book within 14 days.\nA member can pay a book before the due date.",
+      "actions": [
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:58:43Z",
+          "text": "A member can return a reservation within 14 days."
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:58:48Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:58:52Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T17:58:57Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:59:02Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:59:04Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can renew a book within 14 days.\nA member can pay a book before the due date.",
+          "A member can return a reservation within 14 days."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-39",
+      "summary": "Generated requirement 030: renew a fine",
+      "initial_description": "A member can pay a loan at most twice.",
+      "actions": [
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:59:13Z",
+          "text": "A member can reserve a reservation before the due date.\nA member can notify a loan within 14 days."
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:59:17Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:59:22Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:59:27Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:59:31Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T17:59:35Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:59:37Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can pay a loan at most twice.",
+          "A member can reserve a reservation before the due date.\nA member can notify a loan within 14 days."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-40",
+      "summary": "Generated requirement 031: reserve the catalogue",
+      "initial_description": "A member can register a fine with a receipt.",
+      "actions": [
+        {
+          "kind": "edit",
+          "at": "2026-10-07T17:59:46Z",
+          "text": "A member can renew a reservation within 14 days.\nA member can register a loan within 14 days."
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T17:59:52Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T17:59:52Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T17:59:58Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:00:02Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:00:08Z",
+          "text": "A member can pay a member within 14 days."
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:00:15Z",
+          "text": "A member can renew a reservation at most twice.\nA member can register a book at most twice."
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can register a fine with a receipt.",
+          "A member can renew a reservation within 14 days.\nA member can register a loan within 14 days.",
+          "A member can pay a member within 14 days.",
+          "A member can renew a reservation at most twice.\nA member can register a book at most twice."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "stale approval",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-41",
+      "summary": "Generated requirement 032: borrow a member",
+      "initial_description": "A member can return a member within 14 days.\nA member can register the catalogue with a receipt.\nA member can borrow a loan with a receipt.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:00:34Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:00:45Z",
+          "text": "A member can return a fine before the due date."
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:00:47Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can return a member within 14 days.\nA member can register the catalogue with a receipt.\nA member can borrow a loan with a receipt.",
+          "A member can return a fine before the due date."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-42",
+      "summary": "Generated requirement 033: renew a reservation",
+      "initial_description": "A member can return the catalogue before the due date.\nA member can reserve a member within 14 days.",
+      "actions": [
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:01:04Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:01:08Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:01:13Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:01:17Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:01:21Z",
+          "text": "A member can borrow a book with a receipt."
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:01:25Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:01:30Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can return the catalogue before the due date.\nA member can reserve a member within 14 days.",
+          "A member can borrow a book with a receipt."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "stale approval",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-43",
+      "summary": "Generated requirement 034: pay a book",
+      "initial_description": "A member can register a member at most twice.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:01:37Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:01:42Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:01:47Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:01:52Z",
+          "text": "A member can return the catalogue before the due date.\nA member can reserve a member before the due date."
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T18:01:57Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:02:03Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:02:08Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:02:10Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can register a member at most twice.",
+          "A member can return the catalogue before the due date.\nA member can reserve a member before the due date."
+        ],
+        "c1": "VIOLATED",
+        "c3": "SATISFIED",
+        "c3_reason": "approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-44",
+      "summary": "Generated requirement 035: search a book",
+      "initial_description": "A member can notify the catalogue with a receipt.\nA member can register a reservation at most twice.\nA member can return the catalogue within 14 days.",
+      "actions": [
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:02:20Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:02:24Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:02:28Z",
+          "text": "A member can reserve a fine before the due date.\nA member can search the catalogue within 14 days."
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:02:33Z",
+          "text": "A member can renew the catalogue with a receipt.\nA member can return a loan with a receipt."
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:02:38Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:02:42Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:02:46Z",
+          "text": "A member can borrow a reservation at most twice."
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can notify the catalogue with a receipt.\nA member can register a reservation at most twice.\nA member can return the catalogue within 14 days.",
+          "A member can reserve a fine before the due date.\nA member can search the catalogue within 14 days.",
+          "A member can renew the catalogue with a receipt.\nA member can return a loan with a receipt.",
+          "A member can borrow a reservation at most twice."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "stale approval",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-45",
+      "summary": "Generated requirement 036: pay a fine",
+      "initial_description": "A member can search a loan with a receipt.\nA member can borrow a member within 14 days.",
+      "actions": [
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:02:55Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:03:01Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:03:01Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T18:03:07Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can search a loan with a receipt.\nA member can borrow a member within 14 days."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-46",
+      "summary": "Generated requirement 037: pay a loan",
+      "initial_description": "A member can notify the catalogue at most twice.\nA member can search a member with a receipt.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:03:15Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:03:15Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:03:21Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:03:26Z",
+          "text": "A member can borrow a loan before the due date.\nA member can search the catalogue with a receipt.\nA member can reserve the catalogue at most twice."
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can notify the catalogue at most twice.\nA member can search a member with a receipt.",
+          "A member can borrow a loan before the due date.\nA member can search the catalogue with a receipt.\nA member can reserve the catalogue at most twice."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "stale approval",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-47",
+      "summary": "Generated requirement 038: search the catalogue",
+      "initial_description": "A member can register the catalogue with a receipt.\nA member can reserve a reservation at most twice.\nA member can pay the catalogue at most twice.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:03:33Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:03:38Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:03:43Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T18:03:48Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:03:53Z",
+          "text": "A member can reserve a fine before the due date.\nA member can pay the catalogue before the due date.\nA member can notify a member with a receipt."
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:03:55Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can register the catalogue with a receipt.\nA member can reserve a reservation at most twice.\nA member can pay the catalogue at most twice.",
+          "A member can reserve a fine before the due date.\nA member can pay the catalogue before the due date.\nA member can notify a member with a receipt."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-48",
+      "summary": "Generated requirement 039: pay a member",
+      "initial_description": "A member can register a reservation at most twice.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:04:03Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:04:08Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T18:04:13Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:04:18Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:04:20Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can register a reservation at most twice."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-49",
+      "summary": "Generated requirement 040: return a book",
+      "initial_description": "A member can register a loan with a receipt.\nA member can register the catalogue within 14 days.\nA member can return a loan before the due date.",
+      "actions": [
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:04:29Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:04:34Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:04:39Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:04:39Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:04:45Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can register a loan with a receipt.\nA member can register the catalogue within 14 days.\nA member can return a loan before the due date."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-50",
+      "summary": "Generated requirement 041: reserve a reservation",
+      "initial_description": "A member can reserve a member within 14 days.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:04:53Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:04:53Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:04:59Z",
+          "text": "A member can reserve a fine at most twice.\nA member can borrow a book within 14 days."
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:05:04Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:05:09Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can reserve a member within 14 days.",
+          "A member can reserve a fine at most twice.\nA member can borrow a book within 14 days."
+        ],
+        "c1": "VIOLATED",
+        "c3": "SATISFIED",
+        "c3_reason": "approved",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-51",
+      "summary": "Generated requirement 042: notify a member",
+      "initial_description": "A member can register a reservation before the due date.\nA member can return a book at most twice.",
+      "actions": [
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:05:18Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:05:23Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:05:28Z",
+          "text": "A member can pay a loan within 14 days.\nA member can borrow the catalogue with a receipt.\nA member can pay a book with a receipt."
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:05:30Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:05:30Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can register a reservation before the due date.\nA member can return a book at most twice.",
+          "A member can pay a loan within 14 days.\nA member can borrow the catalogue with a receipt.\nA member can pay a book with a receipt."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "stale approval",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-52",
+      "summary": "Generated requirement 043: search a fine",
+      "initial_description": "A member can return a book with a receipt.\nA member can renew a member within 14 days.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:05:41Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:05:46Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:05:50Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:05:54Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T18:06:00Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:06:05Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can return a book with a receipt.\nA member can renew a member within 14 days."
+        ],
+        "c1": "SATISFIED",
+        "c3": "SATISFIED",
+        "c3_reason": "approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-53",
+      "summary": "Generated requirement 044: search a fine",
+      "initial_description": "A member can return the catalogue before the due date.\nA member can register a book with a receipt.",
+      "actions": [
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:06:13Z",
+          "text": "A member can search a fine with a receipt.\nA member can search a loan before the due date.\nA member can pay a fine within 14 days."
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:06:18Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:06:23Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:06:28Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:06:33Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T18:06:38Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:06:40Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:06:40Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can return the catalogue before the due date.\nA member can register a book with a receipt.",
+          "A member can search a fine with a receipt.\nA member can search a loan before the due date.\nA member can pay a fine within 14 days."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "VIOLATED"
+      }
+    },
+    {
+      "key": "SBX-54",
+      "summary": "Generated requirement 045: notify a book",
+      "initial_description": "A member can reserve a book before the due date.",
+      "actions": [
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:06:53Z",
+          "text": "A member can register a member with a receipt.\nA member can notify a reservation with a receipt.\nA member can return a fine with a receipt."
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:06:58Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:07:02Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:07:06Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:07:10Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:07:14Z",
+          "text": "A member can pay the catalogue at most twice.\nA member can search a member within 14 days."
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can reserve a book before the due date.",
+          "A member can register a member with a receipt.\nA member can notify a reservation with a receipt.\nA member can return a fine with a receipt.",
+          "A member can pay the catalogue at most twice.\nA member can search a member within 14 days."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-55",
+      "summary": "Generated requirement 046: register a reservation",
+      "initial_description": "A member can borrow the catalogue at most twice.\nA member can borrow a book at most twice.\nA member can pay a fine with a receipt.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:07:20Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:07:25Z",
+          "text": "A member can reserve a book within 14 days."
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:07:30Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:07:32Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can borrow the catalogue at most twice.\nA member can borrow a book at most twice.\nA member can pay a fine with a receipt.",
+          "A member can reserve a book within 14 days."
+        ],
+        "c1": "VIOLATED",
+        "c3": "SATISFIED",
+        "c3_reason": "approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-56",
+      "summary": "Generated requirement 047: notify the catalogue",
+      "initial_description": "A member can notify a book within 14 days.\nA member can search a loan within 14 days.\nA member can pay a loan within 14 days.",
+      "actions": [
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:07:41Z",
+          "text": "A member can return a reservation with a receipt."
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:07:46Z",
+          "text": "A member can notify a reservation within 14 days."
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:07:51Z",
+          "text": null
+        },
+        {
+          "kind": "priority",
+          "at": "2026-10-07T18:07:56Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:08:01Z",
+          "text": "A member can search a loan at most twice.\nA member can renew a reservation with a receipt."
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:08:06Z",
+          "text": "A member can notify a reservation with a receipt."
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:08:08Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:08:08Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can notify a book within 14 days.\nA member can search a loan within 14 days.\nA member can pay a loan within 14 days.",
+          "A member can return a reservation with a receipt.",
+          "A member can notify a reservation within 14 days.",
+          "A member can search a loan at most twice.\nA member can renew a reservation with a receipt.",
+          "A member can notify a reservation with a receipt."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-57",
+      "summary": "Generated requirement 048: pay a book",
+      "initial_description": "A member can renew a book at most twice.\nA member can return a loan with a receipt.\nA member can reserve a fine with a receipt.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:08:18Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:08:23Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T18:08:29Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:08:33Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:08:38Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T18:08:43Z",
+          "text": null
+        },
+        {
+          "kind": "edit",
+          "at": "2026-10-07T18:08:48Z",
+          "text": "A member can reserve a member with a receipt."
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can renew a book at most twice.\nA member can return a loan with a receipt.\nA member can reserve a fine with a receipt.",
+          "A member can reserve a member with a receipt."
+        ],
+        "c1": "VIOLATED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "VIOLATED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-58",
+      "summary": "Generated requirement 049: return a reservation",
+      "initial_description": "A member can register a reservation within 14 days.",
+      "actions": [
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:08:55Z",
+          "text": null
+        },
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:09:00Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:09:04Z",
+          "text": null
+        },
+        {
+          "kind": "unapprove",
+          "at": "2026-10-07T18:09:09Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can register a reservation within 14 days."
+        ],
+        "c1": "SATISFIED",
+        "c3": "VIOLATED",
+        "c3_reason": "not approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    },
+    {
+      "key": "SBX-59",
+      "summary": "Generated requirement 050: pay a fine",
+      "initial_description": "A member can reserve a member at most twice.",
+      "actions": [
+        {
+          "kind": "approve",
+          "at": "2026-10-07T18:09:18Z",
+          "text": null
+        },
+        {
+          "kind": "first_commit",
+          "at": "2026-10-07T18:09:20Z",
+          "text": null
+        },
+        {
+          "kind": "last_commit",
+          "at": "2026-10-07T18:09:20Z",
+          "text": null
+        }
+      ],
+      "expected": {
+        "versions": [
+          "A member can reserve a member at most twice."
+        ],
+        "c1": "SATISFIED",
+        "c3": "SATISFIED",
+        "c3_reason": "approved",
+        "c6": "SATISFIED",
+        "c8_with_authority": "SATISFIED",
+        "c8_without_authority": "SATISFIED"
+      }
+    }
+  ]
+}
