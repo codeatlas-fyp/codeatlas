@@ -1,3 +1,5 @@
+# Bundle fixtures are canonical bytes whose SHA-256 is their name; never rewrite them.
+exclude: ^tests/fixtures/bundles/
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
