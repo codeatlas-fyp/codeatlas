@@ -192,8 +192,9 @@ def generated_section(truth_path: Path | None, base_policy: Policy) -> tuple[lis
         tallies["C8 without"].add(want["c8_without_authority"], outcome(verdict_b, "C8"))
     client.close()
     total = len(truth["issues"])
+    shown = truth_path.resolve().relative_to(ROOT).as_posix()
     lines = [
-        f"Ground truth: `{truth_path.resolve().relative_to(ROOT).as_posix()}` (seed {truth['seed']}, "
+        f"Ground truth: `{shown}` (seed {truth['seed']}, "
         f"{total} issues labelled `{truth['label']}`).",
         "",
         f"**Version reconstruction, exact match:** {version_matches} / {total} issues.",
