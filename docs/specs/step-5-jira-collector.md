@@ -25,17 +25,22 @@ These facts come from real responses, not assumptions (CLAUDE.md: "cite a record
 | For `description`, `fromString`/`toString` are **wiki markup**, not ADF: `h2. Acceptance criteria`, `# item` | SBX-6 histories 10093–10095 |
 | History `author` and issue `reporter` carry `accountId`, `displayName`, **`emailAddress`**, `avatarUrls` | SBX-6 |
 | `GET /rest/api/3/group/member?groupname=sbx-requirement-approvers` returns 404 "group … does not exist" | spike |
+| `GET /rest/api/3/issue/{key}/comment` is a page with `startAt`, `maxResults`, `total`, `comments` (no `isLast`) | SBX-6 comments |
 | Responses carry `X-RateLimit-Limit` / `X-RateLimit-Remaining` headers | `GET /myself` |
 
-Rate limiting and `Retry-After`: Atlassian's REST API documentation for Jira Cloud rate limiting
-says a 429 response may carry a `Retry-After` header giving seconds to wait. The client honours
-it when present and otherwise backs off exponentially.
+Rate limiting, checked against Atlassian's official page "Rate limiting" for Jira Cloud
+(developer.atlassian.com/cloud/jira/platform/rate-limiting, read 2026-10-07): Jira returns
+`429 Too Many Requests`; `Retry-After` is "only returned with 429 responses" and "indicates how
+many seconds to wait"; apps should use "exponential backoff with jitter", e.g. a 2-second base
+delay doubled per retry, jitter factor 0.7–1.3, about 4 attempts. The client does exactly this:
+it honours `Retry-After` when present, otherwise waits 2, 4, 8 s times a jitter factor, and makes
+at most 4 attempts.
 
 ## Inputs and outputs
 
 | Item | Signature |
 |---|---|
-| `collect.jira.client.JiraClient(base_url, email, token, *, transport=None, sleep=time.sleep, max_retries=3)` | implements `WorkItemSource` |
+| `collect.jira.client.JiraClient(base_url, email, token, *, transport=None, sleep=time.sleep, jitter=random 0.7–1.3, max_retries=3)` | implements `WorkItemSource` |
 | `JiraClient.fetch_issue(key)` | `-> dict` raw issue (`fields=*all`) |
 | `JiraClient.fetch_changelog(key)` | `-> list[dict]` every history, all pages, oldest first |
 | `JiraClient.group_members(group)` | `-> set[str]` account ids, all pages |
@@ -60,8 +65,8 @@ ordered items, `* item` bullets. Other wiki markup is kept as written.
 | Response | Behaviour | Error / exit |
 |---|---|---|
 | 200 | parse JSON | — |
-| 429 | wait `Retry-After` seconds (or backoff 1, 2, 4 s), retry up to `max_retries` | then `SourceUnavailable`, exit 3 |
-| 500–599 | backoff and retry up to `max_retries` | then `SourceUnavailable`, exit 3 |
+| 429 | wait `Retry-After` seconds (or backoff 2, 4, 8 s × jitter), retry up to `max_retries` = 3 | then `SourceUnavailable`, exit 3 |
+| 500–599 | backoff 2, 4, 8 s × jitter, retry up to `max_retries` = 3 | then `SourceUnavailable`, exit 3 |
 | timeout / connection error | backoff and retry | then `SourceUnavailable`, exit 3 |
 | 401, 403 | no retry | `CollectionError(status, retryable=False)`, exit 3 |
 | 404 | no retry | `CollectionError(status=404)`; the pipeline turns a missing issue into a collection note (step 8) |
@@ -76,7 +81,8 @@ ordered items, `* item` bullets. Other wiki markup is kept as written.
   a page is empty, and return every value in server order.
 - **AC3 (429)** A 429 with `Retry-After: 7` waits exactly 7 s (injected sleep) and then succeeds;
   repeated 429s end in `SourceUnavailable` with exit code 3.
-- **AC4 (500, timeout)** 5xx and timeouts are retried with backoff 1, 2, 4 s, then
+- **AC4 (500, timeout)** 5xx and timeouts are retried with backoff 2, 4, 8 s (jitter fixed to 1 in
+  tests), then
   `SourceUnavailable`, exit 3.
 - **AC5 (401, 404)** 401 raises `CollectionError` with status 401 and `retryable=False` (wrong
   token → exit 3) without retrying; 404 raises status 404.
