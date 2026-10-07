@@ -13,7 +13,9 @@ dependencies = [
     "httpx>=0.28.1",
     "orjson>=3.12.0",
     "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
     "pygit2>=1.20.1",
+    "pyyaml>=6.0.3",
     "tree-sitter>=0.26.0",
     "tree-sitter-python>=0.25.0",
     "typer>=0.27.2",
@@ -29,17 +31,24 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "hypothesis>=6.168.5",
     "import-linter>=2.15",
+    "mutmut>=3.8.0",
     "mypy>=2.4.0",
     "pre-commit>=4.6.2",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
+    "pytest-socket>=0.8.1",
+    "respx>=0.23.1",
     "ruff>=0.16.10",
 ]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# The mid-evaluation spec is kept verbatim; ruff would reformat its code blocks.
+extend-exclude = ["docs/specs/mid-eval-spec.md"]
+force-exclude = true
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "DTZ", "S"]  # DTZ: naive datetimes; S: security (spec §16)
@@ -54,3 +63,10 @@ strict = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# External network is blocked in every test (spec §13); HTTP is mocked with respx. Localhost
+# stays open because asyncio on Windows builds its event loop from a localhost socket pair.
+addopts = "--allow-hosts=127.0.0.1,::1"
+
+[tool.coverage.run]
+branch = true
+source = ["codeatlas"]
