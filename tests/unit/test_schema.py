@@ -1,8 +1,4 @@
-"""Tests for docs/specs/step-2-schema.md, PR 2a (types and evidence models).
-
-Samples are schema objects built in code (spec §13). PR 2b adds policy, bundle and verdict
-samples to SAMPLES.
-"""
+"""Tests for docs/specs/step-2-schema.md (AC1-AC8). Samples are schema objects built in code."""
 
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
@@ -14,24 +10,34 @@ import codeatlas.schema as schema
 from codeatlas.schema import (
     Adr,
     Approval,
+    ApprovalPolicy,
+    AuthorityPolicy,
+    CasePolicy,
     ChangedEntity,
     ChangeEvent,
     ChangeRef,
+    CheckResult,
     CodeEdge,
     CodeEntity,
     Commit,
     Criterion,
     Evidence,
+    EvidenceBundle,
     GovernanceChange,
     GovernanceSnapshot,
+    IdentityEntry,
+    IdentityMap,
     LifecycleFacts,
     OwnerRule,
+    Policy,
     PriorityChange,
     RequirementVersion,
     ResolvedPerson,
     Review,
     SemanticCandidate,
+    SemanticPolicy,
     TraceLink,
+    Verdict,
     WorkItemRef,
 )
 
@@ -198,6 +204,66 @@ TRACE_LINK = TraceLink(
     evidence_ids=["git:commit:" + "d" * 40],
     reasons=["commit carrying SBX-2 modified the entity"],
 )
+CHECK = CheckResult(
+    case="C3",
+    outcome="VIOLATED",
+    severity="block",
+    required=True,
+    message="stale approval",
+    evidence_ids=[APPROVAL.evidence_id, CHANGE_EVENT.evidence_id],
+)
+VERDICT = Verdict(
+    value="FAIL",
+    results=[CHECK],
+    ruleset_version="0.1.0",
+    bundle_hash="f" * 64,
+    verdict_hash="0" * 64,
+)
+APPROVAL_POLICY = ApprovalPolicy(status="Approved", approver_account_ids=["user-01"])
+AUTHORITY_POLICY = AuthorityPolicy(group="sbx-priority-authority")
+CASE_POLICY = CasePolicy(severity="block")
+SEMANTIC_POLICY = SemanticPolicy(top_k=5)
+POLICY = Policy(
+    version=1,
+    workitem_key_pattern="[A-Z]+-\d+",
+    requirement_fields=["summary", "description"],
+    governance_paths=["CODEOWNERS", ".codeatlas/**"],
+    approval=APPROVAL_POLICY,
+    priority_authority=AUTHORITY_POLICY,
+    cases={"C3": CASE_POLICY, "C7": CasePolicy(required_when_label="requires-test-evidence")},
+    semantic=SEMANTIC_POLICY,
+)
+IDENTITY_ENTRY = IdentityEntry(
+    jira_account_id="user-02", github_login="user-02", git_emails=["user-02@example.test"]
+)
+IDENTITY_MAP = IdentityMap(people=[IDENTITY_ENTRY])
+BUNDLE = EvidenceBundle(
+    schema_version="0",
+    change=CHANGE_REF,
+    codeatlas_version="0.1.0",
+    collected_at=T1,
+    run_id="run-0001",
+    extractor_versions={"jira": "0.1.0"},
+    model_ids=[CANDIDATE.model_id],
+    model_file_hashes={CANDIDATE.model_id: "9" * 64},
+    policy=POLICY,
+    identity_map=IDENTITY_MAP,
+    work_items=[WORK_ITEM],
+    change_events=[CHANGE_EVENT],
+    versions=[VERSION],
+    lifecycle=[LIFECYCLE],
+    commits=[COMMIT],
+    reviews=[REVIEW],
+    people=[PERSON],
+    governance=GOVERNANCE,
+    governance_changes=[GOVERNANCE_CHANGE],
+    entities=[ENTITY],
+    changed=[CHANGED],
+    edges=[EDGE],
+    criteria=[CRITERION],
+    candidates=[CANDIDATE],
+    collection_notes=["work item SBX-99 not found"],
+)
 
 SAMPLES: list[BaseModel] = [
     EVIDENCE,
@@ -221,6 +287,16 @@ SAMPLES: list[BaseModel] = [
     CRITERION,
     CANDIDATE,
     TRACE_LINK,
+    CHECK,
+    VERDICT,
+    APPROVAL_POLICY,
+    AUTHORITY_POLICY,
+    CASE_POLICY,
+    SEMANTIC_POLICY,
+    POLICY,
+    IDENTITY_ENTRY,
+    IDENTITY_MAP,
+    BUNDLE,
 ]
 
 
@@ -308,12 +384,85 @@ def test_ac4_aware_datetime_converted_to_utc() -> None:
         (WORK_ITEM, "found_in", "title"),
         (EVIDENCE, "source", "linear"),
         (VERSION, "unresolved_fields", ["status"]),
+        (BUNDLE, "schema_version", "1"),
+        (CHECK, "case", "C10"),
+        (CHECK, "outcome", "satisfied"),
+        (VERDICT, "value", "PASSED"),
     ],
-    ids=["link-state", "review-state", "found-in", "source", "requirement-field"],
+    ids=[
+        "link-state",
+        "review-state",
+        "found-in",
+        "source",
+        "requirement-field",
+        "schema-version",
+        "case-id",
+        "outcome",
+        "verdict",
+    ],
 )
 def test_ac5_unknown_literal_values_rejected(sample: BaseModel, field: str, value: Any) -> None:
     with pytest.raises(ValidationError, match=field):
         type(sample).model_validate({**sample.model_dump(), field: value})
+
+
+# --- AC6: the whole bundle --------------------------------------------------------------------
+
+
+def test_ac6_bundle_dumps_identically_and_round_trips() -> None:
+    first = BUNDLE.model_dump_json()
+
+    assert BUNDLE.model_dump_json() == first
+    assert EvidenceBundle.model_validate_json(first) == BUNDLE
+    assert EvidenceBundle.model_validate_json(first).model_dump_json() == first
+
+
+def test_ac6_bundle_has_no_bundle_hash_field() -> None:
+    # S3: the bundle is content-addressed, so its hash cannot live inside it.
+    assert "bundle_hash" not in EvidenceBundle.model_fields
+
+
+# --- AC8: approvers and priority authority (S1) -------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "policy",
+    [
+        ApprovalPolicy(status="Approved", approver_group="sbx-requirement-approvers"),
+        ApprovalPolicy(status="Approved", approver_account_ids=["user-01"]),
+        ApprovalPolicy(status="Approved", approver_group="g", approver_account_ids=["user-01"]),
+        AuthorityPolicy(group="sbx-priority-authority"),
+        AuthorityPolicy(account_ids=["user-01", "user-02"]),
+    ],
+    ids=["approval-group", "approval-ids", "approval-both", "authority-group", "authority-ids"],
+)
+def test_ac8_group_or_account_ids_accepted(policy: BaseModel) -> None:
+    assert type(policy).model_validate(policy.model_dump()) == policy
+
+
+@pytest.mark.parametrize(
+    ("model", "data"),
+    [
+        (ApprovalPolicy, {"status": "Approved"}),
+        (ApprovalPolicy, {"status": "Approved", "approver_account_ids": []}),
+        (AuthorityPolicy, {}),
+        (AuthorityPolicy, {"group": None, "account_ids": []}),
+    ],
+    ids=["approval-nothing", "approval-empty-ids", "authority-nothing", "authority-empty-ids"],
+)
+def test_ac8_neither_group_nor_account_ids_rejected(
+    model: type[BaseModel], data: dict[str, Any]
+) -> None:
+    with pytest.raises(ValidationError, match="group or at least one account id"):
+        model.model_validate(data)
+
+
+def test_ac8_policy_requires_priority_authority() -> None:
+    data = POLICY.model_dump()
+    del data["priority_authority"]
+
+    with pytest.raises(ValidationError, match="priority_authority"):
+        Policy.model_validate({**data, "priority_authority_group": "sbx-priority-authority"})
 
 
 # --- AC7: version contents (S5) -----------------------------------------------------------------
