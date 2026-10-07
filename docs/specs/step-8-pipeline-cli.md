@@ -117,3 +117,34 @@ plus `show` and `version`.
 
 - GitHub, git, governance, code analysis and semantic stages (Yusra), the API and web UI
   (Saleha).
+
+## Decisions made while implementing
+
+- `Settings.jira_max_retries` (`CODEATLAS_JIRA_MAX_RETRIES`, default 3) lets tests and impatient
+  users skip the backoff waits.
+- An approver or authority group that answers 403/404 becomes the note
+  `group <name> not readable (HTTP <code>)`; other errors still stop the run (exit 3). When no
+  approver is known at all, the note `approvers unknown: <KEY>` makes C3 INSUFFICIENT_EVIDENCE.
+- Live bundles contain real account ids (only fixtures are sanitised), so live runs should store
+  bundles in a git-ignored folder (`bundles/` or `.recordings/`).
+- `config/policy.example.yaml` single-quotes the key pattern: YAML double quotes would treat `\d`
+  as an escape.
+
+## Live run (read-only), 2026-10-07
+
+`codeatlas collect --change <SBX-6 change file> --policy config/policy.example.yaml` against the
+real SBX project: FAIL (C3 "not approved by an approver"; SBX-6 has never been approved), the same
+case results as the recorded fixtures, 4 resolved versions, 6 stages logged, the token absent from
+the log; `codeatlas replay` on that bundle: `match yes`, exit 0.
+
+## Mutation check
+
+| File | Mutation | Result |
+|---|---|---|
+| `cli.py` | FAIL mapped to exit code 2 | failed (AC8) |
+| `logging.py` | sensitive-key check made case-sensitive | failed (AC9: `Authorization`) |
+| `pipeline.py` | a missing issue (404) re-raised instead of noted | failed (AC11) |
+| `pipeline.py` | an unreadable group (403/404) re-raised | **survived** at first; new tests (default policy with unreadable groups; group lookup 500) kill it |
+
+Branch coverage: `cli.py` 98%, `config.py` 98%, `logging.py` 96%, `pipeline.py` 88% (the stages
+for live Jira run only against respx mocks).
