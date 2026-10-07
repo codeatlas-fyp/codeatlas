@@ -83,3 +83,25 @@ Rule-specific fixture bundles are step 7.
 
 - Rules C1, C3, C6, C7 stub, C8 (step 7); link typing (`evaluate.links`, step 13, Yusra).
 - CLI and exit-code mapping (step 8).
+
+## Decisions made while implementing
+
+- `run_rules` wraps an exception from a rule as `RuntimeError("rule <case> failed: ...")`, and
+  `evaluate_bundle` turns any evaluation error into `EvidenceValidationError` (exit 4), so the
+  failing case is named and no verdict is produced.
+- `run_rules` passes `bundle.policy` as the `policy` argument: the policy is frozen inside the
+  bundle (step 2, S3), so replay never reads a live policy file.
+- Sample verdict: `PASS`, `ruleset_version` `none`, `verdict_hash`
+  `8a04ba3de298471d9b4c9a7686dc88de78f2db44260934b1cf27e19a29afd15f`. It must be regenerated with
+  `scripts/make_sample_bundle.py` when step 7 adds rules.
+
+## Mutation check
+
+| File | Mutation | Result |
+|---|---|---|
+| `evaluate/verdict.py` | row 1 tests `review` instead of `block` | 1 failed (AC1 truth table) |
+| `evaluate/verdict.py` | row 3 ignores `required` | 1 failed (AC2) |
+| `evaluate/verdict.py` | results not sorted by case | 1 failed (AC4 order; AC3 property) |
+
+Branch coverage: `evaluate/` and `pipeline.py` 100% (54 statements, 12 branches). The rule-order
+property test runs 300 examples.
