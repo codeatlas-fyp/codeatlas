@@ -41,6 +41,7 @@ dev = [
     "pytest-socket>=0.8.1",
     "respx>=0.23.1",
     "ruff>=0.16.10",
+    "types-pyyaml>=6.0.12.20260906",
 ]
 
 [tool.ruff]
@@ -54,7 +55,7 @@ force-exclude = true
 select = ["E", "F", "I", "UP", "B", "DTZ", "S"]  # DTZ: naive datetimes; S: security (spec §16)
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S603", "S607"]  # pytest asserts; tests run fixed git commands
+"tests/**" = ["S101", "S105", "S106", "S603", "S607"]  # asserts, fake secrets, fixed git commands
 "scripts/**" = ["S603", "S607"]  # fixed git commands, no user input in a shell
 
 [tool.mypy]
