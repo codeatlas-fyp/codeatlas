@@ -1,5 +1,6 @@
 """Domain models shared by every layer: schema v0 (spec §7, docs/specs/step-2-schema.md)."""
 
+from codeatlas.schema.bundle import CheckResult, EvidenceBundle, Verdict
 from codeatlas.schema.evidence import (
     Adr,
     Approval,
@@ -23,6 +24,16 @@ from codeatlas.schema.evidence import (
     TraceLink,
     WorkItemRef,
 )
+from codeatlas.schema.policy import (
+    ApprovalPolicy,
+    AuthorityPolicy,
+    CasePolicy,
+    IdentityEntry,
+    IdentityMap,
+    Policy,
+    SemanticPolicy,
+)
+from codeatlas.schema.protocols import ChangeSource, WorkItemSource
 from codeatlas.schema.types import (
     CaseId,
     LinkState,
@@ -35,29 +46,41 @@ from codeatlas.schema.types import (
 __all__ = [
     "Adr",
     "Approval",
+    "ApprovalPolicy",
+    "AuthorityPolicy",
     "CaseId",
+    "CasePolicy",
     "ChangeEvent",
     "ChangeRef",
+    "ChangeSource",
     "ChangedEntity",
+    "CheckResult",
     "CodeEdge",
     "CodeEntity",
     "Commit",
     "Criterion",
     "Evidence",
+    "EvidenceBundle",
     "GovernanceChange",
     "GovernanceSnapshot",
+    "IdentityEntry",
+    "IdentityMap",
     "LifecycleFacts",
     "LinkState",
     "Outcome",
     "OwnerRule",
+    "Policy",
     "PriorityChange",
     "RequirementField",
     "RequirementVersion",
     "ResolvedPerson",
     "Review",
     "SemanticCandidate",
+    "SemanticPolicy",
     "TraceLink",
     "UtcDatetime",
+    "Verdict",
     "VerdictValue",
     "WorkItemRef",
+    "WorkItemSource",
 ]
