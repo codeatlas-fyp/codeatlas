@@ -129,3 +129,26 @@ builders); they are inputs to a pure function, not committed fixture files.
 ## Out of scope
 
 - Rules over these facts (step 7), criteria splitting (step 13, Yusra).
+
+## Decisions made while implementing
+
+- "Rich text" means a field whose current value is an ADF document (`{"type": "doc"}`), plus
+  `description`. A first version treated every dict-valued field as rich text, which turned
+  assignee account ids into display names; `test_ac10_fields_in_force_at_each_version` caught it.
+- A value changed in the same history as a requirement edit is in force for the new version
+  (`move.at <= valid_from`).
+- `JiraClient.fetch_project_statuses` / `fetch_status_categories` and the recording
+  `tests/fixtures/jira/SBX.statuses.json` were added here (collector change) because "new"-category
+  statuses are needed for `revoked_at`.
+
+## Mutation check
+
+| File | Mutation | Result |
+|---|---|---|
+| `analyze/lifecycle.py` | chain comparison `==` → `!=` | failed (AC1/AC2) |
+| `analyze/lifecycle.py` | revoke on a non-`new` status instead | failed (AC7) |
+| `analyze/lifecycle.py` | `after_first_approval` uses `<` | failed (AC9) |
+| `analyze/lifecycle.py` | value in force uses `<` instead of `<=` | **survived** at first; new test `test_ac10_change_in_the_same_history_is_in_force_for_that_version` kills it |
+
+Branch coverage of `analyze/lifecycle.py`: 99% (186 statements, 56 branches). The two property
+tests run 300 examples each.
