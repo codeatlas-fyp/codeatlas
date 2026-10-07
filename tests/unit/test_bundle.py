@@ -9,6 +9,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from pydantic import BaseModel
+
+import codeatlas.schema as schema
 from codeatlas.bundle.canonical import canonical_bytes, has_identifier
 from codeatlas.bundle.hashing import bundle_hash, sha256_hex, verdict_hash
 from codeatlas.bundle.replay import replay
@@ -23,9 +26,6 @@ from codeatlas.errors import (
     ReplayMismatchError,
     SourceUnavailable,
 )
-from pydantic import BaseModel
-
-import codeatlas.schema as schema
 from codeatlas.schema import CheckResult, EvidenceBundle, Verdict, VerdictValue
 from tests.samples import BUNDLE, CHECK
 
@@ -33,7 +33,7 @@ ROOT = Path(__file__).parents[2]
 FIXTURES = ROOT / "tests" / "fixtures" / "bundles"
 # Golden hash of the committed sample bundle. Computed once from scripts/make_sample_bundle.py;
 # it must be identical on Windows and on the Linux CI runner (AC4, "2 OS images").
-SAMPLE_HASH = "SAMPLE_HASH_PLACEHOLDER"
+SAMPLE_HASH = "cb973272d317b0a5e4d2f5b2198bf53740bac9ab2c93d07d581a51ff40ea4f66"
 RULESET = "test-ruleset"
 
 
