@@ -13,6 +13,7 @@ type = forbidden
 source_modules =
     codeatlas.evaluate
 forbidden_modules =
+    codeatlas.errors
     codeatlas.collect
     codeatlas.analyze
     codeatlas.bundle
@@ -47,6 +48,7 @@ type = forbidden
 source_modules =
     codeatlas.schema
 forbidden_modules =
+    codeatlas.errors
     codeatlas.collect
     codeatlas.analyze
     codeatlas.bundle
