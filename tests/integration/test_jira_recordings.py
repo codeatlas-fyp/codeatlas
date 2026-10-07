@@ -59,3 +59,11 @@ def test_ac11_unknown_group_is_a_404_like_live_jira(source: FixtureJiraSource) -
         source.group_members("sbx-requirement-approvers")
 
     assert raised.value.status == 404
+
+
+def test_recorded_sbx_status_categories(source: FixtureJiraSource) -> None:
+    categories = source.fetch_status_categories("SBX")
+
+    assert categories["To Do"] == "new"
+    assert categories["Approved"] == "done"
+    assert categories["In Progress"] == "indeterminate"

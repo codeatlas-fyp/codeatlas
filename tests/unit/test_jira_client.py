@@ -238,3 +238,45 @@ def test_ac2_is_last_alone_stops_paging(client: JiraClient) -> None:
 
     assert [h["id"] for h in client.fetch_changelog("SBX-6")] == ["1"]
     assert route.call_count == 1
+
+
+# --- step 6: status categories ---------------------------------------------------------------
+
+
+@respx.mock
+def test_status_categories_by_name(client: JiraClient) -> None:
+    respx.get(f"{API}/project/SBX/statuses").respond(
+        200,
+        json=[
+            {
+                "name": "Story",
+                "statuses": [
+                    {"name": "To Do", "statusCategory": {"key": "new"}},
+                    {"name": "Approved", "statusCategory": {"key": "done"}},
+                ],
+            },
+            {
+                "name": "Bug",
+                "statuses": [{"name": "In Progress", "statusCategory": {"key": "indeterminate"}}],
+            },
+        ],
+    )
+
+    assert client.fetch_status_categories("SBX") == {
+        "To Do": "new",
+        "Approved": "done",
+        "In Progress": "indeterminate",
+    }
+
+
+def test_status_categories_reject_bad_project_key(client: JiraClient) -> None:
+    with pytest.raises(ValueError, match="not a Jira project key"):
+        client.fetch_status_categories("sbx/../x")
+
+
+@respx.mock
+def test_object_where_list_expected_is_a_collection_error(client: JiraClient) -> None:
+    respx.get(f"{API}/project/SBX/statuses").respond(200, json={"oops": True})
+
+    with pytest.raises(CollectionError, match="not a list"):
+        client.fetch_status_categories("SBX")
