@@ -291,3 +291,13 @@ def test_duplicate_field_in_one_history_gets_distinct_evidence_ids() -> None:
         "jira:SBX-9:history:1:labels",
         "jira:SBX-9:history:1:labels:2",
     ]
+
+
+def test_ac10_change_in_the_same_history_is_in_force_for_that_version() -> None:
+    # One history moves the status and edits the description: version 2 starts in the new status.
+    edit = history(1, 10, item("status", "To Do", "In Progress"), item("description", V1, V2))
+
+    result = reconstruct(source(issue(description=V2, status="In Progress"), edit), context(), TEXT)
+
+    v1, v2 = result.versions
+    assert (v1.status, v2.status) == ("To Do", "In Progress")
