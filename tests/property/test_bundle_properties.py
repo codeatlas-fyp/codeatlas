@@ -5,11 +5,11 @@ import string
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
-from codeatlas.bundle.canonical import canonical_bytes
-from codeatlas.bundle.hashing import bundle_hash
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
+from codeatlas.bundle.canonical import canonical_bytes
+from codeatlas.bundle.hashing import bundle_hash
 from codeatlas.schema import EvidenceBundle
 from tests.samples import BUNDLE
 
