@@ -249,3 +249,26 @@ Each line was changed by hand, the schema tests were run, and the file was resto
 | `schema/types.py` | `return value.astimezone(UTC)` → `return value` | 1 failed (AC4 conversion to UTC) |
 
 Branch coverage of `codeatlas.schema` after PR 2a: 100% (165 statements, 6 branches).
+
+## PR 2b as implemented
+
+- `schema/policy.py` with the S1 change: `ApprovalPolicy(status, approver_group=None,
+  approver_account_ids=[])` and `AuthorityPolicy(group=None, account_ids=[])`, each rejecting
+  "no group and no account id"; `Policy.priority_authority` replaces `priority_authority_group`.
+- `schema/bundle.py` (`CheckResult`, `Verdict`, `EvidenceBundle` with S3 fields),
+  `schema/protocols.py` (`WorkItemSource`, `ChangeSource`).
+- New test **AC8**: a group or at least one account id is required; the old
+  `priority_authority_group` key is rejected.
+- Finding from the first real recording (SBX, 2026-10-07): the sandbox groups
+  `sbx-requirement-approvers` and `sbx-priority-authority` do not exist (`GET /group/member`
+  returns 404), so the sandbox policy must use account ids. This confirms the S1 change.
+
+## Mutation check (PR 2b)
+
+| File | Mutation | Result |
+|---|---|---|
+| `schema/policy.py` | approval validator `and` → `or` | collection error: valid samples are rejected |
+| `schema/policy.py` | authority validator condition → `False` | 1 failed (AC8 rejection) |
+| `schema/bundle.py` | `Literal["0"]` → `Literal["0", "1"]` | 1 failed (AC5 schema version) |
+
+Branch coverage of `codeatlas.schema` after PR 2b: 100% (254 statements, 10 branches).
