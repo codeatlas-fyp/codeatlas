@@ -1,13 +1,24 @@
-"""Rule registry (spec §6 `evaluate.rules`). Rules C1, C3, C6, C7 and C8 arrive in step 7."""
+"""Rule registry (spec §6 `evaluate.rules`). Phase 1 rules: C1, C3, C6, C8 and the C7 stub."""
 
 from collections.abc import Iterable
 
 from codeatlas.evaluate.rules.base import Rule
+from codeatlas.evaluate.rules.c1_changed_after_impl import ChangedAfterImplementation
+from codeatlas.evaluate.rules.c3_not_approved import NotApproved
+from codeatlas.evaluate.rules.c6_superseded_version import SupersededVersion
+from codeatlas.evaluate.rules.c7_test_evidence import TestEvidenceStub
+from codeatlas.evaluate.rules.c8_priority_authority import PriorityWithoutAuthority
 
 
 def default_rules() -> tuple[Rule, ...]:
     """The rules every evaluation runs, in no particular order (order never matters)."""
-    return ()
+    return (
+        ChangedAfterImplementation(),
+        NotApproved(),
+        SupersededVersion(),
+        TestEvidenceStub(),
+        PriorityWithoutAuthority(),
+    )
 
 
 def ruleset_version(rules: Iterable[Rule]) -> str:
