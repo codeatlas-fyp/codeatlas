@@ -1,0 +1,55 @@
+; Layer contracts from docs/specs/mid-eval-spec.md sections 4 and 8.
+; Add each new module (pipeline, config, web, collect.git) to these contracts in the PR that
+; creates it. External packages need include_external_packages, per the import-linter docs:
+; https://import-linter.readthedocs.io/en/stable/contract_types/forbidden/
+
+[importlinter]
+root_package = codeatlas
+include_external_packages = True
+
+[importlinter:contract:evaluate-is-pure]
+name = K1: evaluate may import only schema
+type = forbidden
+source_modules =
+    codeatlas.evaluate
+forbidden_modules =
+    codeatlas.collect
+    codeatlas.analyze
+    codeatlas.bundle
+    codeatlas.api
+    codeatlas.cli
+
+[importlinter:contract:api-reads-bundles-only]
+name = K2: api does not import collect
+type = forbidden
+source_modules =
+    codeatlas.api
+forbidden_modules =
+    codeatlas.collect
+
+[importlinter:contract:network-only-in-collect]
+name = K3: only collect imports httpx, githubkit or pygit2
+type = forbidden
+source_modules =
+    codeatlas.schema
+    codeatlas.analyze
+    codeatlas.bundle
+    codeatlas.evaluate
+    codeatlas.api
+forbidden_modules =
+    httpx
+    githubkit
+    pygit2
+
+[importlinter:contract:schema-is-the-base]
+name = K4: schema imports no other codeatlas package
+type = forbidden
+source_modules =
+    codeatlas.schema
+forbidden_modules =
+    codeatlas.collect
+    codeatlas.analyze
+    codeatlas.bundle
+    codeatlas.evaluate
+    codeatlas.api
+    codeatlas.cli

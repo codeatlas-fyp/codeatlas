@@ -12,3 +12,8 @@ repos:
       - id: ruff-check
         args: [--fix]
       - id: ruff-format
+  # Hook ids from the gitleaks repo's .pre-commit-hooks.yaml. They scan staged changes only.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
