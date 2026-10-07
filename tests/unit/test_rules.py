@@ -233,7 +233,7 @@ def test_c3_fail_stale_approval_cites_both_ids() -> None:
 
     assert (result.outcome, result.severity) == ("VIOLATED", "block")
     assert "stale approval" in result.message
-    assert result.evidence_ids == [edit(9).evidence_id, approval(5).evidence_id]
+    assert result.evidence_ids == [approval(5).evidence_id, edit(9).evidence_id]  # sorted
     assert evaluate_bundle(b, "a" * 64, rules=[C3]).value == "FAIL"
 
 
