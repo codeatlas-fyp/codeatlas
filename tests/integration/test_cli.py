@@ -246,3 +246,33 @@ def test_sample_bundle_shows_and_replays() -> None:
     shown = json.loads(runner.invoke(app, ["show", str(folder), "--json"]).stdout)
     assert shown["bundle_hash"] == folder.name
     assert shown["value"] == "FAIL"  # the sample's approval is stale (C3)
+
+
+def test_default_policy_with_unreadable_groups_makes_approval_unknown(tmp_path: Path) -> None:
+    # The built-in policy names approver groups; SBX has no such groups (404), and no account
+    # ids are listed, so nobody is known to be an approver: C3 cannot judge.
+    args = ["collect", "--change", str(change_file(tmp_path, ["SBX-6"])), "--fixtures"]
+    result = runner.invoke(app, [*args, str(FIXTURES), "--store", str(tmp_path / "store")])
+
+    (folder,) = stored_folders(tmp_path)
+    notes = json.loads((folder / "bundle.json").read_text())["collection_notes"]
+    assert "group sbx-requirement-approvers not readable (HTTP 404)" in notes
+    assert "approvers unknown: SBX-6" in notes
+    assert "no policy file: built-in default policy used" in notes
+    verdict = json.loads((folder / "verdict.json").read_text())
+    assert next(r for r in verdict["results"] if r["case"] == "C3")["outcome"] == (
+        "INSUFFICIENT_EVIDENCE"
+    )
+    assert result.exit_code == 2
+
+
+def test_group_lookup_server_error_is_not_swallowed() -> None:
+    from codeatlas.errors import CollectionError
+    from codeatlas.pipeline import _members
+
+    class Broken:
+        def group_members(self, group: str) -> set[str]:
+            raise CollectionError("jira", status=500, retryable=True)
+
+    with pytest.raises(CollectionError):
+        _members(Broken(), "approvers", [], [])  # type: ignore[arg-type]
