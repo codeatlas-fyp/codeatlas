@@ -414,3 +414,34 @@ def test_ac6_default_rules() -> None:
 def test_rules_declare_versions_and_evidence(rule: Any) -> None:
     assert rule.version
     assert set(rule.required_evidence) <= set(EvidenceBundle.model_fields)
+
+
+# --- boundaries found by the mutation run (docs/report/data/mutation-score.json) --------------
+
+
+def test_c3_edit_at_the_approval_instant_is_not_stale() -> None:
+    assert check(C3, bundle(lifecycle=[facts(approvals=[approval(5)], edits=[5])])).outcome == (
+        "SATISFIED"
+    )
+
+
+def test_c3_stale_cites_only_edits_after_the_approval() -> None:
+    b = bundle(lifecycle=[facts(approvals=[approval(5)], edits=[5, 9])], edits=[edit(5), edit(9)])
+
+    result = check(C3, b)
+
+    assert edit(9).evidence_id in result.evidence_ids
+    assert edit(5).evidence_id not in result.evidence_ids
+
+
+def test_c3_cites_the_valid_approval_not_an_earlier_invalid_one() -> None:
+    approvals = [approval(3, valid=False), approval(5)]
+
+    result = check(C3, bundle(lifecycle=[facts(approvals=approvals, edits=[1])]))
+
+    assert result.outcome == "SATISFIED"
+    assert result.evidence_ids == [approval(5).evidence_id]
+
+
+def test_c6_edit_at_the_last_commit_instant_is_not_after_it() -> None:
+    assert check(C6, bundle(edits=[edit(20)], commits=[10, 20])).outcome == "SATISFIED"

@@ -301,3 +301,27 @@ def test_ac10_change_in_the_same_history_is_in_force_for_that_version() -> None:
 
     v1, v2 = result.versions
     assert (v1.status, v2.status) == ("To Do", "In Progress")
+
+
+# --- boundaries found by the mutation run (docs/report/data/mutation-score.json) --------------
+
+
+def test_custom_field_events_use_the_field_id() -> None:
+    # Jira items carry a display name (`field`) and an id (`fieldId`); the id must win.
+    raw = item("Acceptance Criteria", "old", "new")
+    raw["fieldId"] = "customfield_10042"
+
+    result = reconstruct(source(issue(), history(1, 5, raw)), context(), TEXT)
+
+    assert result.events[0].field == "customfield_10042"
+    assert result.events[0].evidence_id == "jira:SBX-9:history:1:customfield_10042"
+
+
+def test_priority_change_at_the_approval_instant_is_not_after_it() -> None:
+    same_time = history(
+        1, 5, item("status", "To Do", "Approved"), item("priority", "Medium", "High")
+    )
+
+    result = reconstruct(source(issue(priority="High"), same_time), context(), TEXT)
+
+    assert not result.facts.priority_changes[0].after_first_approval
