@@ -19,6 +19,7 @@ forbidden_modules =
     codeatlas.bundle
     codeatlas.api
     codeatlas.cli
+    codeatlas.pipeline
 
 [importlinter:contract:api-reads-bundles-only]
 name = K2: api does not import collect
@@ -55,3 +56,4 @@ forbidden_modules =
     codeatlas.evaluate
     codeatlas.api
     codeatlas.cli
+    codeatlas.pipeline
