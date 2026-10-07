@@ -1,0 +1,236 @@
+{
+  "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations",
+  "id": "10050",
+  "self": "https://example.atlassian.net/rest/api/3/issue/10050",
+  "key": "SBX-6",
+  "fields": {
+    "statuscategorychangedate": "2026-10-07T16:27:41.189+0500",
+    "issuetype": {
+      "self": "https://example.atlassian.net/rest/api/3/issuetype/10037",
+      "id": "10037",
+      "description": "",
+      "iconUrl": "https://example.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10315?size=medium",
+      "name": "Story",
+      "subtask": false,
+      "avatarId": 10315,
+      "entityId": "4a9302d5-b5a5-4c3f-9436-f672da7af97f",
+      "hierarchyLevel": 0
+    },
+    "components": [],
+    "timespent": null,
+    "timeoriginalestimate": null,
+    "project": {
+      "self": "https://example.atlassian.net/rest/api/3/project/10033",
+      "id": "10033",
+      "key": "SBX",
+      "name": "Sandbox",
+      "projectTypeKey": "software",
+      "simplified": true,
+      "avatarUrls": {
+        "48x48": "https://example.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10403",
+        "24x24": "https://example.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10403?size=small",
+        "16x16": "https://example.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10403?size=xsmall",
+        "32x32": "https://example.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10403?size=medium"
+      }
+    },
+    "description": {
+      "type": "doc",
+      "version": 1,
+      "content": [
+        {
+          "type": "paragraph",
+          "content": [
+            {
+              "type": "text",
+              "text": "As a visitor, I want to register as a member so that I can borrow books."
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "attrs": {
+            "level": 2
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "Acceptance criteria"
+            }
+          ]
+        },
+        {
+          "type": "orderedList",
+          "attrs": {
+            "order": 1
+          },
+          "content": [
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Given a name, an email and a password of at least 8 characters, when a visitor registers, then a member account is created and a confirmation email is sent."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Given an email that is already registered, when a visitor registers with it, then the request is rejected with error EMAIL_TAKEN."
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "listItem",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Given a password shorter than 8 characters, then the request is rejected with error WEAK_PASSWORD."
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fixVersions": [],
+    "aggregatetimespent": null,
+    "statusCategory": {
+      "self": "https://example.atlassian.net/rest/api/3/statuscategory/2",
+      "id": 2,
+      "key": "new",
+      "colorName": "blue-gray",
+      "name": "To Do"
+    },
+    "resolution": null,
+    "timetracking": {},
+    "customfield_10015": null,
+    "security": null,
+    "attachment": [],
+    "aggregatetimeestimate": null,
+    "resolutiondate": null,
+    "workratio": -1,
+    "summary": "Member registration",
+    "issuerestriction": {
+      "issuerestrictions": {},
+      "shouldDisplay": true
+    },
+    "watches": {
+      "self": "https://example.atlassian.net/rest/api/3/issue/SBX-6/watchers",
+      "watchCount": 1,
+      "isWatching": true
+    },
+    "lastViewed": null,
+    "creator": {
+      "self": "https://example.atlassian.net/rest/api/3/user?accountId=712020%3Ab7db8c30-0831-4bf5-bf14-e0263ca25279",
+      "accountId": "user-01",
+      "emailAddress": "user-01@example.test",
+      "avatarUrls": {
+        "48x48": "https://example.atlassian.net/avatar/user-01/48x48",
+        "24x24": "https://example.atlassian.net/avatar/user-01/24x24",
+        "16x16": "https://example.atlassian.net/avatar/user-01/16x16",
+        "32x32": "https://example.atlassian.net/avatar/user-01/32x32"
+      },
+      "displayName": "User 01",
+      "active": true,
+      "timeZone": "Asia/Karachi",
+      "accountType": "atlassian"
+    },
+    "subtasks": [],
+    "created": "2026-10-07T16:27:40.906+0500",
+    "customfield_10021": null,
+    "reporter": {
+      "self": "https://example.atlassian.net/rest/api/3/user?accountId=712020%3Ab7db8c30-0831-4bf5-bf14-e0263ca25279",
+      "accountId": "user-01",
+      "emailAddress": "user-01@example.test",
+      "avatarUrls": {
+        "48x48": "https://example.atlassian.net/avatar/user-01/48x48",
+        "24x24": "https://example.atlassian.net/avatar/user-01/24x24",
+        "16x16": "https://example.atlassian.net/avatar/user-01/16x16",
+        "32x32": "https://example.atlassian.net/avatar/user-01/32x32"
+      },
+      "displayName": "User 01",
+      "active": true,
+      "timeZone": "Asia/Karachi",
+      "accountType": "atlassian"
+    },
+    "aggregateprogress": {
+      "progress": 0,
+      "total": 0
+    },
+    "priority": {
+      "self": "https://example.atlassian.net/rest/api/3/priority/3",
+      "iconUrl": "https://example.atlassian.net/images/icons/priorities/medium_new.svg",
+      "name": "Medium",
+      "id": "3"
+    },
+    "customfield_10001": null,
+    "labels": [
+      "scenario-lifecycle-versions"
+    ],
+    "customfield_10026": null,
+    "customfield_10017": null,
+    "environment": null,
+    "customfield_10019": "0|i000ar:",
+    "timeestimate": null,
+    "aggregatetimeoriginalestimate": null,
+    "versions": [],
+    "duedate": null,
+    "progress": {
+      "progress": 0,
+      "total": 0
+    },
+    "issuelinks": [],
+    "votes": {
+      "self": "https://example.atlassian.net/rest/api/3/issue/SBX-6/votes",
+      "votes": 0,
+      "hasVoted": false
+    },
+    "comment": {
+      "comments": [],
+      "self": "https://example.atlassian.net/rest/api/3/issue/10050/comment",
+      "maxResults": 0,
+      "total": 0,
+      "startAt": 0
+    },
+    "assignee": null,
+    "worklog": {
+      "startAt": 0,
+      "maxResults": 20,
+      "total": 0,
+      "worklogs": []
+    },
+    "updated": "2026-10-07T16:27:56.749+0500",
+    "status": {
+      "self": "https://example.atlassian.net/rest/api/3/status/10033",
+      "description": "",
+      "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+      "name": "To Do",
+      "id": "10033",
+      "statusCategory": {
+        "self": "https://example.atlassian.net/rest/api/3/statuscategory/2",
+        "id": 2,
+        "key": "new",
+        "colorName": "blue-gray",
+        "name": "To Do"
+      }
+    }
+  }
+}
