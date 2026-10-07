@@ -19,3 +19,7 @@ coverage.xml
 htmlcov/
 .idea/
 .DS_Store
+
+# CodeAtlas output and raw data (spec section 8)
+bundles/
+.recordings/
