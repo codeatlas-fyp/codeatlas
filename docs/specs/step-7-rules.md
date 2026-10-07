@@ -126,3 +126,42 @@ state (for the evaluation guide):
 ## Out of scope
 
 - C2, C4, C5, C9 and the full C7 (Yusra); trace links (step 13).
+
+## Decisions made while implementing
+
+- Same-instant events are not "after": an edit at the approval instant does not make the approval
+  stale, an edit at the last commit's instant does not supersede the code, and a priority change
+  in the same history as the approval is not "after approval". These boundaries are pinned by
+  tests added after the mutation run.
+- Rule attributes are annotated (`version: str`, `required_evidence: tuple[str, ...]`) so the rule
+  classes match the `Rule` protocol exactly (mypy checks protocol attributes invariantly).
+- The C3 result for a satisfied key cites the approval it relied on.
+- The G1 sample verdict is regenerated with the Phase 1 rules: FAIL (the sample's approval at T0
+  is followed by an edit at T1, a stale approval). Its bundle hash is unchanged.
+
+## Mutation check
+
+Hand mutations:
+
+| File | Mutation | Result |
+|---|---|---|
+| `rules/c3_not_approved.py` | stale test `>` → `<` | failed |
+| `rules/c1_changed_after_impl.py` | edits "after" first commit use `>=` | failed (edge test) |
+| `rules/c8_priority_authority.py` | `is False` → `is not True` (unknown counted as unauthorised) | failed |
+| `rules/base.py` | combined outcome VIOLATED → SATISFIED | failed |
+| `rules/c3_not_approved.py` | broken-history check removed | failed |
+
+Mutation score (`scripts/mutation_score.py`, because mutmut refuses native Windows and this machine
+has no WSL distribution or Docker), on `analyze/lifecycle.py` and `evaluate/rules/`:
+
+| Run | Killed | Score |
+|---|---|---|
+| First | 91 / 103 | 88.3% |
+| After six boundary tests | 97 / 103 | 94.2% |
+
+The 6 survivors are equivalent mutants: `frozen=True` on four internal dataclasses of
+`lifecycle.py` (immutability is not part of any result), the `__test__ = False` marker on the C7
+class (pytest collection only), and `limit >` → `>=` in the chain check, where two mismatches of
+one field can never produce the same limit.
+
+Branch coverage of `evaluate/`: 97% before the boundary tests, 100% after (evaluation report).
