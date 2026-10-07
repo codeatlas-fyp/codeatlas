@@ -56,7 +56,6 @@ def test_ac2_forward_replay_reproduces_every_version(
         "summary": result.versions[0].summary,
         "description": result.versions[0].description,
     }
-    events = iter(result.events)
     for version in result.versions[1:]:
         for event in [e for e in result.events if e.at == version.valid_from]:
             replayed[event.field] = event.to_value
@@ -64,7 +63,6 @@ def test_ac2_forward_replay_reproduces_every_version(
             version.summary,
             version.description,
         )
-    del events
     assert replayed == current
 
 
