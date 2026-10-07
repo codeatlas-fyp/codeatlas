@@ -115,6 +115,10 @@ class JiraWriter:
             raise RefusedError(f"{key}: no transition into {status!r} (available: {names})")
         self._send("POST", f"/issue/{key}/transitions", {"transition": {"id": match[0]["id"]}})
 
+    def created(self, key: str) -> str:
+        """Jira's own creation timestamp of the issue."""
+        return str(self._send("GET", f"/issue/{key}?fields=created").json()["fields"]["created"])
+
     def changelog(self, key: str) -> list[dict[str, Any]]:
         values: list[dict[str, Any]] = []
         start = 0

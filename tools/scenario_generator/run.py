@@ -77,7 +77,6 @@ def run(
     records = []
     for plan in plans:
         key = writer.create_issue(plan.summary, plan.description, run_label)
-        created = datetime.now(UTC).replace(microsecond=0)
         for action in plan.actions:
             sleep(gap)
             if action.kind == "edit":
@@ -86,6 +85,7 @@ def run(
                 writer.move_to(key, STATUS_FOR[action.kind])
             elif action.kind == "priority":
                 writer.set_priority(key, action.priority or "Medium")
+        created = parse_time(writer.created(key))  # Jira's clock, like every other time here
         log = jira_times(plan, writer.changelog(key), created)
         truth = expected(plan.description, log)
         records.append(

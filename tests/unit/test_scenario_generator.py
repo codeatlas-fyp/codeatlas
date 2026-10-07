@@ -236,6 +236,9 @@ class FakeWriter:
         self.calls.append(("priority", priority))
         self._log("priority")
 
+    def created(self, key: str) -> str:
+        return (T0 + timedelta(hours=5)).strftime("%Y-%m-%dT%H:%M:%S.000+0500")
+
     def changelog(self, key: str) -> list[dict[str, Any]]:
         return self.histories
 
@@ -251,3 +254,5 @@ def test_run_records_ground_truth_for_every_action() -> None:
     assert record["key"] == "SBX-100"
     assert [a["kind"] for a in record["actions"]] == [a.kind for a in plan.actions]
     assert record["expected"]["versions"][0] == plan.description
+    markers = [a for a in record["actions"] if a["kind"].endswith("_commit")]
+    assert all(a["at"] >= "2026-10-08T09:00:00Z" for a in markers)  # Jira's clock, not ours
