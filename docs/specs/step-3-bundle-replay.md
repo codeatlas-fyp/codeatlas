@@ -138,3 +138,30 @@ joined by recorded bundles after step 8.
 - The verdict truth table and real evaluator (step 4); `verdict.json` for the sample (G1).
 - The CLI `replay` command and exit-code mapping (step 8).
 - A CI job running two OS images (step 15, Saleha); AC4's golden hash covers it until then.
+
+## Decisions made while implementing
+
+- `replay(path, evaluate, strict=True)`: with `strict=False` it returns `match=False` instead of
+  raising, so the API's `/replay` endpoint (step 14) can report a mismatch as data.
+- The evaluator signature is `(bundle, bundle_hash) -> Verdict`, because the verdict carries the
+  hash of the bundle it judged.
+- List sort key: the identifier first, then the element's full canonical text, so two elements
+  with the same identifier still sort the same way whatever the input order.
+- `.gitignore` now ignores `/bundles/` (the run-time store at the repo root) instead of every
+  `bundles/` folder, which had hidden `tests/fixtures/bundles/`.
+- Bundle fixtures are excluded from the whitespace hooks (`.pre-commit-config.yaml`) and marked
+  `-text` (`.gitattributes`): the end-of-file fixer had added a newline, which changed the bytes
+  and so the hash.
+- Sample bundle hash: `cb973272d317b0a5e4d2f5b2198bf53740bac9ab2c93d07d581a51ff40ea4f66`.
+
+## Mutation check
+
+| File | Mutation | Result |
+|---|---|---|
+| `bundle/canonical.py` | lists no longer sorted | 1 failed (AC2 property: shuffled list order changes the bytes) |
+| `bundle/store.py` | hash-vs-folder check disabled | 1 failed (AC5: tampered byte accepted) |
+| `bundle/hashing.py` | `ruleset_version` dropped from `verdict_hash` | 1 failed (verdict hash ignores the ruleset) |
+| `bundle/canonical.py` | datetimes written with `isoformat()` | 1 failed (AC2/AC8 format) |
+
+Branch coverage: `bundle/` and `errors.py` 95% (161 statements, 44 branches). Property tests run
+200 examples each (AC2, AC3).
