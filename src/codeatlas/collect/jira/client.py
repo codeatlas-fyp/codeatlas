@@ -20,6 +20,7 @@ SOURCE = "jira"
 PAGE_SIZE = 100
 BACKOFF_BASE_SECONDS = 2.0
 _KEY = re.compile(r"[A-Z][A-Z0-9_]*-\d+")
+_PROJECT = re.compile(r"[A-Z][A-Z0-9_]*")
 
 
 class ReadOnlyTransport(httpx.BaseTransport):
@@ -97,6 +98,21 @@ class JiraClient:
     def fetch_comments(self, key: str) -> list[dict[str, Any]]:
         return list(self._pages(f"/issue/{_checked(key)}/comment", {}, "comments"))
 
+    def fetch_project_statuses(self, project_key: str) -> list[Any]:
+        """Raw `GET /project/{key}/statuses`: issue types, each with its statuses."""
+        if not _PROJECT.fullmatch(project_key):
+            raise ValueError(f"{project_key!r} is not a Jira project key")
+        data = self._request(f"/project/{project_key}/statuses", {})
+        if not isinstance(data, list):
+            raise CollectionError(
+                SOURCE, status=200, retryable=False, detail="statuses: not a list"
+            )
+        return data
+
+    def fetch_status_categories(self, project_key: str) -> dict[str, str]:
+        """Status name → category key (`new`, `indeterminate`, `done`) for the project."""
+        return status_categories(self.fetch_project_statuses(project_key))
+
     def group_members(self, group: str) -> set[str]:
         """Account ids of the group's current members (Jira keeps no membership history)."""
         members = self._pages("/group/member", {"groupname": group}, "values")
@@ -116,6 +132,14 @@ class JiraClient:
                 return
 
     def _get(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
+        data = self._request(path, params)
+        if not isinstance(data, dict):
+            raise CollectionError(
+                SOURCE, status=200, retryable=False, detail="response is not an object"
+            )
+        return data
+
+    def _request(self, path: str, params: dict[str, Any]) -> Any:
         for attempt in range(self._max_retries + 1):
             last = attempt == self._max_retries
             try:
@@ -140,16 +164,11 @@ class JiraClient:
                     SOURCE, status=status, retryable=False, detail=_jira_message(response)
                 )
             try:
-                data = response.json()
+                return response.json()
             except ValueError as error:
                 raise CollectionError(
                     SOURCE, status=status, retryable=False, detail="response is not JSON"
                 ) from error
-            if not isinstance(data, dict):
-                raise CollectionError(
-                    SOURCE, status=status, retryable=False, detail="response is not an object"
-                )
-            return data
         raise AssertionError("unreachable")  # pragma: no cover
 
     def _wait(self, attempt: int, retry_after: str | None) -> None:
@@ -160,6 +179,17 @@ class JiraClient:
         if seconds < 0:
             seconds = BACKOFF_BASE_SECONDS * 2**attempt * self._jitter()
         self._sleep(seconds)
+
+
+def status_categories(raw: list[Any]) -> dict[str, str]:
+    """Flatten `GET /project/{key}/statuses` (issue types → statuses) to name → category key."""
+    out: dict[str, str] = {}
+    for issue_type in raw:
+        for status in issue_type.get("statuses", []) if isinstance(issue_type, dict) else []:
+            category = (status.get("statusCategory") or {}).get("key")
+            if isinstance(status.get("name"), str) and isinstance(category, str):
+                out[status["name"]] = category
+    return out
 
 
 def _checked(key: str) -> str:

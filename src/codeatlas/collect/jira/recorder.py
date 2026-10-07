@@ -10,6 +10,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
+from codeatlas.collect.jira.client import status_categories
 from codeatlas.errors import CollectionError
 from codeatlas.schema import WorkItemSource
 
@@ -95,12 +96,14 @@ def _write(path: Path, data: Any) -> None:
 def record(
     source: Any, keys: Iterable[str], out_dir: Path, sanitiser: Sanitiser | None = None
 ) -> list[Path]:
-    """Write `<KEY>.issue.json`, `.changelog.json` and `.comments.json` for each key.
+    """Write `<KEY>.issue.json`, `.changelog.json`, `.comments.json` for each key, and
+    `<PROJECT>.statuses.json` for each project the keys belong to.
 
     `source` is a `JiraClient`; with no sanitiser the raw responses are written (only ever into
     the git-ignored `.recordings/` folder).
     """
     out_dir.mkdir(parents=True, exist_ok=True)
+    keys = list(keys)
     written = []
     for key in keys:
         responses = {
@@ -112,6 +115,11 @@ def record(
             path = out_dir / f"{key}.{kind}.json"
             _write(path, sanitiser.sanitise(data) if sanitiser else data)
             written.append(path)
+    for project in sorted({key.split("-")[0] for key in keys}):
+        data = source.fetch_project_statuses(project)
+        path = out_dir / f"{project}.statuses.json"
+        _write(path, sanitiser.sanitise(data) if sanitiser else data)
+        written.append(path)
     return written
 
 
@@ -136,6 +144,9 @@ class FixtureJiraSource:
     def fetch_changelog(self, key: str) -> list[dict[str, Any]]:
         data: list[dict[str, Any]] = self._read(f"{key}.changelog.json")
         return data
+
+    def fetch_status_categories(self, project_key: str) -> dict[str, str]:
+        return status_categories(self._read(f"{project_key}.statuses.json"))
 
     def group_members(self, group: str) -> set[str]:
         if not re.fullmatch(r"[\w.-]+", group):
