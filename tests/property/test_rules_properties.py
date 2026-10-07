@@ -43,7 +43,7 @@ def test_ac4_broken_chain_never_passes(b: EvidenceBundle) -> None:
 @settings(max_examples=300, deadline=None)
 @given(b=bundles(), seed=st.integers())
 def test_ac5_rules_ignore_list_order(b: EvidenceBundle, seed: int) -> None:
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311 (shuffling test input, not security)
     shuffled = b.model_copy(
         update={
             "change_events": rng.sample(b.change_events, len(b.change_events)),
