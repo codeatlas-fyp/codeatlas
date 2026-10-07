@@ -193,7 +193,7 @@ def generated_section(truth_path: Path | None, base_policy: Policy) -> tuple[lis
     client.close()
     total = len(truth["issues"])
     lines = [
-        f"Ground truth: `{truth_path.relative_to(ROOT).as_posix()}` (seed {truth['seed']}, "
+        f"Ground truth: `{truth_path.resolve().relative_to(ROOT).as_posix()}` (seed {truth['seed']}, "
         f"{total} issues labelled `{truth['label']}`).",
         "",
         f"**Version reconstruction, exact match:** {version_matches} / {total} issues.",
