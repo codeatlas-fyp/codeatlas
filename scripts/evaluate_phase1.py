@@ -23,6 +23,7 @@ import subprocess
 import sys
 import tempfile
 import uuid
+from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -65,9 +66,11 @@ class CaseTally:
     false_pass: int = 0  # expected VIOLATED, got SATISFIED
     false_fail: int = 0  # expected SATISFIED, got VIOLATED
     other: int = 0  # INSUFFICIENT_EVIDENCE or NOT_APPLICABLE where a judgement was expected
+    expected_violated: int = 0
 
     def add(self, want: str, got: str) -> None:
         self.total += 1
+        self.expected_violated += want == "VIOLATED"
         if want == got:
             self.correct += 1
         elif want == "VIOLATED" and got == "SATISFIED":
@@ -199,16 +202,22 @@ def generated_section(truth_path: Path | None, base_policy: Policy) -> tuple[lis
         "",
         f"**Version reconstruction, exact match:** {version_matches} / {total} issues.",
         "",
-        "| Case | Correct | Accuracy | False PASS | False FAIL | Other |",
-        "|---|---|---|---|---|---|",
+        "| Case | Expected VIOLATED | Correct | Accuracy | False PASS | False FAIL | Other |",
+        "|---|---|---|---|---|---|---|",
     ]
     for name, tally in tallies.items():
         accuracy = f"{tally.correct / tally.total:.1%}" if tally.total else "n/a"
         lines.append(
-            f"| {name} | {tally.correct} / {tally.total} | {accuracy} | {tally.false_pass} "
+            f"| {name} | {tally.expected_violated} | {tally.correct} / {tally.total} | {accuracy} "
+            f"| {tally.false_pass} "
             f"| {tally.false_fail} | {tally.other} |"
         )
+    reasons = Counter(r["expected"]["c3_reason"] for r in truth["issues"])
     lines += [
+        "",
+        "C3 expected reasons: "
+        + ", ".join(f"{reason} {count}" for reason, count in sorted(reasons.items()))
+        + ".",
         "",
         "False PASS: the oracle expected VIOLATED and CodeAtlas said SATISFIED. False FAIL: the "
         "reverse. Other: INSUFFICIENT_EVIDENCE or NOT_APPLICABLE where a judgement was expected.",
