@@ -123,3 +123,27 @@ are re-recorded once the owner completes them. This is listed in the evaluation 
 - Version reconstruction, approvals, chain check (step 6).
 - Turning a 404 into `collection_notes` (pipeline, step 8).
 - Writing to Jira (the scenario generator, after step 7).
+
+## Decisions made while implementing
+
+- `FixtureJiraSource.group_members(group)` reads `groups/<group>.json`; a missing file is a 404,
+  matching live Jira, where the sandbox groups do not exist.
+- The recorder writes each response twice: raw into the git-ignored `.recordings/raw/`, and
+  sanitised into `tests/fixtures/jira/`. The person-number mapping (which contains real account
+  ids) stays in the git-ignored `.recordings/identity.json`.
+- `fetch_issue` refuses anything that is not an issue key (`[A-Z][A-Z0-9_]*-\d+`), so a key can
+  never change the request path.
+- Recording result (2026-10-07): 21 files; one real person, mapped to `user-01`. A leak check
+  compared every account id, display name and email in the raw files, plus the site host and the
+  token's account email, against the fixtures: 0 leaks.
+
+## Mutation check
+
+| File | Mutation | Result |
+|---|---|---|
+| `jira/client.py` | 429 no longer retried | 1 failed (AC3) |
+| `jira/adf.py` | ordered-list number not incremented | 1 failed (AC6) |
+| `jira/recorder.py` | site host not replaced | 1 failed (AC9) |
+| `jira/client.py` | `isLast` ignored in paging | **survived** at first (the page `total` also stopped the loop); new test `test_ac2_is_last_alone_stops_paging` now kills it |
+
+Branch coverage of `collect/jira`: 91% (277 statements, 102 branches).
