@@ -1,19 +1,41 @@
-# Each folder has an owner, who GitHub requests as reviewer automatically.
-# TODO: replace @YUSRA_GH and @SALEHA_GH with real GitHub usernames.
-# The last matching line wins, so the order below matters.
+*                                         @areej8 @YusraM-100 @salehamuhammad
 
-*                               @SALEHA_GH
+# Phase 3: product surface and delivery (Saleha)
+/src/codeatlas/api/                       @salehamuhammad @areej8
+/src/codeatlas/web/                       @salehamuhammad @areej8
+/web/                                     @salehamuhammad @areej8
+/.github/                                 @salehamuhammad @areej8
+/Dockerfile                               @salehamuhammad @areej8
+/tests/e2e/                               @salehamuhammad @areej8
+/docs/report/                             @salehamuhammad @areej8
 
-/src/codeatlas/collect/github/  @YUSRA_GH
-/src/codeatlas/analyze/         @YUSRA_GH
+# Phase 2: code and governance evidence (Yusra)
+/src/codeatlas/collect/github/            @YusraM-100 @areej8
+/src/codeatlas/collect/git/               @YusraM-100 @areej8
+/src/codeatlas/analyze/                   @YusraM-100 @areej8
 
-/src/codeatlas/collect/jira/    @areej8
-/src/codeatlas/evaluate/rules/  @areej8
+# Phase 1: core spine (Areej). C7 is a stub by Areej, completed by Yusra.
+/src/codeatlas/config.py                  @areej8 @YusraM-100
+/src/codeatlas/errors.py                  @areej8 @YusraM-100
+/src/codeatlas/logging.py                 @areej8 @YusraM-100
+/src/codeatlas/bundle/                    @areej8 @YusraM-100
+/src/codeatlas/collect/jira/              @areej8 @YusraM-100
+/src/codeatlas/analyze/lifecycle.py       @areej8 @YusraM-100
+/src/codeatlas/evaluate/                  @areej8 @YusraM-100
+/src/codeatlas/pipeline.py                @areej8 @YusraM-100
+/src/codeatlas/cli.py                     @areej8 @YusraM-100
+/docs/setup/jira-sandbox.md               @areej8 @YusraM-100
+/docs/decisions/approval-convention.md    @areej8 @YusraM-100
 
-/src/codeatlas/bundle/          @SALEHA_GH
-/src/codeatlas/api/             @SALEHA_GH
-/web/                           @SALEHA_GH
-/.github/                       @SALEHA_GH
+# Yusra's files inside Areej's evaluate/ folder must come after it.
+/src/codeatlas/evaluate/links.py          @YusraM-100 @areej8
+/src/codeatlas/evaluate/rules/c2_*        @YusraM-100 @areej8
+/src/codeatlas/evaluate/rules/c4_*        @YusraM-100 @areej8
+/src/codeatlas/evaluate/rules/c5_*        @YusraM-100 @areej8
+/src/codeatlas/evaluate/rules/c9_*        @YusraM-100 @areej8
 
-# Shared: the evidence schema belongs to all three of us.
-/src/codeatlas/schema/          @SALEHA_GH @YUSRA_GH @areej8
+# Shared contracts: all three.
+/src/codeatlas/schema/                    @areej8 @YusraM-100 @salehamuhammad
+/CODEOWNERS                               @areej8 @YusraM-100 @salehamuhammad
+/.importlinter                            @areej8 @YusraM-100 @salehamuhammad
+/tests/fixtures/                          @areej8 @YusraM-100 @salehamuhammad
