@@ -1,0 +1,13 @@
+{
+  "number": 1,
+  "title": "SBX-4: round late fee display to cents",
+  "body": "Closes SBX-4\n\nAdds `round_fee_to_cents` so receipts show currency properly.",
+  "state": "open",
+  "base": {"ref": "main", "sha": "basesha0000000000000000000000000000000001"},
+  "head": {"ref": "sbx-4-late-fee", "sha": "headsha0000000000000000000000000000000001"},
+  "merged": false,
+  "labels": [{"name": "scenario:pass"}],
+  "user": {"login": "user-01"},
+  "created_at": "2026-10-08T09:00:00Z",
+  "updated_at": "2026-10-08T09:30:00Z"
+}

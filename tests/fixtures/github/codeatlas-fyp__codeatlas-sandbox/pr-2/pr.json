@@ -1,0 +1,13 @@
+{
+  "number": 2,
+  "title": "SBX-5: hand over loans.py ownership",
+  "body": "Closes SBX-5\n\nMoves /loans.py ownership from Yusra to Saleha.",
+  "state": "open",
+  "base": {"ref": "main", "sha": "basesha0000000000000000000000000000000002"},
+  "head": {"ref": "sbx-5-codeowners-edit", "sha": "headsha0000000000000000000000000000000002"},
+  "merged": false,
+  "labels": [{"name": "scenario:c2"}],
+  "user": {"login": "user-01"},
+  "created_at": "2026-10-08T11:00:00Z",
+  "updated_at": "2026-10-08T11:30:00Z"
+}
