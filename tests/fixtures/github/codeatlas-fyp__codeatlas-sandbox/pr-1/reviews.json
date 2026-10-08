@@ -1,0 +1,9 @@
+[
+  {
+    "id": 1001,
+    "user": {"login": "user-02"},
+    "state": "APPROVED",
+    "commit_id": "headsha0000000000000000000000000000000001",
+    "submitted_at": "2026-10-08T10:00:00Z"
+  }
+]
