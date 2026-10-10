@@ -15,7 +15,9 @@ Acceptance Criteria:
 - First offence under one week is waivable
 """
     criteria = split_criteria(
-        requirement_key="SBX-4", version_no=1, description=description,
+        requirement_key="SBX-4",
+        version_no=1,
+        description=description,
     )
     assert len(criteria) == 3
     assert criteria[0].text == "Fees shown to two decimal places"
@@ -31,7 +33,9 @@ Acceptance:
 2. Max fee must be configurable
 """
     criteria = split_criteria(
-        requirement_key="SBX-5", version_no=2, description=description,
+        requirement_key="SBX-5",
+        version_no=2,
+        description=description,
     )
     assert len(criteria) == 2
     assert criteria[0].text == "Daily fee must be configurable"
@@ -45,7 +49,9 @@ def test_fallback_to_sentence_split_when_no_header() -> None:
         "A receipt is emailed to the user."
     )
     criteria = split_criteria(
-        requirement_key="SBX-6", version_no=1, description=description,
+        requirement_key="SBX-6",
+        version_no=1,
+        description=description,
     )
     assert len(criteria) == 3
     for crit in criteria:

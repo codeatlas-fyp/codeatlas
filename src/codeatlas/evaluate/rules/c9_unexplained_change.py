@@ -13,9 +13,9 @@ Pure. Reads only the bundle + the pre-computed TraceLinks (Branch 5
 
 from __future__ import annotations
 
+from codeatlas.evaluate.rules.base import Severity, severity
 from codeatlas.schema import (
     CaseId,
-    ChangedEntity,
     CheckResult,
     EvidenceBundle,
     Policy,
@@ -35,19 +35,19 @@ class C9UnexplainedChange:
     version: str = VERSION
     required_evidence: tuple[str, ...] = REQUIRED_EVIDENCE
 
-    def check(
-        self, bundle: EvidenceBundle, links: list[TraceLink], policy: Policy
-    ) -> CheckResult:
-        severity = _severity_for(policy)
+    def check(self, bundle: EvidenceBundle, links: list[TraceLink], policy: Policy) -> CheckResult:
+        rule_severity: Severity = severity(policy, CASE, "review")
 
         # Entities we care about: changed functions/methods that AREN'T in tests.
         non_test_changes = [
-            ce for ce in bundle.changed
-            if ce.entity_id is not None and not _is_test_path(ce.file)
+            ce for ce in bundle.changed if ce.entity_id is not None and not _is_test_path(ce.file)
         ]
         if not non_test_changes:
             return CheckResult(
-                case=CASE, outcome="NOT_APPLICABLE", severity="none", required=False,
+                case=CASE,
+                outcome="NOT_APPLICABLE",
+                severity="none",
+                required=False,
                 message="No non-test code entities changed in this PR.",
                 evidence_ids=[],
             )
@@ -58,54 +58,69 @@ class C9UnexplainedChange:
 
         unexplained: list[tuple[str, str, str]] = []  # (entity_id, file, reason)
         for ce in non_test_changes:
-            assert ce.entity_id is not None
+            if ce.entity_id is None:
+                continue  # unresolved hunks have no entity, skip
             # (a) only modified by keyless commits
             keys_in_touching_commits: set[str] = set()
             for sha in ce.commit_shas:
                 keys_in_touching_commits.update(commit_keys.get(sha, set()))
             if not keys_in_touching_commits:
-                unexplained.append((
-                    ce.entity_id, ce.file,
-                    f"all {len(ce.commit_shas)} commit(s) touching entity had no [A-Z]+-\\d+ key",
-                ))
+                unexplained.append(
+                    (
+                        ce.entity_id,
+                        ce.file,
+                        f"all {len(ce.commit_shas)} commit(s) had no work-item key",
+                    )
+                )
                 continue
 
             # (b) not in top-5 semantic candidates for any of those keys' requirements
             matches_any_top5 = any(
-                ce.entity_id in req_top5.get(key, set())
-                for key in keys_in_touching_commits
+                ce.entity_id in req_top5.get(key, set()) for key in keys_in_touching_commits
             )
             if not matches_any_top5:
-                unexplained.append((
-                    ce.entity_id, ce.file,
-                    f"entity not in top-5 semantic candidates for any criterion of {sorted(keys_in_touching_commits)}",
-                ))
+                unexplained.append(
+                    (
+                        ce.entity_id,
+                        ce.file,
+                        (
+                            f"entity not in top-5 semantic candidates for any "
+                            f"criterion of {sorted(keys_in_touching_commits)}"
+                        ),
+                    )
+                )
 
         if not unexplained:
             return CheckResult(
-                case=CASE, outcome="SATISFIED", severity="none", required=False,
-                message=f"All {len(non_test_changes)} changed non-test entities are explained by their commit's ticket or by semantic candidates.",
+                case=CASE,
+                outcome="SATISFIED",
+                severity="none",
+                required=False,
+                message=(
+                    f"All {len(non_test_changes)} changed non-test entities are "
+                    "explained by their commit's ticket or by semantic candidates."
+                ),
                 evidence_ids=[],
             )
 
         preview = ", ".join(f"{eid} ({reason[:40]}…)" for eid, _, reason in unexplained[:3])
         return CheckResult(
-            case=CASE, outcome="VIOLATED", severity=severity, required=False,
+            case=CASE,
+            outcome="VIOLATED",
+            severity=rule_severity,
+            required=False,
             message=(
                 f"{len(unexplained)} changed entity(ies) with no linked requirement: {preview}"
                 + (f" (+{len(unexplained) - 3} more)" if len(unexplained) > 3 else "")
             ),
-            evidence_ids=sorted({
-                ce.evidence_id for ce in non_test_changes if ce.entity_id in {u[0] for u in unexplained}
-            }),
+            evidence_ids=sorted(
+                {
+                    ce.evidence_id
+                    for ce in non_test_changes
+                    if ce.entity_id in {u[0] for u in unexplained}
+                }
+            ),
         )
-
-
-def _severity_for(policy: Policy) -> str:
-    case_policy = policy.cases.get("C9")
-    if case_policy and case_policy.severity:
-        return case_policy.severity
-    return "review"
 
 
 def _is_test_path(path: str) -> bool:

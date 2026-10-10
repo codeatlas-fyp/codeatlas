@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING
 from codeatlas.schema import CodeEntity, Criterion, SemanticCandidate
 
 if TYPE_CHECKING:
-    import numpy as np
+    pass
 
 EXTRACTOR_VERSION = "semantic@0.1.0"
 DEFAULT_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
@@ -72,17 +72,18 @@ def rank_candidates(
     tokenised = [_tokenise(text) for text in corpus]
 
     bm25_ranks = _bm25_rank_matrix(
-        tokenised_corpus=tokenised, queries=[c.text for c in criteria],
+        tokenised_corpus=tokenised,
+        queries=[c.text for c in criteria],
     )
 
     model_id = f"{model_name}@bm25-only"
-    dense_ranks: list[list[int | None]] = [
-        [None] * len(rankable) for _ in criteria
-    ]
+    dense_ranks: list[list[int | None]] = [[None] * len(rankable) for _ in criteria]
     if not bm25_only:
         try:
             dense_ranks, model_id = _dense_rank_matrix(
-                corpus=corpus, queries=[c.text for c in criteria], model_name=model_name,
+                corpus=corpus,
+                queries=[c.text for c in criteria],
+                model_name=model_name,
             )
         except ImportError:
             # sentence-transformers not installed; fall back to BM25-only.
@@ -112,12 +113,15 @@ def rank_candidates(
 
 # ---- BM25 ----------------------------------------------------------------
 
+
 def _bm25_rank_matrix(
-    *, tokenised_corpus: list[list[str]], queries: list[str],
+    *,
+    tokenised_corpus: list[list[str]],
+    queries: list[str],
 ) -> list[list[int | None]]:
     """Return per-query rank of each doc (1 = best). None means doc had zero score."""
     try:
-        from rank_bm25 import BM25Okapi
+        from rank_bm25 import BM25Okapi  # type: ignore[import-untyped]
     except ImportError:
         # Degrade: no BM25 → every doc tied at rank None.
         return [[None] * len(tokenised_corpus) for _ in queries]
@@ -138,12 +142,16 @@ def _bm25_rank_matrix(
 
 # ---- Dense embeddings ----------------------------------------------------
 
+
 def _dense_rank_matrix(
-    *, corpus: list[str], queries: list[str], model_name: str,
+    *,
+    corpus: list[str],
+    queries: list[str],
+    model_name: str,
 ) -> tuple[list[list[int | None]], str]:
     """Load the sentence-transformer, embed, rank by cosine. Returns (ranks, model_id)."""
-    from sentence_transformers import SentenceTransformer
     import numpy as np
+    from sentence_transformers import SentenceTransformer
 
     model = SentenceTransformer(model_name)
     revision = _model_revision(model)
@@ -180,15 +188,18 @@ def _model_revision(model: object) -> str:
             m = re.search(r"snapshots/([a-f0-9]{7,})", str(name_or_path))
             if m:
                 return m.group(1)
-    except Exception:
-        pass
+    except (AttributeError, TypeError):
+        # Model metadata may be unavailable; fall through to the unknown marker.
+        return "unknown"
     return "unknown"
 
 
 # ---- Reciprocal rank fusion ---------------------------------------------
 
+
 def _reciprocal_rank_fusion(
-    bm25_ranks: list[int | None], dense_ranks: list[int | None],
+    bm25_ranks: list[int | None],
+    dense_ranks: list[int | None],
 ) -> list[float]:
     """Combine two rank lists into one fused score per doc.
 
@@ -198,14 +209,17 @@ def _reciprocal_rank_fusion(
     n = len(bm25_ranks)
     scores = [0.0] * n
     for i in range(n):
-        if bm25_ranks[i] is not None:
-            scores[i] += 1.0 / (RRF_K + bm25_ranks[i])
-        if dense_ranks[i] is not None:
-            scores[i] += 1.0 / (RRF_K + dense_ranks[i])
+        bm25_rank = bm25_ranks[i]
+        if bm25_rank is not None:
+            scores[i] += 1.0 / (RRF_K + bm25_rank)
+        dense_rank = dense_ranks[i]
+        if dense_rank is not None:
+            scores[i] += 1.0 / (RRF_K + dense_rank)
     return scores
 
 
 # ---- Tokenisation --------------------------------------------------------
+
 
 def _entity_text(entity: CodeEntity) -> str:
     """Build the text we rank against: name, signature, docstring."""
@@ -234,6 +248,7 @@ def _split_identifier(name: str) -> str:
     s = name.replace("_", " ")
     # Split camelCase: insert space before any uppercase that follows a lowercase.
     s = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", s)
-    # And before uppercase that precedes another uppercase+lowercase (e.g. HTTPServer → HTTP Server).
+    # And before uppercase that precedes another uppercase+lowercase
+    # (e.g. HTTPServer → HTTP Server).
     s = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", " ", s)
     return s

@@ -86,12 +86,14 @@ def assign_link_states(
         observed_entities: set[str] = set()
         observed_evidence: dict[str, list[str]] = {}
         for ce in changed_entities:
+            if ce.entity_id is None:
+                continue
             commits_touching = entity_to_commits.get(ce.entity_id, [])
             for sha in commits_touching:
                 keys_in_commit = commit_to_keys.get(sha, set())
                 if req_key in keys_in_commit:
-                    observed_entities.add(ce.entity_id)  # type: ignore[arg-type]
-                    observed_evidence.setdefault(ce.entity_id, []).append(f"commit:{sha}")  # type: ignore[arg-type]
+                    observed_entities.add(ce.entity_id)
+                    observed_evidence.setdefault(ce.entity_id, []).append(f"commit:{sha}")
 
         # DETERMINISTICALLY_DERIVED: resolve module-level import edges back to entities.
         observed_modules = {_module_of(entity_id) for entity_id in observed_entities}
@@ -102,7 +104,8 @@ def assign_link_states(
                 if edge.src == module and edge.kind == "IMPORTS" and edge.confident:
                     reachable_modules.add(edge.dst)
         reachable = {
-            ce.entity_id for ce in changed_entities
+            ce.entity_id
+            for ce in changed_entities
             if ce.entity_id is not None and _module_of(ce.entity_id) in reachable_modules
         }
 
@@ -110,7 +113,8 @@ def assign_link_states(
 
         for ce in changed_entities:
             entity_id = ce.entity_id
-            assert entity_id is not None
+            if entity_id is None:
+                continue  # unresolved hunks have no entity, skip
 
             # 1. CONFLICTING
             commits_touching = entity_to_commits.get(entity_id, [])
@@ -118,33 +122,39 @@ def assign_link_states(
             for sha in commits_touching:
                 carried_keys.update(commit_to_keys.get(sha, set()))
             other_keys = carried_keys - {req_key}
-            is_top1_only_for_others = (
-                entity_id not in req_top1_entities
-                and any(
-                    cand.entity_id == entity_id and cand.fused_rank == 1
-                    and cand.criterion_id.split(":")[0] in other_keys
-                    for cands in candidates_by_criterion.values()
-                    for cand in cands
-                )
+            is_top1_only_for_others = entity_id not in req_top1_entities and any(
+                cand.entity_id == entity_id
+                and cand.fused_rank == 1
+                and cand.criterion_id.split(":")[0] in other_keys
+                for cands in candidates_by_criterion.values()
+                for cand in cands
             )
             if other_keys and is_top1_only_for_others and req_key not in carried_keys:
-                links.append(_link(
-                    req_key=req_key, entity_id=entity_id, state="CONFLICTING",
-                    evidence_ids=[f"commit:{s}" for s in commits_touching] + [ce.evidence_id],
-                    reasons=[
-                        f"commits touching entity carry {sorted(other_keys)}, not {req_key}",
-                        f"entity is top-1 candidate only for {sorted(other_keys)}",
-                    ],
-                ))
+                links.append(
+                    _link(
+                        req_key=req_key,
+                        entity_id=entity_id,
+                        state="CONFLICTING",
+                        evidence_ids=[f"commit:{s}" for s in commits_touching] + [ce.evidence_id],
+                        reasons=[
+                            f"commits touching entity carry {sorted(other_keys)}, not {req_key}",
+                            f"entity is top-1 candidate only for {sorted(other_keys)}",
+                        ],
+                    )
+                )
                 continue
 
             # 2. OBSERVED
             if entity_id in observed_entities:
-                links.append(_link(
-                    req_key=req_key, entity_id=entity_id, state="OBSERVED",
-                    evidence_ids=observed_evidence[entity_id] + [ce.evidence_id],
-                    reasons=[f"commit(s) touching entity carry {req_key} in message"],
-                ))
+                links.append(
+                    _link(
+                        req_key=req_key,
+                        entity_id=entity_id,
+                        state="OBSERVED",
+                        evidence_ids=observed_evidence[entity_id] + [ce.evidence_id],
+                        reasons=[f"commit(s) touching entity carry {req_key} in message"],
+                    )
+                )
                 continue
 
             # 3. DETERMINISTICALLY_DERIVED (import reachability or ADR scope)
@@ -155,11 +165,15 @@ def assign_link_states(
                     reasons.append("reachable from OBSERVED entity via one confident IMPORTS edge")
                 if file_matches_adr:
                     reasons.append(f"file lies inside ADR scope for {req_key}")
-                links.append(_link(
-                    req_key=req_key, entity_id=entity_id, state="DETERMINISTICALLY_DERIVED",
-                    evidence_ids=[ce.evidence_id],
-                    reasons=reasons,
-                ))
+                links.append(
+                    _link(
+                        req_key=req_key,
+                        entity_id=entity_id,
+                        state="DETERMINISTICALLY_DERIVED",
+                        evidence_ids=[ce.evidence_id],
+                        reasons=reasons,
+                    )
+                )
                 continue
 
             # 4. SEMANTIC_CANDIDATE
@@ -169,21 +183,33 @@ def assign_link_states(
                     key=lambda c: c.fused_rank,
                     default=None,
                 )
-                reasons = [f"top-{best.fused_rank} semantic candidate for criterion {best.criterion_id}"] if best else []
-                links.append(_link(
-                    req_key=req_key, entity_id=entity_id, state="SEMANTIC_CANDIDATE",
-                    evidence_ids=[ce.evidence_id],
-                    reasons=reasons,
-                    criterion_id=best.criterion_id if best else None,
-                ))
+                reasons = (
+                    [f"top-{best.fused_rank} semantic candidate for criterion {best.criterion_id}"]
+                    if best
+                    else []
+                )
+                links.append(
+                    _link(
+                        req_key=req_key,
+                        entity_id=entity_id,
+                        state="SEMANTIC_CANDIDATE",
+                        evidence_ids=[ce.evidence_id],
+                        reasons=reasons,
+                        criterion_id=best.criterion_id if best else None,
+                    )
+                )
                 continue
 
             # 5. UNRESOLVED
-            links.append(_link(
-                req_key=req_key, entity_id=entity_id, state="UNRESOLVED",
-                evidence_ids=[ce.evidence_id],
-                reasons=["no commit, no derivation, no semantic match in top-5"],
-            ))
+            links.append(
+                _link(
+                    req_key=req_key,
+                    entity_id=entity_id,
+                    state="UNRESOLVED",
+                    evidence_ids=[ce.evidence_id],
+                    reasons=["no commit, no derivation, no semantic match in top-5"],
+                )
+            )
 
     return links
 
@@ -236,6 +262,7 @@ def _adr_scope_index(governance: GovernanceSnapshot) -> dict[str, list[str]]:
 def _file_matches(file_path: str, pattern: str) -> bool:
     """Simple glob with `**` support (same shape as governance._glob_match_double_star)."""
     import re
+
     if pattern == "*":
         return True
     parts = pattern.lstrip("/").split("/")

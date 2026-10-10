@@ -13,30 +13,47 @@ from codeatlas.schema import CodeEntity, Criterion
 
 def _entity(entity_id: str, kind: str, signature: str | None, docstring: str | None) -> CodeEntity:
     return CodeEntity(
-        entity_id=entity_id, kind=kind, file=f"{entity_id.replace('.', '/')}.py",
-        start_line=1, end_line=10, signature=signature, docstring=docstring,
+        entity_id=entity_id,
+        kind=kind,
+        file=f"{entity_id.replace('.', '/')}.py",
+        start_line=1,
+        end_line=10,
+        signature=signature,
+        docstring=docstring,
     )
 
 
 def _criterion(crit_id: str, text: str) -> Criterion:
     key = crit_id.split(":")[0]
     return Criterion(
-        criterion_id=crit_id, key=key, version_no=1, text=text,
+        criterion_id=crit_id,
+        key=key,
+        version_no=1,
+        text=text,
         derived_from_description=False,
     )
 
 
 def test_bm25_ranks_matching_entity_first() -> None:
     entities = [
-        _entity("pkg.fees.calculate_late_fee", "function",
-                "def calculate_late_fee(days_overdue: int) -> Decimal",
-                "Calculate the late fee for overdue books."),
-        _entity("pkg.books.Catalog.add", "method",
-                "def add(self, book: Book) -> None",
-                "Add a book to the catalog."),
-        _entity("pkg.loans.Loan.mark_returned", "method",
-                "def mark_returned(self) -> None",
-                "Flag the loan as returned."),
+        _entity(
+            "pkg.fees.calculate_late_fee",
+            "function",
+            "def calculate_late_fee(days_overdue: int) -> Decimal",
+            "Calculate the late fee for overdue books.",
+        ),
+        _entity(
+            "pkg.books.Catalog.add",
+            "method",
+            "def add(self, book: Book) -> None",
+            "Add a book to the catalog.",
+        ),
+        _entity(
+            "pkg.loans.Loan.mark_returned",
+            "method",
+            "def mark_returned(self) -> None",
+            "Flag the loan as returned.",
+        ),
     ]
     criteria = [_criterion("SBX-4:v1:ac1", "fees for overdue late books")]
     result = rank_candidates(criteria=criteria, entities=entities, bm25_only=True)
@@ -76,12 +93,22 @@ def test_module_entities_are_not_ranked() -> None:
 
 def test_no_entities_or_no_criteria_returns_empty() -> None:
     assert rank_candidates(criteria=[], entities=[], bm25_only=True).candidates == []
-    assert rank_candidates(
-        criteria=[], entities=[_entity("x.y", "function", None, None)], bm25_only=True,
-    ).candidates == []
-    assert rank_candidates(
-        criteria=[_criterion("X-1:v1:ac1", "anything")], entities=[], bm25_only=True,
-    ).candidates == []
+    assert (
+        rank_candidates(
+            criteria=[],
+            entities=[_entity("x.y", "function", None, None)],
+            bm25_only=True,
+        ).candidates
+        == []
+    )
+    assert (
+        rank_candidates(
+            criteria=[_criterion("X-1:v1:ac1", "anything")],
+            entities=[],
+            bm25_only=True,
+        ).candidates
+        == []
+    )
 
 
 def test_model_id_reflects_bm25_only_mode() -> None:

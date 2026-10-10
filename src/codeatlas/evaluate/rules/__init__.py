@@ -10,6 +10,7 @@ from codeatlas.evaluate.rules.c5_owner_did_not_approve import C5OwnerDidNotAppro
 from codeatlas.evaluate.rules.c6_superseded_version import SupersededVersion
 from codeatlas.evaluate.rules.c7_test_evidence import TestEvidenceStub
 from codeatlas.evaluate.rules.c8_priority_authority import PriorityWithoutAuthority
+from codeatlas.evaluate.rules.c9_unexplained_change import C9UnexplainedChange
 
 
 def default_rules() -> tuple[Rule, ...]:
@@ -22,6 +23,7 @@ def default_rules() -> tuple[Rule, ...]:
         TestEvidenceStub(),
         PriorityWithoutAuthority(),
         C5OwnerDidNotApprove(),
+        C9UnexplainedChange(),
     )
 
 

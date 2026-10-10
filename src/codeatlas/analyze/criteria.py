@@ -68,7 +68,7 @@ def _extract_bullets_after_ac_header(description: str) -> list[str]:
     match = _AC_HEADER_RE.search(description)
     if match is None:
         return []
-    tail = description[match.end():]
+    tail = description[match.end() :]
     # Stop at the next heading-ish line (something ending with ':' at column 0
     # and not itself a bullet).
     end_match = re.search(r"\n\s*\n\s*\w[^\n]*:\s*\n", tail)
