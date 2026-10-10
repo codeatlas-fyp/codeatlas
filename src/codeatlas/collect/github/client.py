@@ -27,7 +27,7 @@ from urllib.parse import urlencode
 
 import httpx
 
-from codeatlas.collect.github._errors import CollectionError
+from codeatlas.errors import CollectionError
 
 DEFAULT_API_BASE = "https://api.github.com"
 DEFAULT_TIMEOUT_S = 30.0
@@ -144,7 +144,7 @@ class GitHubClient:
                     source="github",
                     status=resp.status_code,
                     retryable=resp.status_code in (502, 503, 504),
-                    message=f"GET {path} -> {resp.status_code}: {resp.text[:200]}",
+                    detail=f"GET {path} -> {resp.status_code}: {resp.text[:200]}",
                 )
 
             if accept == "application/vnd.github.raw":
@@ -153,7 +153,7 @@ class GitHubClient:
 
         raise CollectionError(
             source="github", status=None, retryable=True,
-            message=f"GET {path} exceeded retries",
+            detail=f"GET {path} exceeded retries",
         )
 
     def _get_paged(self, path: str) -> list[dict[str, Any]]:
@@ -168,7 +168,7 @@ class GitHubClient:
                     source="github",
                     status=resp.status_code,
                     retryable=False,
-                    message=f"GET {next_path} -> {resp.status_code}",
+                    detail=f"GET {next_path} -> {resp.status_code}",
                 )
             page = resp.json()
             if not isinstance(page, list):
@@ -185,7 +185,7 @@ def client_from_env() -> GitHubClient:
     if not token:
         raise CollectionError(
             source="github", status=None, retryable=False,
-            message="CODEATLAS_GITHUB_TOKEN is not set",
+            detail="CODEATLAS_GITHUB_TOKEN is not set",
         )
     return GitHubClient(GitHubClientConfig(token=token))
 

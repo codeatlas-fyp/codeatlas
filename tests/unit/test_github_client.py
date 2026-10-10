@@ -7,7 +7,7 @@ import respx
 from httpx import Response
 
 from codeatlas.collect.github import GitHubClient, GitHubClientConfig
-from codeatlas.collect.github._errors import CollectionError
+from codeatlas.errors import CollectionError
 
 
 def _client() -> GitHubClient:
