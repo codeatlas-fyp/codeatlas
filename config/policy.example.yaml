@@ -1,0 +1,23 @@
+# Example .codeatlas/policy.yaml (spec §7.5 as amended by step-2 spec S1). Fake account ids only.
+# In the SBX sandbox the approver groups do not exist, so approvers are listed by account id.
+version: 1
+workitem_key_pattern: '[A-Z]+-\d+'
+requirement_fields: [summary, description, acceptance_criteria]
+governance_paths:
+  - CODEOWNERS
+  - .github/CODEOWNERS
+  - docs/CODEOWNERS
+  - docs/adr/**
+  - .codeatlas/**
+  - .github/workflows/**
+  - .pre-commit-config.yaml
+approval:
+  status: Approved
+  approver_account_ids: [user-01]
+priority_authority:
+  account_ids: [user-01]
+cases:
+  C3: { severity: block }
+  C5: { severity: block }
+  C7: { required_when_label: requires-test-evidence }
+semantic: { top_k: 5 }

@@ -1,0 +1,462 @@
+[
+  {
+    "self": "https://example.atlassian.net/rest/api/3/issuetype/10035",
+    "id": "10035",
+    "name": "Subtask",
+    "subtask": true,
+    "statuses": [
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10034",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+        "name": "In Progress",
+        "untranslatedName": "In Progress",
+        "id": "10034",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      },
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10035",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+        "name": "Done",
+        "untranslatedName": "Done",
+        "id": "10035",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      },
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10036",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/",
+        "name": "Approved",
+        "untranslatedName": "Approved",
+        "id": "10036",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      },
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10033",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+        "name": "To Do",
+        "untranslatedName": "To Do",
+        "id": "10033",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "self": "https://example.atlassian.net/rest/api/3/issuetype/10036",
+    "id": "10036",
+    "name": "Epic",
+    "subtask": false,
+    "statuses": [
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10034",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+        "name": "In Progress",
+        "untranslatedName": "In Progress",
+        "id": "10034",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      },
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10035",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+        "name": "Done",
+        "untranslatedName": "Done",
+        "id": "10035",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      },
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10036",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/",
+        "name": "Approved",
+        "untranslatedName": "Approved",
+        "id": "10036",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      },
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10033",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+        "name": "To Do",
+        "untranslatedName": "To Do",
+        "id": "10033",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "self": "https://example.atlassian.net/rest/api/3/issuetype/10037",
+    "id": "10037",
+    "name": "Story",
+    "subtask": false,
+    "statuses": [
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10034",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+        "name": "In Progress",
+        "untranslatedName": "In Progress",
+        "id": "10034",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      },
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10035",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+        "name": "Done",
+        "untranslatedName": "Done",
+        "id": "10035",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      },
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10036",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/",
+        "name": "Approved",
+        "untranslatedName": "Approved",
+        "id": "10036",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      },
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10033",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+        "name": "To Do",
+        "untranslatedName": "To Do",
+        "id": "10033",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "self": "https://example.atlassian.net/rest/api/3/issuetype/10038",
+    "id": "10038",
+    "name": "Bug",
+    "subtask": false,
+    "statuses": [
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10034",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+        "name": "In Progress",
+        "untranslatedName": "In Progress",
+        "id": "10034",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      },
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10035",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+        "name": "Done",
+        "untranslatedName": "Done",
+        "id": "10035",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      },
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10036",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/",
+        "name": "Approved",
+        "untranslatedName": "Approved",
+        "id": "10036",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      },
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10033",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+        "name": "To Do",
+        "untranslatedName": "To Do",
+        "id": "10033",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "self": "https://example.atlassian.net/rest/api/3/issuetype/10039",
+    "id": "10039",
+    "name": "Task",
+    "subtask": false,
+    "statuses": [
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10034",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+        "name": "In Progress",
+        "untranslatedName": "In Progress",
+        "id": "10034",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "In Progress"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      },
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10035",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+        "name": "Done",
+        "untranslatedName": "Done",
+        "id": "10035",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      },
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10036",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/",
+        "name": "Approved",
+        "untranslatedName": "Approved",
+        "id": "10036",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/3",
+          "id": 3,
+          "key": "done",
+          "colorName": "green",
+          "name": "Done"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      },
+      {
+        "self": "https://example.atlassian.net/rest/api/3/status/10033",
+        "description": "",
+        "iconUrl": "https://example.atlassian.net/images/icons/statuses/generic.png",
+        "name": "To Do",
+        "untranslatedName": "To Do",
+        "id": "10033",
+        "statusCategory": {
+          "self": "https://example.atlassian.net/rest/api/3/statuscategory/2",
+          "id": 2,
+          "key": "new",
+          "colorName": "blue-gray",
+          "name": "To Do"
+        },
+        "scope": {
+          "type": "PROJECT",
+          "project": {
+            "id": "10033"
+          }
+        }
+      }
+    ]
+  }
+]

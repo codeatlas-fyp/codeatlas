@@ -1,1 +1,3 @@
 * text=auto eol=lf
+# Bundle fixtures are hashed byte for byte: never convert line endings.
+tests/fixtures/bundles/** -text
