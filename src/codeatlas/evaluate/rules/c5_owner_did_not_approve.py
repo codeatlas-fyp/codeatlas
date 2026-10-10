@@ -25,6 +25,7 @@ Pure. Reads only the bundle.
 from __future__ import annotations
 
 from codeatlas.analyze.governance import owners_for
+from codeatlas.evaluate.rules.base import Severity, severity
 from codeatlas.schema import CaseId, CheckResult, EvidenceBundle, Policy, TraceLink
 
 CASE: CaseId = "C5"
@@ -37,10 +38,8 @@ class C5OwnerDidNotApprove:
     version: str = VERSION
     required_evidence: tuple[str, ...] = REQUIRED_EVIDENCE
 
-    def check(
-        self, bundle: EvidenceBundle, links: list[TraceLink], policy: Policy
-    ) -> CheckResult:
-        severity = _severity_for(policy)
+    def check(self, bundle: EvidenceBundle, links: list[TraceLink], policy: Policy) -> CheckResult:
+        rule_severity: Severity = severity(policy, CASE, "block")
 
         # No CODEOWNERS at base → NOT_APPLICABLE
         if bundle.governance.codeowners_path is None or not bundle.governance.owner_rules:
@@ -60,9 +59,7 @@ class C5OwnerDidNotApprove:
             if review.state == "APPROVED" and review.commit_id == head_sha
         }
 
-        pr_author_logins = {
-            commit.author_login for commit in bundle.commits if commit.author_login
-        }
+        pr_author_logins = {commit.author_login for commit in bundle.commits if commit.author_login}
 
         changed_paths = sorted({ce.file for ce in bundle.changed})
         missing: list[tuple[str, list[str]]] = []
@@ -76,7 +73,9 @@ class C5OwnerDidNotApprove:
             # Author-is-sole-owner → INSUFFICIENT (can't self-approve)
             owner_logins = {o.lstrip("@") for o in owners if o.startswith("@") and "/" not in o}
             team_owners = [o for o in owners if o.startswith("@") and "/" in o]
-            if team_owners and not any(o in bundle.identity_map.people for o in team_owners):
+            if team_owners:
+                # Team ownership requires identity-map expansion (Saleha's work).
+                # Until that lands, teams are always unresolved.
                 insufficient_reasons.append(
                     f"{path}: owner team {team_owners[0]} not resolved in identity map"
                 )
@@ -100,7 +99,7 @@ class C5OwnerDidNotApprove:
             return CheckResult(
                 case=CASE,
                 outcome="VIOLATED",
-                severity=severity,
+                severity=rule_severity,
                 required=False,
                 message=(
                     f"Code owner did not approve head {head_sha[:12]} for "
@@ -128,10 +127,3 @@ class C5OwnerDidNotApprove:
             message=f"All owned paths have an owner APPROVED review at head {head_sha[:12]}.",
             evidence_ids=sorted({r.evidence_id for r in bundle.reviews if r.state == "APPROVED"}),
         )
-
-
-def _severity_for(policy: Policy) -> str:
-    case_policy = policy.cases.get("C5")
-    if case_policy and case_policy.severity:
-        return case_policy.severity
-    return "block"

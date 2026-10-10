@@ -34,6 +34,7 @@ _INLINE_LIST_RE = re.compile(r"^\s*-\s+(.*?)\s*$", re.MULTILINE)
 
 # ---- CODEOWNERS ----------------------------------------------------------
 
+
 def parse_codeowners(text: str) -> list[OwnerRule]:
     """Return rules in file order. Line number is 1-indexed (useful in panels)."""
     rules: list[OwnerRule] = []
@@ -120,6 +121,7 @@ def _glob_match_double_star(pattern: str, path: str) -> bool:
 
 # ---- ADR front matter ----------------------------------------------------
 
+
 def parse_adr(path: str, text: str) -> Adr | None:
     """Parse an ADR file's YAML front matter. Returns None if there is none."""
     match = _FRONT_MATTER_RE.match(text)
@@ -162,7 +164,7 @@ def _parse_simple_yaml(text: str) -> dict[str, Any]:
         if not line.strip():
             continue
         if _INLINE_LIST_RE.match(line) and current_key is not None:
-            value = _INLINE_LIST_RE.match(line).group(1).strip('"\'')  # type: ignore[union-attr]
+            value = _INLINE_LIST_RE.match(line).group(1).strip("\"'")  # type: ignore[union-attr]
             data.setdefault(current_key, []).append(value)
             continue
         if ":" in line and not line.startswith((" ", "\t")):
@@ -173,7 +175,7 @@ def _parse_simple_yaml(text: str) -> dict[str, Any]:
                 current_key = key
                 data[key] = []
             else:
-                data[key] = _coerce_scalar(rest.strip('"\''))
+                data[key] = _coerce_scalar(rest.strip("\"'"))
                 current_key = None
     return data
 
@@ -187,6 +189,7 @@ def _coerce_scalar(value: str) -> Any:
 
 
 # ---- Snapshot builder ----------------------------------------------------
+
 
 def build_snapshot(
     *,
@@ -225,6 +228,7 @@ def build_snapshot(
 
 
 # ---- Governance changes in the diff --------------------------------------
+
 
 def governance_changes_in_diff(
     *,

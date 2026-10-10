@@ -152,7 +152,9 @@ def test_governance_changes_match_configured_paths() -> None:
         (".codeatlas/policy.yaml", "added"),
     ]
     changes = governance_changes_in_diff(
-        changed_files=changed, policy=policy, retrieved_at=NOW,
+        changed_files=changed,
+        policy=policy,
+        retrieved_at=NOW,
     )
     paths = {c.path for c in changes}
     assert paths == {"CODEOWNERS", ".github/workflows/ci.yml", ".codeatlas/policy.yaml"}
@@ -162,7 +164,9 @@ def test_governance_changes_empty_when_no_governance_touched() -> None:
     policy = _policy(["CODEOWNERS"])
     changed = [("src/foo.py", "modified"), ("README.md", "modified")]
     changes = governance_changes_in_diff(
-        changed_files=changed, policy=policy, retrieved_at=NOW,
+        changed_files=changed,
+        policy=policy,
+        retrieved_at=NOW,
     )
     assert changes == []
 
@@ -179,9 +183,12 @@ try:
     @settings(max_examples=200)
     @given(
         rules=st.lists(
-            st.tuples(st.sampled_from(["*", "/*.py", "/*.md", "/foo/", "/foo/bar.py"]),
-                      st.lists(_owner, min_size=1, max_size=2)),
-            min_size=1, max_size=6,
+            st.tuples(
+                st.sampled_from(["*", "/*.py", "/*.md", "/foo/", "/foo/bar.py"]),
+                st.lists(_owner, min_size=1, max_size=2),
+            ),
+            min_size=1,
+            max_size=6,
         ),
         path=st.sampled_from(["foo/bar.py", "a.py", "a.md", "nested/x.md"]),
     )

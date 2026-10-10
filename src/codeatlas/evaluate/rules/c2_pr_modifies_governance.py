@@ -16,6 +16,7 @@ Pure function. No I/O, no clock. Time comes from the evidence itself.
 
 from __future__ import annotations
 
+from codeatlas.evaluate.rules.base import Severity, severity
 from codeatlas.schema import CaseId, CheckResult, EvidenceBundle, Policy, TraceLink
 
 CASE: CaseId = "C2"
@@ -30,10 +31,8 @@ class C2PrModifiesGovernance:
     version: str = VERSION
     required_evidence: tuple[str, ...] = REQUIRED_EVIDENCE
 
-    def check(
-        self, bundle: EvidenceBundle, links: list[TraceLink], policy: Policy
-    ) -> CheckResult:
-        severity = _severity_for(policy)
+    def check(self, bundle: EvidenceBundle, links: list[TraceLink], policy: Policy) -> CheckResult:
+        rule_severity: Severity = severity(policy, CASE, "review")
         changes = list(bundle.governance_changes)
         if not changes:
             return CheckResult(
@@ -48,7 +47,7 @@ class C2PrModifiesGovernance:
         return CheckResult(
             case=CASE,
             outcome="VIOLATED",
-            severity=severity,
+            severity=rule_severity,
             required=False,
             message=(
                 f"PR modifies {len(paths)} governance file(s): "
@@ -58,10 +57,3 @@ class C2PrModifiesGovernance:
             ),
             evidence_ids=sorted({change.evidence_id for change in changes}),
         )
-
-
-def _severity_for(policy: Policy) -> str:
-    case_policy = policy.cases.get("C2")
-    if case_policy and case_policy.severity:
-        return case_policy.severity
-    return "review"

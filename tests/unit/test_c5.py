@@ -40,42 +40,59 @@ def _governance(codeowners_text: str | None = None) -> GovernanceSnapshot:
     rules = parse_codeowners(codeowners_text) if codeowners_text else []
     return GovernanceSnapshot(
         evidence_id="governance:base",
-        source="analysis", source_ref="base@base",
-        retrieved_at=NOW, extractor_version="governance@0.1.0",
+        source="analysis",
+        source_ref="base@base",
+        retrieved_at=NOW,
+        extractor_version="governance@0.1.0",
         base_sha="base",
         codeowners_path="CODEOWNERS" if codeowners_text else None,
         owner_rules=rules,
-        adrs=[], policy_blob_sha=None,
+        adrs=[],
+        policy_blob_sha=None,
     )
 
 
 def _commit(sha: str, login: str | None) -> Commit:
     return Commit(
         evidence_id=f"commit:{sha}",
-        source="github", source_ref=f"commit:{sha}",
-        retrieved_at=NOW, extractor_version="github@0.1.0",
-        sha=sha, author_email=f"{login or 'anon'}@example.test",
-        author_login=login, committed_at=NOW, message="work",
+        source="github",
+        source_ref=f"commit:{sha}",
+        retrieved_at=NOW,
+        extractor_version="github@0.1.0",
+        sha=sha,
+        author_email=f"{login or 'anon'}@example.test",
+        author_login=login,
+        committed_at=NOW,
+        message="work",
     )
 
 
 def _review(reviewer: str, state: str, commit_id: str) -> Review:
     return Review(
         evidence_id=f"review:{reviewer}:{commit_id}",
-        source="github", source_ref=f"review:{reviewer}:{commit_id}",
-        retrieved_at=NOW, extractor_version="github@0.1.0",
-        reviewer_login=reviewer, state=state,  # type: ignore[arg-type]
-        commit_id=commit_id, submitted_at=NOW,
+        source="github",
+        source_ref=f"review:{reviewer}:{commit_id}",
+        retrieved_at=NOW,
+        extractor_version="github@0.1.0",
+        reviewer_login=reviewer,
+        state=state,  # type: ignore[arg-type]
+        commit_id=commit_id,
+        submitted_at=NOW,
     )
 
 
 def _changed(file: str) -> ChangedEntity:
     return ChangedEntity(
         evidence_id=f"changed:{file}",
-        source="analysis", source_ref=f"diff:{file}",
-        retrieved_at=NOW, extractor_version="code@0.1.0",
-        entity_id=None, change="modified",
-        file=file, hunk_lines=(1, 5), commit_shas=["head"],
+        source="analysis",
+        source_ref=f"diff:{file}",
+        retrieved_at=NOW,
+        extractor_version="code@0.1.0",
+        entity_id=None,
+        change="modified",
+        file=file,
+        hunk_lines=(1, 5),
+        commit_shas=["head"],
     )
 
 
@@ -89,17 +106,31 @@ def _bundle(
 ) -> EvidenceBundle:
     return EvidenceBundle(
         schema_version="0",
-        change=ChangeRef(repo="x/y", pr_number=1, base_sha="base",
-                        head_sha=head_sha, merge_base_sha="base"),
+        change=ChangeRef(
+            repo="x/y", pr_number=1, base_sha="base", head_sha=head_sha, merge_base_sha="base"
+        ),
         codeatlas_version="0.1.0",
-        collected_at=NOW, run_id="r",
-        extractor_versions={}, model_ids=[], model_file_hashes={},
-        policy=_policy(), identity_map=IdentityMap(people=[]),
-        work_items=[], change_events=[], versions=[], lifecycle=[],
-        commits=commits, reviews=reviews, people=[],
-        governance=governance, governance_changes=[],
-        entities=[], changed=changed, edges=[],
-        criteria=[], candidates=[],
+        collected_at=NOW,
+        run_id="r",
+        extractor_versions={},
+        model_ids=[],
+        model_file_hashes={},
+        policy=_policy(),
+        identity_map=IdentityMap(people=[]),
+        work_items=[],
+        change_events=[],
+        versions=[],
+        lifecycle=[],
+        commits=commits,
+        reviews=reviews,
+        people=[],
+        governance=governance,
+        governance_changes=[],
+        entities=[],
+        changed=changed,
+        edges=[],
+        criteria=[],
+        candidates=[],
         collection_notes=[],
     )
 
@@ -108,7 +139,8 @@ def test_not_applicable_when_no_codeowners_at_base() -> None:
     rule = C5OwnerDidNotApprove()
     bundle = _bundle(
         governance=_governance(None),
-        reviews=[], commits=[_commit("head", "yusra")],
+        reviews=[],
+        commits=[_commit("head", "yusra")],
         changed=[_changed("src/foo.py")],
     )
     result = rule.check(bundle, [], bundle.policy)

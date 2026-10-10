@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-import pytest
-
 from codeatlas.evaluate.rules.c2_pr_modifies_governance import C2PrModifiesGovernance
 from codeatlas.schema import (
     ApprovalPolicy,
@@ -24,6 +22,7 @@ NOW = datetime(2026, 10, 7, 12, 0, 0, tzinfo=UTC)
 
 def _policy(c2_severity: str | None = None) -> Policy:
     from codeatlas.schema import CasePolicy
+
     cases = {}
     if c2_severity is not None:
         cases["C2"] = CasePolicy(severity=c2_severity)  # type: ignore[arg-type]
@@ -57,8 +56,9 @@ def _empty_governance() -> GovernanceSnapshot:
 def _bundle(policy: Policy, changes: list[GovernanceChange]) -> EvidenceBundle:
     return EvidenceBundle(
         schema_version="0",
-        change=ChangeRef(repo="x/y", pr_number=1, base_sha="base", head_sha="head",
-                        merge_base_sha="base"),
+        change=ChangeRef(
+            repo="x/y", pr_number=1, base_sha="base", head_sha="head", merge_base_sha="base"
+        ),
         codeatlas_version="0.1.0",
         collected_at=NOW,
         run_id="run-1",
@@ -67,12 +67,20 @@ def _bundle(policy: Policy, changes: list[GovernanceChange]) -> EvidenceBundle:
         model_file_hashes={},
         policy=policy,
         identity_map=IdentityMap(people=[]),
-        work_items=[], change_events=[], versions=[], lifecycle=[],
-        commits=[], reviews=[], people=[],
+        work_items=[],
+        change_events=[],
+        versions=[],
+        lifecycle=[],
+        commits=[],
+        reviews=[],
+        people=[],
         governance=_empty_governance(),
         governance_changes=changes,
-        entities=[], changed=[], edges=[],
-        criteria=[], candidates=[],
+        entities=[],
+        changed=[],
+        edges=[],
+        criteria=[],
+        candidates=[],
         collection_notes=[],
     )
 
@@ -80,9 +88,12 @@ def _bundle(policy: Policy, changes: list[GovernanceChange]) -> EvidenceBundle:
 def _change(path: str) -> GovernanceChange:
     return GovernanceChange(
         evidence_id=f"governance_change:{path}",
-        source="analysis", source_ref=f"diff:{path}",
-        retrieved_at=NOW, extractor_version="governance@0.1.0",
-        path=path, change_type="modified",
+        source="analysis",
+        source_ref=f"diff:{path}",
+        retrieved_at=NOW,
+        extractor_version="governance@0.1.0",
+        path=path,
+        change_type="modified",
     )
 
 

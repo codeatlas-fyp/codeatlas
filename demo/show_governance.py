@@ -57,8 +57,12 @@ def _policy() -> Policy:
         workitem_key_pattern=r"[A-Z]+-\d+",
         requirement_fields=["summary", "description", "acceptance_criteria"],
         governance_paths=[
-            "CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS",
-            "docs/adr/**", ".codeatlas/**", ".github/workflows/**",
+            "CODEOWNERS",
+            ".github/CODEOWNERS",
+            "docs/CODEOWNERS",
+            "docs/adr/**",
+            ".codeatlas/**",
+            ".github/workflows/**",
             ".pre-commit-config.yaml",
         ],
         approval=ApprovalPolicy(status="Approved", approver_account_ids=["acct-1"]),
@@ -72,7 +76,8 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Governance snapshot + C2/C5 demo.")
     parser.add_argument("--pr", type=int, default=1)
     parser.add_argument(
-        "--repo", default="codeatlas-fyp/codeatlas-sandbox",
+        "--repo",
+        default="codeatlas-fyp/codeatlas-sandbox",
         help="Only used to find the fixture folder.",
     )
     return parser.parse_args()
@@ -80,11 +85,13 @@ def _parse_args() -> argparse.Namespace:
 
 def _load_fixture(repo: str, pr: int) -> tuple[dict, list[dict], list[dict], str | None]:
     import json
+
     folder = FIXTURES / repo.replace("/", "__") / f"pr-{pr}"
     pr_data = json.loads((folder / "pr.json").read_text())
     commits = json.loads((folder / "commits.json").read_text())
     reviews = json.loads((folder / "reviews.json").read_text())
-    codeowners = (folder / "codeowners.txt").read_text() if (folder / "codeowners.txt").is_file() else None
+    codeowners_file = folder / "codeowners.txt"
+    codeowners = codeowners_file.read_text() if codeowners_file.is_file() else None
     return pr_data, commits, reviews, codeowners
 
 
@@ -97,6 +104,7 @@ def _render_codeowners(text: str | None) -> None:
     table.add_column("pattern", style="bold")
     table.add_column("owners")
     from codeatlas.analyze.governance import parse_codeowners
+
     for rule in parse_codeowners(text):
         table.add_row(str(rule.line), rule.pattern, " ".join(rule.owners))
     CONSOLE.print(table)
@@ -106,6 +114,7 @@ def _render_resolved_ownership(codeowners_text: str | None, paths: list[str]) ->
     if codeowners_text is None:
         return
     from codeatlas.analyze.governance import parse_codeowners
+
     rules = parse_codeowners(codeowners_text)
     table = Table(title=f"Ownership for {len(paths)} changed path(s) (last-match wins)")
     table.add_column("path", style="cyan")
@@ -129,7 +138,8 @@ def _render_result(result) -> None:
         f"[dim]evidence: {', '.join(result.evidence_ids[:3])}"
         + (f" (+{len(result.evidence_ids) - 3} more)" if len(result.evidence_ids) > 3 else "")
         + "[/dim]",
-        title=f"Rule {result.case}", border_style=colour,
+        title=f"Rule {result.case}",
+        border_style=colour,
     )
     CONSOLE.print(panel)
 
@@ -138,17 +148,19 @@ def main() -> None:
     args = _parse_args()
     pr_data, commits_data, reviews_data, codeowners = _load_fixture(args.repo, args.pr)
 
-    CONSOLE.print(Panel.fit(
-        f"[bold]PR #{pr_data['number']}[/bold] — {pr_data['title']}",
-        border_style="cyan",
-    ))
+    CONSOLE.print(
+        Panel.fit(
+            f"[bold]PR #{pr_data['number']}[/bold] — {pr_data['title']}",
+            border_style="cyan",
+        )
+    )
 
     _render_codeowners(codeowners)
 
     # Simulate a diff that touches these paths. In real pipeline this comes
     # from Branch 2's LocalRepo.changed_paths().
     simulated_changed_paths = {
-        1: [("payments/fees.py", "modified")],                 # SBX-4 PASS
+        1: [("payments/fees.py", "modified")],  # SBX-4 PASS
         2: [("CODEOWNERS", "modified"), ("loans.py", "modified")],  # SBX-5 C2
     }.get(args.pr, [("README.md", "modified")])
 
@@ -170,26 +182,38 @@ def main() -> None:
     )
     policy = _policy()
     gov_changes = governance_changes_in_diff(
-        changed_files=simulated_changed_paths, policy=policy, retrieved_at=now,
+        changed_files=simulated_changed_paths,
+        policy=policy,
+        retrieved_at=now,
     )
 
     # Build a minimal bundle for the rules.
     bundle_commits = [
         Commit(
-            evidence_id=f"commit:{c['sha']}", source="github",
-            source_ref=f"commit:{c['sha']}", retrieved_at=now,
+            evidence_id=f"commit:{c['sha']}",
+            source="github",
+            source_ref=f"commit:{c['sha']}",
+            retrieved_at=now,
             extractor_version="github@0.1.0",
-            sha=c["sha"], author_email=((c.get("commit") or {}).get("author") or {}).get("email", "x@example.test"),
+            sha=c["sha"],
+            author_email=((c.get("commit") or {}).get("author") or {}).get(
+                "email", "x@example.test"
+            ),
             author_login=(c.get("author") or {}).get("login"),
-            committed_at=now, message=((c.get("commit") or {}).get("message") or ""),
+            committed_at=now,
+            message=((c.get("commit") or {}).get("message") or ""),
         )
         for c in commits_data
     ]
     bundle_reviews = [
         Review(
-            evidence_id=f"review:{r['user']['login']}:{r['commit_id']}", source="github",
-            source_ref="review", retrieved_at=now, extractor_version="github@0.1.0",
-            reviewer_login=r["user"]["login"], state=r["state"],
+            evidence_id=f"review:{r['user']['login']}:{r['commit_id']}",
+            source="github",
+            source_ref="review",
+            retrieved_at=now,
+            extractor_version="github@0.1.0",
+            reviewer_login=r["user"]["login"],
+            state=r["state"],
             commit_id=r["commit_id"],
             submitted_at=datetime.fromisoformat(r["submitted_at"].replace("Z", "+00:00")),
         )
@@ -197,10 +221,16 @@ def main() -> None:
     ]
     bundle_changed = [
         ChangedEntity(
-            evidence_id=f"changed:{path}", source="analysis", source_ref=f"diff:{path}",
-            retrieved_at=now, extractor_version="code@0.1.0",
-            entity_id=None, change=ct,  # type: ignore[arg-type]
-            file=path, hunk_lines=(1, 10), commit_shas=[pr_data["head"]["sha"]],
+            evidence_id=f"changed:{path}",
+            source="analysis",
+            source_ref=f"diff:{path}",
+            retrieved_at=now,
+            extractor_version="code@0.1.0",
+            entity_id=None,
+            change=ct,  # type: ignore[arg-type]
+            file=path,
+            hunk_lines=(1, 10),
+            commit_shas=[pr_data["head"]["sha"]],
         )
         for path, ct in simulated_changed_paths
     ]
@@ -208,19 +238,34 @@ def main() -> None:
     bundle = EvidenceBundle(
         schema_version="0",
         change=ChangeRef(
-            repo=args.repo, pr_number=args.pr,
-            base_sha=pr_data["base"]["sha"], head_sha=pr_data["head"]["sha"],
+            repo=args.repo,
+            pr_number=args.pr,
+            base_sha=pr_data["base"]["sha"],
+            head_sha=pr_data["head"]["sha"],
             merge_base_sha=pr_data["base"]["sha"],
         ),
-        codeatlas_version="0.1.0", collected_at=now, run_id="demo",
+        codeatlas_version="0.1.0",
+        collected_at=now,
+        run_id="demo",
         extractor_versions={"github": "0.1.0", "governance": "0.1.0"},
-        model_ids=[], model_file_hashes={},
-        policy=policy, identity_map=IdentityMap(people=[]),
-        work_items=[], change_events=[], versions=[], lifecycle=[],
-        commits=bundle_commits, reviews=bundle_reviews, people=[],
-        governance=snapshot, governance_changes=gov_changes,
-        entities=[], changed=bundle_changed, edges=[],
-        criteria=[], candidates=[],
+        model_ids=[],
+        model_file_hashes={},
+        policy=policy,
+        identity_map=IdentityMap(people=[]),
+        work_items=[],
+        change_events=[],
+        versions=[],
+        lifecycle=[],
+        commits=bundle_commits,
+        reviews=bundle_reviews,
+        people=[],
+        governance=snapshot,
+        governance_changes=gov_changes,
+        entities=[],
+        changed=bundle_changed,
+        edges=[],
+        criteria=[],
+        candidates=[],
         collection_notes=[],
     )
 
@@ -229,8 +274,8 @@ def main() -> None:
         _render_result(rule.check(bundle, [], bundle.policy))
 
     _dummy_banner(
-        "Bundle hashing, verdict truth table, replay — Areej's codeatlas.bundle & evaluate.verdict\n"
-        "Identity map team expansion — Saleha's codeatlas.analyze.identity"
+        "Bundle hashing, verdict truth table, replay — Areej's bundle module\n"
+        "Identity map team expansion — Saleha's identity module"
     )
 
 
