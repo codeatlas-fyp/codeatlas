@@ -12,6 +12,7 @@ from typing import Any
 from codeatlas.collect.jira.recorder import Sanitiser
 
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "jira"
+FAKE = "example.atlassian.net"
 SITE = "acme-real.atlassian.net"
 
 
@@ -129,15 +130,63 @@ EMAIL = re.compile(r"[\w.+-]+@([\w-]+\.)+[\w-]+")
 HOST = re.compile(r"[\w-]+\.atlassian\.net")
 
 
+URL_ACCOUNT = re.compile(r"accountId=[0-9]+%3A")
+
+
 def test_ac10_committed_jira_fixtures_are_sanitised() -> None:
     files = sorted(FIXTURES.rglob("*.json"))
 
     assert files, "no recorded Jira fixtures"
     for file in files:
         text = file.read_text(encoding="utf-8")
+        assert not URL_ACCOUNT.search(text), file.name
         for match in EMAIL.finditer(text):
             assert match.group().endswith("@example.test"), (file.name, match.group())
         for match in HOST.finditer(text):
             assert match.group() == "example.atlassian.net", (file.name, match.group())
         for value in all_strings(json.loads(text)):
             assert not value.startswith("712020:"), file.name
+
+
+# --- finding: account ids inside URLs (self links) must not survive -----------------------------
+
+
+def test_url_encoded_account_id_in_self_link_is_replaced() -> None:
+    raw = "712020:b7db8c30-0831-4bf5-bf14-e0263ca25279"
+    encoded = "712020%3Ab7db8c30-0831-4bf5-bf14-e0263ca25279"
+    issue = {"fields": {"assignee": person(raw, "Real Name", "real@corp.test")}}
+
+    out = Sanitiser(site_host=SITE).sanitise(issue)
+    text = json.dumps(out)
+
+    assert raw not in text
+    assert encoded not in text
+    assert out["fields"]["assignee"]["self"].endswith("accountId=user-01")
+
+
+def test_scrub_fixes_recorded_urls_without_learning_people() -> None:
+    encoded = "712020%3Ab7db8c30-0831-4bf5-bf14-e0263ca25279"
+    recorded = {
+        "author": {
+            "self": f"https://{FAKE}/rest/api/3/user?accountId={encoded}",
+            "accountId": "user-01",
+            "emailAddress": "user-01@example.test",
+        }
+    }
+
+    out = Sanitiser(site_host=SITE).scrub(recorded)
+
+    assert out["author"]["self"] == f"https://{FAKE}/rest/api/3/user?accountId=user-01"
+    assert out["author"]["accountId"] == "user-01"
+    assert out["author"]["emailAddress"] == "user-01@example.test"
+
+
+def test_stray_account_id_outside_a_person_is_neutralised() -> None:
+    stray = {
+        "note": "see https://x.example/user?accountId=712020%3Aaaaaaaa-1111-2222-3333-444444444444"
+    }
+
+    out = Sanitiser(site_host=SITE).scrub(stray)
+
+    assert "712020" not in json.dumps(out)
+    assert "accountId=user-00" in out["note"]

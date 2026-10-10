@@ -16,6 +16,11 @@ from codeatlas.schema import WorkItemSource
 
 FAKE_HOST = "example.atlassian.net"
 _PERSON_KEYS = ("accountId", "displayName", "emailAddress")
+# An account id in a URL query, plain or percent-encoded (e.g. accountId=712020%3Ab7db8c30-...).
+_ACCOUNT_QUERY = re.compile(r"accountId=[^&\"'\s]+")
+# A bare Atlassian account id anywhere in a string (712020:<uuid>, plain or with %3A).
+_BARE_ACCOUNT = re.compile(r"\b\d{6}(?::|%3A)[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}\b")
+_FAKE_ID = re.compile(r"user-\d{2,}")
 
 
 class Sanitiser:
@@ -54,9 +59,24 @@ class Sanitiser:
             if isinstance(value, str) and value:
                 self._replacements[value] = fake[key]
 
+    def scrub(self, data: Any) -> Any:
+        """Replace personal ids in already-recorded data, without learning new people.
+
+        Used to re-sanitise committed fixtures offline: person fields that are already fake stay
+        as they are, and every account id left inside a URL is replaced by its person's fake id.
+        """
+        return self._replace(data)
+
     def _replace(self, value: Any) -> Any:
         if isinstance(value, dict):
-            out = {key: self._replace(item) for key, item in value.items()}
+            fake_id = self._fake_id_of(value)
+            out: dict[str, Any] = {}
+            for key, item in value.items():
+                if fake_id and isinstance(item, str) and "accountId=" in item:
+                    text = self._replace_text(item)
+                    out[key] = _ACCOUNT_QUERY.sub(f"accountId={fake_id}", text)
+                else:
+                    out[key] = self._replace(item)
             if "accountId" in value and isinstance(value.get("avatarUrls"), dict):
                 fake_id = out["accountId"]
                 out["avatarUrls"] = {
@@ -70,11 +90,22 @@ class Sanitiser:
             return self._replace_text(value)
         return value
 
+    def _fake_id_of(self, person: dict[str, Any]) -> str | None:
+        """The fake account id of a person dict, or None if it has none we can trust."""
+        raw = person.get("accountId")
+        if not isinstance(raw, str):
+            return None
+        fake = self._replace_text(raw)
+        return fake if _FAKE_ID.fullmatch(fake) else None
+
     def _replace_text(self, text: str) -> str:
         for real in sorted(self._replacements, key=len, reverse=True):
             if real in text:
                 text = text.replace(real, self._replacements[real])
-        return text.replace(self._site_host, FAKE_HOST)
+        text = text.replace(self._site_host, FAKE_HOST)
+        # Anything still shaped like an account id (outside a known person) is neutralised.
+        text = _ACCOUNT_QUERY.sub("accountId=user-00", text)
+        return _BARE_ACCOUNT.sub("user-00", text)
 
 
 def _people(value: Any) -> Iterable[dict[str, Any]]:
