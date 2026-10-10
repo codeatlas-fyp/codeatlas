@@ -125,7 +125,7 @@
     },
     "lastViewed": null,
     "creator": {
-      "self": "https://example.atlassian.net/rest/api/3/user?accountId=712020%3Ab7db8c30-0831-4bf5-bf14-e0263ca25279",
+      "self": "https://example.atlassian.net/rest/api/3/user?accountId=user-01",
       "accountId": "user-01",
       "emailAddress": "user-01@example.test",
       "avatarUrls": {
@@ -143,7 +143,7 @@
     "created": "2026-10-07T16:27:38.382+0500",
     "customfield_10021": null,
     "reporter": {
-      "self": "https://example.atlassian.net/rest/api/3/user?accountId=712020%3Ab7db8c30-0831-4bf5-bf14-e0263ca25279",
+      "self": "https://example.atlassian.net/rest/api/3/user?accountId=user-01",
       "accountId": "user-01",
       "emailAddress": "user-01@example.test",
       "avatarUrls": {

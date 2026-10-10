@@ -2,7 +2,7 @@
   {
     "id": "10093",
     "author": {
-      "self": "https://example.atlassian.net/rest/api/3/user?accountId=712020%3Ab7db8c30-0831-4bf5-bf14-e0263ca25279",
+      "self": "https://example.atlassian.net/rest/api/3/user?accountId=user-01",
       "accountId": "user-01",
       "emailAddress": "user-01@example.test",
       "avatarUrls": {
@@ -32,7 +32,7 @@
   {
     "id": "10094",
     "author": {
-      "self": "https://example.atlassian.net/rest/api/3/user?accountId=712020%3Ab7db8c30-0831-4bf5-bf14-e0263ca25279",
+      "self": "https://example.atlassian.net/rest/api/3/user?accountId=user-01",
       "accountId": "user-01",
       "emailAddress": "user-01@example.test",
       "avatarUrls": {
@@ -62,7 +62,7 @@
   {
     "id": "10095",
     "author": {
-      "self": "https://example.atlassian.net/rest/api/3/user?accountId=712020%3Ab7db8c30-0831-4bf5-bf14-e0263ca25279",
+      "self": "https://example.atlassian.net/rest/api/3/user?accountId=user-01",
       "accountId": "user-01",
       "emailAddress": "user-01@example.test",
       "avatarUrls": {
