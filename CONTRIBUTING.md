@@ -19,24 +19,24 @@ CodeAtlas will later check its own PRs against these rules, so following them ex
 |---|---|---|
 | `main` | Protected. Deploys. | — (release PRs from `develop` only) |
 | `develop` | Integration branch. Default branch for PRs. | `main`, for releases |
-| `feature/CA-<n>-<short-name>` | New work for one Jira ticket | `develop` |
-| `fix/CA-<n>-<short-name>` | Bug fix for one Jira ticket | `develop` |
+| `feature/<kebab-name>` | New work | `develop` |
+| `fix/<kebab-name>` | Bug fix | `develop` |
 
-- `<short-name>` is lowercase kebab-case, e.g. `feature/CA-4-jira-changelog-fetcher`.
+- `<kebab-name>` is lowercase kebab-case, e.g. `feature/jira-changelog-fetcher`.
 - Each branch covers one ticket.
 - Branch from the latest `develop`:
-  `git switch develop && git pull && git switch -c feature/CA-4-jira-changelog-fetcher`
+  `git switch develop && git pull && git switch -c feature/jira-changelog-fetcher`
 
 ## 3. Commits
 
-Format: `CA-<n>: <imperative message>`
+Format: `type(scope): imperative message` (Conventional Commits)
 
 ```
-CA-4: add Jira changelog fetcher
-CA-7: fix timezone handling in commit parser
+feat(jira): add Jira changelog fetcher
+fix(parser): handle timezone in commit parser
 ```
 
-- Start every commit with a Jira key followed by a colon. CI rejects commits that don't
+- Use a Conventional Commit title. CI checks commit titles
   (see `scripts/check_commit_msgs.py`).
 - Write the message in the imperative ("add", "fix", "remove"), not "added" or "fixes".
 - Keep the first line at 72 characters or fewer. Put details in the body after a blank line.
@@ -47,9 +47,9 @@ CA-7: fix timezone handling in commit parser
 - **feature/fix → `develop`** needs **1 approval + green CI + a code-owner review**
   (see `CODEOWNERS`).
 - **`develop` → `main`** is for releases only. Title it `Release vX.Y.Z`.
-- Start the PR title with the key: `CA-4: add Jira changelog fetcher`.
+- Use a Conventional Commit title, e.g. `feat(jira): add Jira changelog fetcher`.
 - Fill in the PR template. You can't approve your own PR.
-- Keep the `CA-<n>: ` prefix in the final commit title when you squash-merge.
+- Use a Conventional Commit title for the final commit when you squash-merge.
 
 ## 5. Conventions
 
@@ -99,12 +99,7 @@ uv run pytest --cov=codeatlas
 Run the API: `uv run uvicorn codeatlas.api.app:app --reload`, then open http://localhost:8000/health.
 Or with Docker: `docker build -t codeatlas . && docker run -p 8000:8000 codeatlas`.
 
-## 8. Jira tickets
-
-Create `CA-1` to `CA-12` for the Day 1–2 tasks before anyone starts coding, so every branch uses a
-real key from the first hour. `CA-1` is the repository setup (`feature/CA-1-repo-setup`).
-
-## 9. Branch protection (repo admin, one time)
+## 8. Branch protection (repo admin, one time)
 
 Protection works on the free plan because the repo is **public**. If it ever goes private, claim
 GitHub Education benefits for the org first.
