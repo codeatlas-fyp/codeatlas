@@ -17,8 +17,13 @@ from codeatlas.collect.github.recorder import (
 class CannedClient:
     """Pretend client that returns pre-made responses for the recorder."""
 
-    def __init__(self, pr: dict[str, Any], commits: list[dict[str, Any]],
-                 reviews: list[dict[str, Any]], codeowners: str | None) -> None:
+    def __init__(
+        self,
+        pr: dict[str, Any],
+        commits: list[dict[str, Any]],
+        reviews: list[dict[str, Any]],
+        codeowners: str | None,
+    ) -> None:
         self._pr = pr
         self._commits = commits
         self._reviews = reviews
@@ -83,8 +88,12 @@ def test_recorder_round_trip(tmp_path: Path) -> None:
         }
     ]
     reviews = [
-        {"user": {"login": "areej8"}, "state": "APPROVED", "commit_id": "head456",
-         "submitted_at": "2026-10-05T12:00:00Z"}
+        {
+            "user": {"login": "areej8"},
+            "state": "APPROVED",
+            "commit_id": "head456",
+            "submitted_at": "2026-10-05T12:00:00Z",
+        }
     ]
     codeowners = "* @YusraM-100\n/payments/ @areej8\n"
     client = CannedClient(pr, commits, reviews, codeowners)
@@ -105,4 +114,7 @@ def test_recorder_round_trip(tmp_path: Path) -> None:
     assert source.pull_request("codeatlas-fyp/codeatlas-sandbox", 42)["number"] == 42
     assert source.commits("codeatlas-fyp/codeatlas-sandbox", 42)[0]["sha"] == "head456"
     assert source.reviews("codeatlas-fyp/codeatlas-sandbox", 42)[0]["commit_id"] == "head456"
-    assert source.file_at_commit("codeatlas-fyp/codeatlas-sandbox", "CODEOWNERS", "base123") == codeowners
+    assert (
+        source.file_at_commit("codeatlas-fyp/codeatlas-sandbox", "CODEOWNERS", "base123")
+        == codeowners
+    )

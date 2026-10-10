@@ -34,13 +34,16 @@ def test_commits_paginates_until_no_next_link() -> None:
             200,
             json=first_page,
             headers={
-                "Link": '<https://api.github.com/repos/x/y/pulls/1/commits?per_page=100&page=2>; rel="next"'
+                "Link": (
+                    "<https://api.github.com/repos/x/y/pulls/1/commits"
+                    '?per_page=100&page=2>; rel="next"'
+                )
             },
         )
     )
-    respx.get(
-        "https://api.github.com/repos/x/y/pulls/1/commits?per_page=100&page=2"
-    ).mock(return_value=Response(200, json=second_page))
+    respx.get("https://api.github.com/repos/x/y/pulls/1/commits?per_page=100&page=2").mock(
+        return_value=Response(200, json=second_page)
+    )
     with _client() as client:
         commits = client.commits("x/y", 1)
     assert len(commits) == 101

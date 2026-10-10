@@ -62,18 +62,19 @@ class LocalRepo:
 
     def diff_hunks(self, base_sha: str, head_sha: str) -> list[DiffHunk]:
         """Return hunks of the diff between base and head, flattened per hunk."""
-        import pygit2
 
         base_commit = self._repo.get(self._resolve(base_sha))
         head_commit = self._repo.get(self._resolve(head_sha))
         if base_commit is None or head_commit is None:
             raise ValueError("base or head commit not in local repo")
 
-        diff = self._repo.diff(base_commit.tree, head_commit.tree)
+        diff = self._repo.diff(base_commit.id, head_commit.id)
         diff.find_similar()  # populate rename info (status 'R')
 
         hunks: list[DiffHunk] = []
         for patch in diff:
+            if patch is None:
+                continue
             delta = patch.delta
             file_path = delta.new_file.path or delta.old_file.path
             change_type = _change_type(delta.status)
@@ -92,15 +93,19 @@ class LocalRepo:
 
     def file_bytes(self, sha: str, path: str) -> bytes | None:
         """Raw bytes of `path` at commit `sha`, or None if absent at that commit."""
+        import pygit2
+
         commit = self._repo.get(self._resolve(sha))
         if commit is None:
             return None
         try:
-            entry = commit.tree[path]  # type: ignore[index]
+            entry = commit.tree[path]
         except KeyError:
             return None
-        blob = self._repo[entry.id]
-        return bytes(blob.data)
+        obj = self._repo[entry.id]
+        if not isinstance(obj, pygit2.Blob):
+            return None
+        return bytes(obj.data)
 
     def changed_paths(self, base_sha: str, head_sha: str) -> list[str]:
         """Convenience: unique file paths in the diff. C2 only needs these."""

@@ -23,8 +23,6 @@ from rich.table import Table
 from codeatlas.analyze.keys import find_keys
 from codeatlas.collect.github import (
     FixtureSource,
-    GitHubClient,
-    GitHubClientConfig,
     client_from_env,
 )
 
@@ -45,8 +43,9 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Show GitHub collector + key finder output.")
     parser.add_argument("--repo", default="codeatlas-fyp/codeatlas-sandbox")
     parser.add_argument("--pr", type=int, required=True)
-    parser.add_argument("--live", action="store_true",
-                        help="Hit real GitHub (requires CODEATLAS_GITHUB_TOKEN).")
+    parser.add_argument(
+        "--live", action="store_true", help="Hit real GitHub (requires CODEATLAS_GITHUB_TOKEN)."
+    )
     parser.add_argument("--fixtures", type=Path, default=DEFAULT_FIXTURES)
     return parser.parse_args()
 
@@ -95,7 +94,9 @@ def _render_reviews(reviews: list[dict]) -> None:
     if not reviews:
         table.add_row("—", "no reviews", "—", "—")
     for review in reviews:
-        state_colour = {"APPROVED": "green", "CHANGES_REQUESTED": "red"}.get(review.get("state", ""), "white")
+        state_colour = {"APPROVED": "green", "CHANGES_REQUESTED": "red"}.get(
+            review.get("state", ""), "white"
+        )
         table.add_row(
             (review.get("user") or {}).get("login", "?"),
             f"[{state_colour}]{review.get('state', '?')}[/{state_colour}]",
@@ -140,7 +141,7 @@ def main() -> None:
         "The following come from Areej / Saleha and are not shown here:\n"
         "  • Jira ticket data (change history, approvals) — Areej's collect.jira\n"
         "  • EvidenceBundle assembly + hashing — Areej's bundle package\n"
-        "  • Identity map (git_email → github_login → jira_account_id) — Saleha's analyze.identity\n"
+        "  • Identity map (git_email → github_login → jira_account_id) — Saleha's work\n"
     )
 
 

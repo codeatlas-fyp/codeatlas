@@ -170,6 +170,7 @@ class Recorder:
 
 # ---- fixture replay source (used by tests) --------------------------------
 
+
 @dataclass
 class FixtureSource:
     """Stand-in for GitHubClient that reads recorded JSON. Satisfies ChangeSource."""
@@ -178,7 +179,10 @@ class FixtureSource:
     _memo: dict[tuple[str, int, str], Any] = field(default_factory=dict)
 
     def pull_request(self, repo: str, number: int) -> dict[str, Any]:
-        return self._read(repo, number, "pr.json")
+        data = self._read(repo, number, "pr.json")
+        if not isinstance(data, dict):
+            raise TypeError(f"expected PR fixture object, got {type(data).__name__}")
+        return data
 
     def commits(self, repo: str, number: int) -> list[dict[str, Any]]:
         data = self._read(repo, number, "commits.json")

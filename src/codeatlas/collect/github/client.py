@@ -22,7 +22,7 @@ from __future__ import annotations
 import os
 import time
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlencode
 
 import httpx
@@ -61,14 +61,22 @@ class GitHubClient:
 
     def pull_request(self, repo: str, number: int) -> dict[str, Any]:
         """GET /repos/{repo}/pulls/{number} — PR metadata (base/head SHAs, title, body)."""
-        return self._get_json(f"/repos/{repo}/pulls/{number}")
+        data = self._get_json(f"/repos/{repo}/pulls/{number}")
+        if not isinstance(data, dict):
+            raise CollectionError(
+                source="github",
+                status=None,
+                retryable=False,
+                detail="GitHub pull-request response was not a JSON object",
+            )
+        return cast("dict[str, Any]", data)
 
     def commits(self, repo: str, number: int) -> list[dict[str, Any]]:
         """GET /repos/{repo}/pulls/{number}/commits — all commits, oldest first."""
         return self._get_paged(f"/repos/{repo}/pulls/{number}/commits")
 
     def reviews(self, repo: str, number: int) -> list[dict[str, Any]]:
-        """GET /repos/{repo}/pulls/{number}/reviews — includes `commit_id` per review (C5 needs this)."""
+        """GET /repos/{repo}/pulls/{number}/reviews. Includes `commit_id` per review for C5."""
         return self._get_paged(f"/repos/{repo}/pulls/{number}/reviews")
 
     def file_at_commit(self, repo: str, path: str, ref: str) -> str | None:
@@ -91,7 +99,7 @@ class GitHubClient:
             self._session.close()
             self._session = None
 
-    def __enter__(self) -> "GitHubClient":
+    def __enter__(self) -> GitHubClient:
         return self
 
     def __exit__(self, *_: Any) -> None:
@@ -152,7 +160,9 @@ class GitHubClient:
             return resp.json()
 
         raise CollectionError(
-            source="github", status=None, retryable=True,
+            source="github",
+            status=None,
+            retryable=True,
             detail=f"GET {path} exceeded retries",
         )
 
@@ -184,7 +194,9 @@ def client_from_env() -> GitHubClient:
     token = os.environ.get("CODEATLAS_GITHUB_TOKEN", "")
     if not token:
         raise CollectionError(
-            source="github", status=None, retryable=False,
+            source="github",
+            status=None,
+            retryable=False,
             detail="CODEATLAS_GITHUB_TOKEN is not set",
         )
     return GitHubClient(GitHubClientConfig(token=token))

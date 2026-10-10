@@ -86,10 +86,12 @@ def find_keys(
 def _commit_message(commit: dict[str, Any]) -> str:
     """GitHub returns `commit.message` nested; pygit2 returns top-level."""
     nested = commit.get("commit")
-    if isinstance(nested, dict) and isinstance(nested.get("message"), str):
-        return nested["message"]
-    msg = commit.get("message")
-    return msg if isinstance(msg, str) else ""
+    if isinstance(nested, dict):
+        nested_message = nested.get("message")
+        if isinstance(nested_message, str):
+            return nested_message
+    message = commit.get("message")
+    return message if isinstance(message, str) else ""
 
 
 def keys_only(refs: list[WorkItemRef]) -> list[str]:
