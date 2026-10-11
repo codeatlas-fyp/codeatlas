@@ -1,4 +1,0 @@
-*                    @user-01
-/loans.py            @user-01
-/payments/           @user-02
-/payments/fees.py    @user-02
