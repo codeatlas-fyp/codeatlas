@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}CodeAtlas{% endblock %} · CodeAtlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/static/app.css?v={{ version }}">
+<script src="/static/app.js?v={{ version }}" defer></script>
+</head>
+<body>
+{%- set open_hash = case.summary.bundle_hash if case else bundle_hash|default('') -%}
+<div class="shell">
+<aside class="side" aria-label="Sidebar">
+  <a class="side__brand" href="/">
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><circle cx="5" cy="13" r="3.5" stroke="#8098F9" stroke-width="2"/><circle cx="21" cy="5" r="3.5" stroke="#8098F9" stroke-width="2"/><circle cx="21" cy="21" r="3.5" stroke="#8098F9" stroke-width="2"/><path d="M8.2 11.6 17.8 6.4M8.2 14.4l9.6 5.2" stroke="#8098F9" stroke-width="2"/></svg>
+    <span class="stack"><span class="side__name">Code<span class="side__accent">Atlas</span></span><span class="mono side__ver">v{{ version }}</span></span>
+  </a>
+
+  <nav class="side__nav" aria-label="Main">
+    <p class="side__h">Workspace</p>
+    <a class="side__a{% if nav_active|default('') == 'cases' %} is-active{% endif %}" href="/"{% if nav_active|default('') == 'cases' %} aria-current="page"{% endif %}>
+      <svg class="side__i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>Cases</span><span class="side__n mono">{{ nav_total }}</span>
+    </a>
+
+    {% if open_hash %}
+    <p class="side__h">This case <span class="mono side__hash">{{ short(open_hash, 8) }}</span></p>
+    {% if case %}
+    <a class="side__a{% if tab == 'overview' %} is-active{% endif %}" href="/cases/{{ open_hash }}"{% if tab == 'overview' %} aria-current="page"{% endif %}>
+      <svg class="side__i" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+      <span>Overview</span>
+    </a>
+    {% for k in case.summary.keys %}
+    <a class="side__a{% if tab == 'timeline' and key == k %} is-active{% endif %}" href="/cases/{{ open_hash }}/requirements/{{ k|urlencode }}"{% if tab == 'timeline' and key == k %} aria-current="page"{% endif %}>
+      <svg class="side__i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18"/><circle cx="7" cy="12" r="2"/><circle cx="13" cy="12" r="2"/><circle cx="18" cy="12" r="2"/></svg>
+      <span>Timeline{% if case.summary.keys|length > 1 %} · {{ k }}{% endif %}</span>
+    </a>
+    {% endfor %}
+    <a class="side__a{% if tab == 'links' %} is-active{% endif %}" href="/cases/{{ open_hash }}/links"{% if tab == 'links' %} aria-current="page"{% endif %}>
+      <svg class="side__i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.3 7l7.4 1M8 7.8l8.2 8.6"/></svg>
+      <span>Trace links</span>
+    </a>
+    {% endif %}
+    <a class="side__a{% if tab == 'replay' %} is-active{% endif %}" href="/cases/{{ open_hash }}/replay"{% if tab == 'replay' %} aria-current="page"{% endif %}>
+      <svg class="side__i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+      <span>Replay</span>
+      {% if replay is defined and replay %}<span class="side__tag {{ 'side__tag--ok' if replay.match else 'side__tag--bad' }}">{{ 'MATCH' if replay.match else ('REFUSED' if replay.refused else 'MISMATCH') }}</span>{% endif %}
+    </a>
+    {% endif %}
+
+    {% if nav_cases %}
+    <p class="side__h side__h--recent">Recent cases</p>
+    {% for c in nav_cases %}
+    <a class="side__case{% if c.bundle_hash == open_hash %} is-active{% endif %}" href="/cases/{{ c.bundle_hash }}{{ '/replay' if c.corrupt else '' }}">
+      <span class="side__dot side__dot--{{ (c.verdict or 'corrupt')|lower }}" aria-hidden="true"></span>
+      <span class="stack">
+        <span class="mono side__cid">{{ short(c.bundle_hash, 8) }}{% if c.keys %} · {{ c.keys|join(', ') }}{% endif %}</span>
+        <span class="side__ct">{{ c.title or ('Bundle failed its integrity check' if c.corrupt else 'Untitled') }}</span>
+      </span>
+      <span class="sr-only">verdict {{ c.verdict or 'corrupt' }}</span>
+    </a>
+    {% endfor %}
+    {% endif %}
+  </nav>
+
+  <div class="side__foot">
+    <span class="side__ro"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Read-only</span>
+    <span class="small">Shows stored evidence bundles. Never writes to Jira or GitHub.</span>
+  </div>
+</aside>
+
+<div class="shell__main">
+{% block body %}{% endblock %}
+</div>
+</div>
+</body>
+</html>

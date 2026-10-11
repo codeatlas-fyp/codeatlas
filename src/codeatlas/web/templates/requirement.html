@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% from "_macros.html" import case_header %}
+{% block title %}{{ key }} timeline{% endblock %}
+{% block body %}
+{{ case_header(case, tab, replay, key=key) }}
+<main class="wrap page stackpage">
+
+  <section class="card card--pad" aria-labelledby="tl-h">
+    <div class="sechead">
+      <div>
+        <h2 id="tl-h" class="h-md">What happened, in order</h2>
+        <p class="sub small">Jira events and code events for {{ key }} on one line. Select a point for details.</p>
+      </div>
+      <label class="check-inline"><input type="checkbox" data-problems-toggle="timeline"> Highlight only events behind a problem</label>
+    </div>
+
+    {% if view.events %}
+    <div class="tl__scroll">
+      <div class="tl" data-timeline="timeline" style="grid-template-columns: repeat({{ view.events|length }}, minmax(132px, 1fr));">
+        {% for e in view.events %}
+        <div class="tl__col{% if e.problem %} is-problem{% endif %}" data-event="{{ e.index }}" style="grid-column: {{ loop.index }};">
+          <div class="tl__label {{ 'tl__label--up' if e.above else 'tl__label--down' }}">
+            <span class="mono small muted">{{ e.at_short }}</span>
+            <span class="strong small">{{ e.title }}</span>
+          </div>
+          <button type="button" class="tl__mark tl__mark--{{ e.kind }}" data-select="{{ e.index }}" aria-label="{{ e.at }}, {{ e.title }}" aria-pressed="false"></button>
+        </div>
+        {% endfor %}
+        {% for b in view.bands %}
+        <div class="tl__band {{ 'tl__band--ok' if b.approved else 'tl__band--stale' }}" style="grid-column: {{ b.col_start }} / {{ b.col_end }};">{{ b.label|upper }}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="tl__legend small">
+      <span><i class="dot dot--edit"></i>Requirement edit</span><span><i class="dot dot--approval"></i>Approval</span><span><i class="dot dot--status"></i>Status</span><span><i class="dot dot--priority"></i>Priority</span><span><i class="dot dot--assignee"></i>Assignee</span><span><i class="dot dot--commit"></i>Commit</span><span><i class="dot dot--review"></i>Review</span>
+    </div>
+
+    <div class="table table--flat">
+      <div class="table__scroll">
+        <table class="tbl" data-event-table="timeline">
+          <thead><tr><th scope="col">When</th><th scope="col">Type</th><th scope="col">What happened</th><th scope="col">Evidence</th></tr></thead>
+          <tbody>
+            {% for e in view.events %}
+            <tr data-row="{{ e.index }}"{% if e.problem %} class="is-problem"{% endif %}>
+              <td class="mono small nowrap">{{ e.at }}</td>
+              <td><span class="kind kind--{{ e.kind }}">{{ e.kind_label }}</span></td>
+              <td><span class="strong">{{ e.title }}</span><div class="small muted">{{ e.detail }}</div></td>
+              <td class="mono small">{{ e.evidence_id or '—' }}{% if e.problem %} <span class="tag tag--fail">behind a violation</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <p class="empty">No Jira or code events were collected for {{ key }}.</p>
+    {% endif %}
+  </section>
+
+  <section class="table" aria-labelledby="lc-h">
+    <div class="sechead sechead--table">
+      <div>
+        <h2 id="lc-h" class="h-md">Who did what, per version</h2>
+        <p class="sub small">People are matched across Jira and GitHub through the reviewed identity map. Anyone not in the map shows as Unresolved, never guessed.</p>
+      </div>
+    </div>
+    <div class="table__scroll">
+      <table class="tbl">
+        <thead><tr><th scope="col">Version</th><th scope="col">Requested by</th><th scope="col">Approved by</th><th scope="col">Priority</th><th scope="col">Assigned to</th><th scope="col">Wrote the code</th></tr></thead>
+        <tbody>
+          {% for r in view.rows %}
+          <tr{% if r.current %} class="is-current"{% endif %}>
+            <th scope="row"><span class="mono strong">v{{ r.version_no }}</span>{% if r.current %} <span class="small muted">current</span>{% endif %}<div class="small muted mono">{{ r.window }}</div></th>
+            <td>{{ r.requester }}</td>
+            <td>{% if r.approved_by %}{{ r.approved_by|join(', ') }}{% else %}<span class="fail-text strong">Not approved</span>{% if 'C3' in view.flagged_cases %} <span class="tag tag--{{ view.flagged_cases['C3'] }}">C3</span>{% endif %}{% endif %}</td>
+            <td>{{ r.priority }}<div class="small muted">set by {{ r.priority_by }}</div></td>
+            <td>{{ r.assignee }}</td>
+            <td>
+              {% for name, resolved in r.implementers %}
+                {% if resolved %}{{ name }}{% else %}<span class="unresolved" title="{{ name }}">Unresolved</span> <span class="small muted mono">{{ name }}</span>{% endif %}{% if not loop.last %}, {% endif %}
+              {% else %}<span class="muted">no commits in this version</span>{% endfor %}
+              {% if r.implementers and 'C4' in view.flagged_cases %} <span class="tag tag--{{ view.flagged_cases['C4'] }}">C4</span>{% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="muted">No requirement versions were rebuilt for {{ key }}.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if view.unresolved_note %}<p class="tablenote small">{{ view.unresolved_note }}</p>{% endif %}
+  </section>
+
+  <section class="card card--pad" aria-labelledby="ac-h">
+    <h2 id="ac-h" class="h-md">Acceptance criteria{% if view.diff_title %}: what changed {{ view.diff_title }}{% endif %}</h2>
+    {% if view.diff %}
+    <div class="diff mono">
+      {% for d in view.diff %}<div class="diff__l diff__l--{{ d.tag }}"><span aria-hidden="true">{{ {'same': ' ', 'removed': '−', 'added': '+'}[d.tag] }}</span><span class="sr-only">{{ d.tag }}: </span> {{ d.text }}</div>{% endfor %}
+    </div>
+    {% elif view.criteria_now %}
+    <ul class="aclist">{% for line in view.criteria_now %}<li>{{ line }}</li>{% endfor %}</ul>
+    {% else %}
+    <p class="muted">No acceptance criteria text for {{ key }}.</p>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}

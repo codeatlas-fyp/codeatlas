@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% from "_macros.html" import case_header, evidence_chip %}
+{% block title %}Trace links{% endblock %}
+{% block body %}
+{{ case_header(case, tab, replay) }}
+<main class="wrap page stackpage">
+
+  <section class="card card--pad" aria-labelledby="g-h">
+    <div class="sechead">
+      <h2 id="g-h" class="h-md">Requirement → changed code</h2>
+      <span class="small muted">{{ view.right|length }} changed function{{ '' if view.right|length == 1 else 's' }} · line style = how the link is known</span>
+    </div>
+    {% if view.right %}
+    <svg class="graph" style="max-width: {{ view.width }}px;" viewBox="0 0 {{ view.width }} {{ view.height }}" role="img" aria-labelledby="g-desc">
+      <desc id="g-desc">{% for l in view.links %}{{ l.key }} to {{ l.entity }}: {{ l.state_label }}. {% endfor %}</desc>
+      {% for e in view.edges %}<path class="edge edge--{{ e.state|lower }}" d="{{ e.path }}"><title>{{ e.title }}</title></path>{% endfor %}
+      {% for n in view.left %}
+      <g class="node node--req"><rect x="{{ n.x }}" y="{{ n.y }}" width="{{ n.w }}" height="{{ n.h }}" rx="10"/><text class="node__t mono" x="{{ n.x + 16 }}" y="{{ n.y + 22 }}">{{ n.label }}</text><text class="node__s" x="{{ n.x + 16 }}" y="{{ n.y + 40 }}">{{ n.sub }}</text></g>
+      {% endfor %}
+      {% for n in view.right %}
+      <g class="node node--code"><rect x="{{ n.x }}" y="{{ n.y }}" width="{{ n.w }}" height="{{ n.h }}" rx="8"/><text class="node__t mono" x="{{ n.x + 14 }}" y="{{ n.y + 22 }}">{{ n.label }}</text><text class="node__s mono" x="{{ n.x + 14 }}" y="{{ n.y + 40 }}">{{ n.sub }}</text></g>
+      {% endfor %}
+    </svg>
+    {% else %}
+    <p class="empty">No changed functions were mapped for this PR.</p>
+    {% endif %}
+    <div class="legend small">
+      <span><svg width="32" height="8" aria-hidden="true"><path class="edge edge--observed" d="M0 4h32"/></svg>Observed: commit carries the key</span>
+      <span><svg width="32" height="8" aria-hidden="true"><path class="edge edge--deterministically_derived" d="M0 4h32"/></svg>Derived: fixed rule (imports, ADR scope)</span>
+      <span><svg width="32" height="8" aria-hidden="true"><path class="edge edge--semantic_candidate" d="M2 4h30"/></svg>Candidate: text similarity only</span>
+      <span><svg width="32" height="8" aria-hidden="true"><path class="edge edge--conflicting" d="M0 4h32"/></svg>Conflicting: commits name another key</span>
+      <span><svg width="32" height="8" aria-hidden="true"><path class="edge edge--unresolved" d="M0 4h32"/></svg>Unresolved</span>
+    </div>
+  </section>
+
+  {% for crit in view.criteria %}
+  <section class="table" aria-labelledby="crit-{{ loop.index }}">
+    <div class="sechead sechead--table">
+      <div>
+        <h2 id="crit-{{ loop.index }}" class="h-md">Top suggestions for <span class="mono key">{{ crit.criterion_id }}</span></h2>
+        <p class="sub small">“{{ crit.text }}” · ranked by BM25 and a local embedding model, fused. Suggestions can only ever raise REVIEW; they never decide PASS or FAIL.</p>
+      </div>
+      {% for m in view.model_ids %}<span class="mono small codebox">{{ m }}</span>{% endfor %}
+    </div>
+    <div class="table__scroll">
+      <table class="tbl">
+        <thead><tr><th scope="col">Rank</th><th scope="col">Function</th><th scope="col">BM25</th><th scope="col">Embedding</th><th scope="col" class="w-score">Fused score</th><th scope="col">Link state</th></tr></thead>
+        <tbody>
+          {% for r in crit.rows %}
+          <tr>
+            <td class="mono strong">{{ r.rank }}</td>
+            <td><span class="mono strong">{{ r.entity }}</span><div class="mono small muted">{{ r.location }}</div></td>
+            <td class="mono">{{ r.bm25 }}</td>
+            <td class="mono">{{ r.dense }}</td>
+            <td><div class="bar"><meter class="bar__m bar__m--{{ r.state|lower }}" min="0" max="100" value="{{ r.bar }}">{{ r.bar }}%</meter><span class="mono small">{{ r.score }}</span></div></td>
+            <td><span class="lstate lstate--{{ r.state|lower }}">{{ r.state_label }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="muted">No candidates were ranked for this criterion.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endfor %}
+
+  <section class="table" aria-labelledby="all-h">
+    <div class="sechead sechead--table"><h2 id="all-h" class="h-md">Every link and why</h2></div>
+    <div class="table__scroll">
+      <table class="tbl">
+        <thead><tr><th scope="col">Requirement</th><th scope="col">Function</th><th scope="col">State</th><th scope="col">Reasons</th><th scope="col">Evidence</th></tr></thead>
+        <tbody>
+          {% for l in view.links %}
+          <tr>
+            <td class="mono strong key">{{ l.key }}</td>
+            <td class="mono">{{ l.entity }}</td>
+            <td><span class="lstate lstate--{{ l.state|lower }}">{{ l.state_label }}</span></td>
+            <td class="small">{{ l.reasons|join('; ') }}</td>
+            <td><div class="evs">{% for e in l.evidence %}{{ evidence_chip(e) }}{% endfor %}</div></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="muted">No trace links: no changed function or no requirement key.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {% if view.c9 %}
+  <section class="card card--row check--{{ view.c9.tone }}" aria-labelledby="c9-h">
+    <span class="check__id mono">C9</span>
+    <div class="stack grow">
+      <h2 id="c9-h" class="h-sm">Unexplained changes · <span class="tag tag--{{ view.c9.tone }}">{{ view.c9.outcome_label }}</span></h2>
+      <p class="small">{{ view.c9.message }}</p>
+    </div>
+  </section>
+  {% endif %}
+</main>
+{% endblock %}

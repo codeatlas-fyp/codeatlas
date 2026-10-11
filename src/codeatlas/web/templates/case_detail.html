@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% from "_macros.html" import case_header, evidence_chip %}
+{% block title %}{{ case.summary.keys|join(', ') or 'Case' }} · PR #{{ case.summary.pr_number }}{% endblock %}
+{% block body %}
+{{ case_header(case, tab, replay) }}
+<main class="wrap page split">
+  <section class="split__main" aria-label="Check results">
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="Filter checks" data-filter-group="checks">
+        <button type="button" class="seg__b is-active" data-filter="all" aria-pressed="true">All <span class="mono n">{{ view.counts['all'] }}</span></button>
+        <button type="button" class="seg__b" data-filter="violated" aria-pressed="false">Violated <span class="mono n">{{ view.counts['violated'] }}</span></button>
+        <button type="button" class="seg__b" data-filter="unknown" aria-pressed="false">Missing evidence <span class="mono n">{{ view.counts['unknown'] }}</span></button>
+        <button type="button" class="seg__b" data-filter="satisfied" aria-pressed="false">Satisfied <span class="mono n">{{ view.counts['satisfied'] }}</span></button>
+        <button type="button" class="seg__b" data-filter="not_checked" aria-pressed="false">Not checked <span class="mono n">{{ view.counts['not_checked'] }}</span></button>
+      </div>
+      <button type="button" class="btn-ghost" data-toggle-all="checks">Expand all</button>
+    </div>
+
+    <div class="checks" data-filter-target="checks">
+      {% for c in view.checks %}
+      <details class="check check--{{ c.tone }}" data-group="{{ c.group }}"{% if c.group in ('violated', 'unknown') %} open{% endif %}>
+        <summary class="check__sum">
+          <span class="check__id mono">{{ c.case }}</span>
+          <span class="check__body">
+            <span class="check__line">
+              <span class="check__name">{{ c.name }}</span>
+              <span class="tag tag--{{ c.tone }}">{{ c.outcome_label }}</span>
+              <span class="small muted">{{ c.severity_label }}</span>
+            </span>
+            <span class="check__msg">{{ c.message }}</span>
+          </span>
+          <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </summary>
+        <div class="check__ev">
+          <span class="label">Evidence</span>
+          {% if c.evidence %}
+          <div class="evs">{% for e in c.evidence %}{{ evidence_chip(e) }}{% endfor %}</div>
+          {% else %}
+          <span class="small muted">No evidence items: this result rests on what is missing.</span>
+          {% endif %}
+        </div>
+      </details>
+      {% endfor %}
+    </div>
+  </section>
+
+  <aside class="split__side" aria-label="Verdict summary">
+    <div class="card">
+      <h2 class="label">Why this verdict</h2>
+      <p class="lead">{{ view.reason }}</p>
+      <ol class="rules">
+        {% for r in verdict_rules %}
+        <li class="rules__r{% if loop.index == view.rule_applied %} is-hit rules__r--{{ case.verdict.value|lower }}{% endif %}"><span class="mono">{{ loop.index }}</span>{{ r }}{% if loop.index == view.rule_applied %}<span class="sr-only"> (this rule decided)</span><span class="rules__dot" aria-hidden="true">●</span>{% endif %}</li>
+        {% endfor %}
+      </ol>
+    </div>
+
+    <a class="card card--link {% if replay.match %}card--pass{% else %}card--fail{% endif %}" href="/cases/{{ case.summary.bundle_hash }}/replay">
+      <span class="iconbox {% if replay.match %}iconbox--pass{% else %}iconbox--fail{% endif %}" aria-hidden="true">{{ '✓' if replay.match else '✕' }}</span>
+      <span class="stack">
+        <span class="strong">Replay: {{ 'MATCH' if replay.match else ('REFUSED' if replay.refused else 'MISMATCH') }}</span>
+        <span class="small muted">{{ 'Recomputed offline, same verdict hash' if replay.match else replay.message }}</span>
+      </span>
+      <span aria-hidden="true" class="muted push">→</span>
+    </a>
+
+    <div class="card">
+      <h2 class="label">Requirement{{ 's' if view.requirements|length != 1 else '' }}</h2>
+      {% for key, n, approved in view.requirements %}
+      <a class="req" href="/cases/{{ case.summary.bundle_hash }}/requirements/{{ key|urlencode }}">
+        <span class="stack"><span class="mono strong key">{{ key }}</span><span class="small muted">{{ n }} version{{ '' if n == 1 else 's' }} · latest {{ 'approved' if approved else 'not approved' }}</span></span>
+        <span class="small key">Timeline →</span>
+      </a>
+      {% else %}
+      <p class="small muted">No Jira key was found in the branch, PR or commits.</p>
+      {% endfor %}
+    </div>
+
+    <div class="card">
+      <h2 class="label">Evidence bundle</h2>
+      <div class="kpis">
+        {% for name, n in view.evidence_counts.items() %}
+        <div class="kpi"><span class="kpi__n mono">{{ n }}</span><span class="small muted">{{ name }}</span></div>
+        {% endfor %}
+      </div>
+      <div class="cmd cmd--light"><code class="mono ellipsis">{{ case.summary.bundle_hash }}</code><button type="button" class="btn-ghost" data-copy="{{ case.summary.bundle_hash }}" aria-label="Copy bundle hash">Copy</button></div>
+      <p class="small muted">Ruleset <span class="mono">{{ case.verdict.ruleset_version }}</span></p>
+    </div>
+
+    {% if view.notes %}
+    <div class="card">
+      <h2 class="label">Collection notes</h2>
+      <ul class="notes">{% for n in view.notes %}<li>{{ n }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+  </aside>
+</main>
+{% endblock %}
