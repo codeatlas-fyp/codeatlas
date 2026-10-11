@@ -1,0 +1,5 @@
+{
+  "login_map": {"YusraM-100": "user-01", "areej8": "user-02"},
+  "email_map": {"yusra@example.com": "user-01@example.test"},
+  "account_map": {}
+}
