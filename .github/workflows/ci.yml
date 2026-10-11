@@ -49,3 +49,33 @@ jobs:
         with:
           name: coverage-xml
           path: coverage.xml
+
+  # Builds the deployable image on every PR and smoke-tests the running container, so a change
+  # that breaks the Dockerfile or the service is caught before it reaches main (spec §12).
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: codeatlas:ci
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test the container
+        run: |
+          docker run -d --name codeatlas -p 8000:8000 codeatlas:ci
+          python3 scripts/smoke_test.py http://127.0.0.1:8000 --commit "${{ github.sha }}"
+
+      - name: Container logs and size
+        if: always()
+        run: |
+          docker logs codeatlas || true
+          docker image ls codeatlas:ci

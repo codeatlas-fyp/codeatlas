@@ -34,7 +34,9 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
 
     @application.get("/health")
     def health() -> dict[str, str]:
-        return {"status": "ok", "version": __version__}
+        # `commit` is the git SHA the image was built from (Dockerfile ARG GIT_SHA), so the
+        # CD smoke test can prove the live service runs the build it just deployed.
+        return {"status": "ok", "version": __version__, "commit": settings.commit}
 
     @application.exception_handler(CaseError)
     async def case_error(request: Request, error: Exception) -> Response:

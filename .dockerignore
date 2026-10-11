@@ -1,11 +1,24 @@
 .git
 .venv
 .github
-tests
 docs
 web
+demo
+config
+tools
 **/__pycache__
 .pytest_cache
 .ruff_cache
 .mypy_cache
 coverage.xml
+
+# Never bake local data or secrets into the image.
+.env
+.env.*
+*.pem
+*.key
+bundles
+
+# Tests stay out, except the fixture bundles the image serves as demo data.
+tests/**
+!tests/fixtures/bundles/**
