@@ -1,0 +1,61 @@
+{% macro stamp(verdict, big=false) -%}
+{%- set v = verdict or 'CORRUPT' -%}
+<span class="stamp stamp--{{ v|lower }}{% if big %} stamp--big{% endif %}">{{ v }}</span>
+{%- endmacro %}
+
+{% macro findings(f) -%}
+<span class="findings">
+{%- for name in ['PASS', 'FAIL', 'REVIEW', 'UNKNOWN'] -%}
+  {%- set n = f[name] -%}
+  {%- if n %}<span class="finding finding--{{ name|lower }}">{{ n }} {{ name }}</span>{% endif -%}
+{%- endfor -%}
+</span>
+{%- endmacro %}
+
+{% macro evidence_chip(e) -%}
+{%- if e.href -%}
+<a class="ev" href="{{ e.href }}" rel="noopener noreferrer" target="_blank" title="{{ e.evidence_id }}"><span class="ev__kind ev__kind--{{ e.kind|lower }}">{{ e.kind }}</span><span class="mono">{{ e.ref }}</span><span class="ev__note">{{ e.note }}</span></a>
+{%- else -%}
+<span class="ev" title="{{ e.evidence_id }}"><span class="ev__kind ev__kind--{{ e.kind|lower }}">{{ e.kind }}</span><span class="mono">{{ e.ref }}</span><span class="ev__note">{{ e.note }}</span></span>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro case_header(case, tab, replay, bundle_hash=None, key='') -%}
+{%- set h = case.summary.bundle_hash if case else bundle_hash -%}
+<div class="casehead">
+  <div class="wrap casehead__inner">
+    <nav aria-label="Breadcrumb" class="crumbs"><a href="/">Cases</a><span aria-hidden="true">/</span><span class="mono">{{ short(h, 8) }}</span></nav>
+    <div class="casehead__title">
+      {{ stamp(case.summary.verdict if case else None, big=true) }}
+      <h1>
+        {%- if case -%}
+          {%- for k in case.summary.keys %}<span class="mono key">{{ k }}</span>{% if not loop.last %}, {% endif %}{% endfor %}
+          {%- if case.summary.keys %} · {% endif %}{{ case.summary.title or ('PR #' ~ case.summary.pr_number) }}
+        {%- else -%}
+          Bundle <span class="mono">{{ short(h, 8) }}</span>
+        {%- endif -%}
+      </h1>
+    </div>
+    {% if case %}
+    <p class="casehead__meta">
+      <span>{{ case.summary.repo }} · PR <span class="mono">#{{ case.summary.pr_number }}</span></span>
+      {% if case.summary.author_login %}<span>by <strong>{{ case.summary.author_login }}</strong></span>{% endif %}
+      <span>head <span class="mono">{{ short(case.bundle.change.head_sha) }}</span> → base <span class="mono">{{ short(case.bundle.change.base_sha) }}</span></span>
+      <span>evaluated {{ fmt_time(case.summary.evaluated_at) }}</span>
+    </p>
+    {% endif %}
+    <nav aria-label="Case sections" class="tabs">
+      {% if case %}
+      <a href="/cases/{{ h }}" class="tabs__a{% if tab == 'overview' %} is-active{% endif %}"{% if tab == 'overview' %} aria-current="page"{% endif %}>Overview</a>
+      {% for k in case.summary.keys %}
+      <a href="/cases/{{ h }}/requirements/{{ k|urlencode }}" class="tabs__a{% if tab == 'timeline' and key == k %} is-active{% endif %}"{% if tab == 'timeline' and key == k %} aria-current="page"{% endif %}>Timeline{% if case.summary.keys|length > 1 %} · {{ k }}{% endif %}</a>
+      {% endfor %}
+      <a href="/cases/{{ h }}/links" class="tabs__a{% if tab == 'links' %} is-active{% endif %}"{% if tab == 'links' %} aria-current="page"{% endif %}>Trace links</a>
+      {% endif %}
+      <a href="/cases/{{ h }}/replay" class="tabs__a{% if tab == 'replay' %} is-active{% endif %}"{% if tab == 'replay' %} aria-current="page"{% endif %}>Replay
+        {% if replay.match %}<span class="tag tag--pass">MATCH</span>{% elif replay.refused %}<span class="tag tag--fail">REFUSED</span>{% else %}<span class="tag tag--fail">MISMATCH</span>{% endif %}
+      </a>
+    </nav>
+  </div>
+</div>
+{%- endmacro %}
