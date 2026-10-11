@@ -184,7 +184,10 @@ def test_ac8_passing_bundle_exits_0(tmp_path: Path) -> None:
     from tests.unit.test_rules import approval, bundle, edit, facts
 
     passing = bundle(
-        lifecycle=[facts(approvals=[approval(5)], edits=[3])], edits=[edit(3)], commits=[10]
+        lifecycle=[facts(approvals=[approval(5)], edits=[3])],
+        edits=[edit(3)],
+        commits=[10],
+        governance_changes=[],
     )
     hash_ = BundleStore(tmp_path).save(passing)
 
