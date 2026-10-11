@@ -188,6 +188,7 @@ def test_ac8_passing_bundle_exits_0(tmp_path: Path) -> None:
         edits=[edit(3)],
         commits=[10],
         governance_changes=[],
+        changed=[],
     )
     hash_ = BundleStore(tmp_path).save(passing)
 
