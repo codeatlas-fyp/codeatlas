@@ -159,6 +159,7 @@ def bundle(
     notes: list[str] | None = None,
     policy: Any = POLICY,
     governance_changes: list[Any] | None = None,
+    changed: list[Any] | None = None,
 ) -> EvidenceBundle:
     return BUNDLE.model_copy(
         update={
@@ -172,6 +173,7 @@ def bundle(
             "governance_changes": (
                 governance_changes if governance_changes is not None else BUNDLE.governance_changes
             ),
+            "changed": changed if changed is not None else BUNDLE.changed,
         }
     )
 
@@ -400,7 +402,10 @@ def test_policy_overrides_severity() -> None:
 def test_ac3_no_work_item_verdict_unknown() -> None:
     # C2 fires on any governance_change regardless of work items, so this test
     # needs an explicit empty override to isolate the no-work-item scenario.
-    verdict = evaluate_bundle(bundle(keys=(), governance_changes=[]), "a" * 64)
+    verdict = evaluate_bundle(
+        bundle(keys=(), governance_changes=[], changed=[]),
+        "a" * 64,
+    )
 
     assert verdict.value == "UNKNOWN"
     # Work-item-dependent rules must not be satisfied without a work item.
@@ -423,6 +428,7 @@ def test_ac6_default_rules() -> None:
         "C6",
         "C7",
         "C8",
+        "C9",
     ]
 
 
