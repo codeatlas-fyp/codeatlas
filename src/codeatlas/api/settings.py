@@ -18,3 +18,5 @@ class WebSettings(BaseSettings):
     # HTTP basic auth is on only when both are set (the deployed demo sets them).
     web_user: str | None = None
     web_password: SecretStr | None = None
+    # Git SHA of the running build; the Dockerfile sets it from the GIT_SHA build arg.
+    commit: str = "unknown"
