@@ -158,6 +158,7 @@ def bundle(
     resolved: bool = True,
     notes: list[str] | None = None,
     policy: Any = POLICY,
+    governance_changes: list[Any] | None = None,
 ) -> EvidenceBundle:
     return BUNDLE.model_copy(
         update={
@@ -168,6 +169,9 @@ def bundle(
             "commits": [commit(m) for m in (commits or [])],
             "collection_notes": notes or [],
             "policy": policy,
+            "governance_changes": (
+                governance_changes if governance_changes is not None else BUNDLE.governance_changes
+            ),
         }
     )
 
@@ -394,10 +398,14 @@ def test_policy_overrides_severity() -> None:
 
 
 def test_ac3_no_work_item_verdict_unknown() -> None:
-    verdict = evaluate_bundle(bundle(keys=()), "a" * 64)
+    # C2 fires on any governance_change regardless of work items, so this test
+    # needs an explicit empty override to isolate the no-work-item scenario.
+    verdict = evaluate_bundle(bundle(keys=(), governance_changes=[]), "a" * 64)
 
     assert verdict.value == "UNKNOWN"
-    assert all(r.outcome != "SATISFIED" for r in verdict.results)
+    # Work-item-dependent rules must not be satisfied without a work item.
+    work_item_rules = [r for r in verdict.results if r.case in ("C1", "C3", "C6", "C7", "C8")]
+    assert all(r.outcome != "SATISFIED" for r in work_item_rules)
     phase1 = [r for r in verdict.results if r.case in ("C1", "C3", "C6", "C8")]
     assert len(phase1) == 4
     assert all("no work item" in r.message for r in phase1)
@@ -407,7 +415,15 @@ def test_ac3_no_work_item_verdict_unknown() -> None:
 
 
 def test_ac6_default_rules() -> None:
-    assert sorted(rule.case for rule in default_rules()) == ["C1", "C3", "C6", "C7", "C8"]
+    assert sorted(rule.case for rule in default_rules()) == [
+        "C1",
+        "C2",
+        "C3",
+        "C5",
+        "C6",
+        "C7",
+        "C8",
+    ]
 
 
 @pytest.mark.parametrize("rule", [C1, C3, C6, C7, C8], ids=lambda r: r.case)
