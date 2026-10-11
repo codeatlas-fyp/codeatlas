@@ -29,10 +29,12 @@ FIXTURE = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "repos" /
 
 
 def _dummy_banner(what: str) -> None:
-    CONSOLE.print(Panel.fit(
-        f"[yellow][DUMMY — not Yusra's part][/yellow]\n{what}",
-        border_style="yellow",
-    ))
+    CONSOLE.print(
+        Panel.fit(
+            f"[yellow][DUMMY — not Yusra's part][/yellow]\n{what}",
+            border_style="yellow",
+        )
+    )
 
 
 def _parse_args() -> argparse.Namespace:
@@ -49,7 +51,8 @@ def _render_entities(file_path: str, entities: list) -> None:
     table.add_column("docstring", overflow="fold")
     for entity in entities:
         table.add_row(
-            entity.entity_id, entity.kind,
+            entity.entity_id,
+            entity.kind,
             f"{entity.start_line}-{entity.end_line}",
             (entity.docstring or "")[:60],
         )
@@ -95,10 +98,12 @@ def main() -> None:
     source = target.read_bytes()
     file_path = str(target.relative_to(FIXTURE))
 
-    CONSOLE.print(Panel.fit(
-        f"[bold]Analysing {file_path}[/bold] ({len(source)} bytes)",
-        border_style="cyan",
-    ))
+    CONSOLE.print(
+        Panel.fit(
+            f"[bold]Analysing {file_path}[/bold] ({len(source)} bytes)",
+            border_style="cyan",
+        )
+    )
 
     entities = extract_entities(file_path=file_path, source=source)
     _render_entities(file_path, entities)
@@ -114,9 +119,12 @@ def main() -> None:
         "In production, Branch 2's LocalRepo.diff_hunks() provides these."
     )
     changed = map_hunks_to_entities(
-        file_path=file_path, entities=entities,
-        hunk_lines=sim_hunks, change_type="modified",
-        commit_shas=["abc123"], retrieved_at=datetime.now(UTC),
+        file_path=file_path,
+        entities=entities,
+        hunk_lines=sim_hunks,
+        change_type="modified",
+        commit_shas=["abc123"],
+        retrieved_at=datetime.now(UTC),
     )
     _render_mapping(file_path, changed)
 

@@ -9,6 +9,7 @@ import pytest
 try:
     import tree_sitter  # noqa: F401
     import tree_sitter_python  # noqa: F401
+
     _HAS_TREE_SITTER = True
 except ImportError:
     _HAS_TREE_SITTER = False
@@ -51,9 +52,7 @@ def _private_helper():
     pass
 '''
 
-skipif_no_tree_sitter = pytest.mark.skipif(
-    not _HAS_TREE_SITTER, reason="tree-sitter not installed"
-)
+skipif_no_tree_sitter = pytest.mark.skipif(not _HAS_TREE_SITTER, reason="tree-sitter not installed")
 
 
 @skipif_no_tree_sitter
@@ -95,7 +94,9 @@ def test_extract_entities_captures_docstrings() -> None:
 @skipif_no_tree_sitter
 def test_module_prefix_prepended() -> None:
     entities = extract_entities(
-        file_path="payments/fees.py", source=SIMPLE_PY, module_prefix="codeatlas",
+        file_path="payments/fees.py",
+        source=SIMPLE_PY,
+        module_prefix="codeatlas",
     )
     assert any(e.entity_id == "codeatlas.payments.fees" for e in entities)
     assert any(e.entity_id == "codeatlas.payments.fees.top_level_fn" for e in entities)
@@ -168,7 +169,7 @@ def test_unresolved_mapping_does_not_crash_without_tree_sitter() -> None:
 @skipif_no_tree_sitter
 def test_build_import_graph_finds_both_import_forms() -> None:
     """`import X` and `from X import Y` both emit IMPORTS edges."""
-    source = b'''\
+    source = b"""\
 import json
 import os.path
 from pathlib import Path
@@ -176,7 +177,7 @@ from collections import defaultdict, Counter
 
 def f():
     pass
-'''
+"""
     entities = extract_entities(file_path="demo.py", source=source)
     edges = build_import_graph(entities=entities, file_sources={"demo.py": source})
 
@@ -189,10 +190,10 @@ def f():
 
 @skipif_no_tree_sitter
 def test_build_import_graph_deduplicates_identical_edges() -> None:
-    source = b'''\
+    source = b"""\
 import json
 import json
-'''
+"""
     entities = extract_entities(file_path="demo.py", source=source)
     edges = build_import_graph(entities=entities, file_sources={"demo.py": source})
     assert len([e for e in edges if e.dst == "json"]) == 1
@@ -201,22 +202,22 @@ import json
 @skipif_no_tree_sitter
 def test_build_import_graph_resolves_relative_imports() -> None:
     """Relative imports resolve to the from-package, not imported names."""
-    source = b'''\
+    source = b"""\
 from . import sibling
 from ..parent_pkg import something
 from .utils import helper
-'''
+"""
     entities = extract_entities(
-        file_path="pkg/subpkg/mod.py", source=source,
+        file_path="pkg/subpkg/mod.py",
+        source=source,
     )
     edges = build_import_graph(
-        entities=entities, file_sources={"pkg/subpkg/mod.py": source},
+        entities=entities,
+        file_sources={"pkg/subpkg/mod.py": source},
     )
     dests = {e.dst for e in edges if e.kind == "IMPORTS"}
     assert any("subpkg" in d for d in dests), f"expected a dest in subpkg, got {dests}"
-    assert any("parent_pkg" in d for d in dests), (
-        f"expected a dest with parent_pkg, got {dests}"
-    )
+    assert any("parent_pkg" in d for d in dests), f"expected a dest with parent_pkg, got {dests}"
 
 
 @skipif_no_tree_sitter

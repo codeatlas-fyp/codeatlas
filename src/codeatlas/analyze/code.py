@@ -29,7 +29,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import PurePosixPath
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
 from codeatlas.schema import ChangedEntity, CodeEdge, CodeEntity
 
@@ -41,6 +41,7 @@ _PY_MODULE_SUFFIXES = (".py",)
 
 
 # ---- entity extraction ---------------------------------------------------
+
 
 @dataclass(frozen=True)
 class _ParsedEntity:
@@ -56,10 +57,10 @@ class _ParsedEntity:
     end_line: int
     signature: str | None
     docstring: str | None
-    children: tuple["_ParsedEntity", ...]
+    children: tuple[_ParsedEntity, ...]
 
 
-def _tree_sitter_language() -> "tree_sitter.Language":
+def _tree_sitter_language() -> tree_sitter.Language:
     """Load the Python grammar. Import inline so tests without tree-sitter can skip."""
     import tree_sitter
     import tree_sitter_python
@@ -67,7 +68,7 @@ def _tree_sitter_language() -> "tree_sitter.Language":
     return tree_sitter.Language(tree_sitter_python.language())
 
 
-def _parser() -> "tree_sitter.Parser":
+def _parser() -> tree_sitter.Parser:
     import tree_sitter
 
     return tree_sitter.Parser(_tree_sitter_language())
@@ -119,7 +120,7 @@ def extract_entities(
 
 def _walk(
     *,
-    node: "tree_sitter.Node",
+    node: tree_sitter.Node,
     source: bytes,
     file_path: str,
     qualifier: str,
@@ -157,7 +158,7 @@ def _walk(
             out.append(
                 CodeEntity(
                     entity_id=fqn,
-                    kind=kind,
+                    kind=cast('Literal["module", "class", "function", "method"]', kind),
                     file=file_path,
                     start_line=child.start_point[0] + 1,
                     end_line=child.end_point[0] + 1,
@@ -171,32 +172,32 @@ def _walk(
     return out
 
 
-def _identifier(node: "tree_sitter.Node", source: bytes) -> str | None:
+def _identifier(node: tree_sitter.Node, source: bytes) -> str | None:
     name = node.child_by_field_name("name")
     if name is None:
         return None
-    return source[name.start_byte:name.end_byte].decode("utf-8", errors="replace")
+    return source[name.start_byte : name.end_byte].decode("utf-8", errors="replace")
 
 
-def _signature(node: "tree_sitter.Node", source: bytes) -> str | None:
+def _signature(node: tree_sitter.Node, source: bytes) -> str | None:
     """Return `def name(params) -> ret` as a single line, or None if we can't."""
     name_node = node.child_by_field_name("name")
     params_node = node.child_by_field_name("parameters")
     returns_node = node.child_by_field_name("return_type")
     if name_node is None or params_node is None:
         return None
-    name = source[name_node.start_byte:name_node.end_byte].decode("utf-8", errors="replace")
-    params = source[params_node.start_byte:params_node.end_byte].decode("utf-8", errors="replace")
+    name = source[name_node.start_byte : name_node.end_byte].decode("utf-8", errors="replace")
+    params = source[params_node.start_byte : params_node.end_byte].decode("utf-8", errors="replace")
     ret = ""
     if returns_node is not None:
-        ret_text = source[returns_node.start_byte:returns_node.end_byte].decode(
+        ret_text = source[returns_node.start_byte : returns_node.end_byte].decode(
             "utf-8", errors="replace"
         )
         ret = f" -> {ret_text}"
     return f"def {name}{params}{ret}"
 
 
-def _docstring_of(node: "tree_sitter.Node", source: bytes) -> str | None:
+def _docstring_of(node: tree_sitter.Node, source: bytes) -> str | None:
     body = node.child_by_field_name("body")
     if body is None or len(body.children) == 0:
         return None
@@ -206,18 +207,16 @@ def _docstring_of(node: "tree_sitter.Node", source: bytes) -> str | None:
     inner = first.children[0] if first.children else None
     if inner is None or inner.type != "string":
         return None
-    text = source[inner.start_byte:inner.end_byte].decode("utf-8", errors="replace")
+    text = source[inner.start_byte : inner.end_byte].decode("utf-8", errors="replace")
     return _strip_quotes(text)
 
 
-def _module_docstring(root: "tree_sitter.Node", source: bytes) -> str | None:
+def _module_docstring(root: tree_sitter.Node, source: bytes) -> str | None:
     for child in root.children:
         if child.type == "expression_statement":
             inner = child.children[0] if child.children else None
             if inner is not None and inner.type == "string":
-                text = source[inner.start_byte:inner.end_byte].decode(
-                    "utf-8", errors="replace"
-                )
+                text = source[inner.start_byte : inner.end_byte].decode("utf-8", errors="replace")
                 return _strip_quotes(text)
         if child.type not in ("comment", "expression_statement"):
             # First non-comment, non-string statement — no module docstring.
@@ -274,6 +273,7 @@ def _fallback_module_only_entity(file_path: str, source: bytes) -> list[CodeEnti
 
 
 # ---- hunk → entity mapping ----------------------------------------------
+
 
 def map_hunks_to_entities(
     *,
@@ -381,7 +381,6 @@ def build_import_graph(
     text-visible — unlike CALLS which require call-graph analysis we deferred.
     """
     module_entities = [e for e in entities if e.kind == "module"]
-    module_lookup = {e.file: e.entity_id for e in module_entities}
 
     edges: list[CodeEdge] = []
     for module in module_entities:
