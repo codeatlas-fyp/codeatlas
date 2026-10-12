@@ -1,0 +1,92 @@
+[
+  {
+    "id": "10093",
+    "author": {
+      "self": "https://example.atlassian.net/rest/api/3/user?accountId=user-01",
+      "accountId": "user-01",
+      "emailAddress": "user-01@example.test",
+      "avatarUrls": {
+        "48x48": "https://example.atlassian.net/avatar/user-01/48x48",
+        "24x24": "https://example.atlassian.net/avatar/user-01/24x24",
+        "16x16": "https://example.atlassian.net/avatar/user-01/16x16",
+        "32x32": "https://example.atlassian.net/avatar/user-01/32x32"
+      },
+      "displayName": "User 01",
+      "active": true,
+      "timeZone": "Asia/Karachi",
+      "accountType": "atlassian"
+    },
+    "created": "2026-10-07T16:27:48.950+0500",
+    "items": [
+      {
+        "field": "description",
+        "fieldtype": "jira",
+        "fieldId": "description",
+        "from": null,
+        "fromString": "As a visitor, I want to register as a member so that I can borrow books.\n\nh2. Acceptance criteria\n\n# Given a name and an email, when a visitor registers, then a member account is created.",
+        "to": null,
+        "toString": "As a visitor, I want to register as a member so that I can borrow books.\n\nh2. Acceptance criteria\n\n# Given a name and an email, when a visitor registers, then a member account is created.\n# Given an email that is already registered, when a visitor registers with it, then the request is rejected with error EMAIL_TAKEN."
+      }
+    ]
+  },
+  {
+    "id": "10094",
+    "author": {
+      "self": "https://example.atlassian.net/rest/api/3/user?accountId=user-01",
+      "accountId": "user-01",
+      "emailAddress": "user-01@example.test",
+      "avatarUrls": {
+        "48x48": "https://example.atlassian.net/avatar/user-01/48x48",
+        "24x24": "https://example.atlassian.net/avatar/user-01/24x24",
+        "16x16": "https://example.atlassian.net/avatar/user-01/16x16",
+        "32x32": "https://example.atlassian.net/avatar/user-01/32x32"
+      },
+      "displayName": "User 01",
+      "active": true,
+      "timeZone": "Asia/Karachi",
+      "accountType": "atlassian"
+    },
+    "created": "2026-10-07T16:27:52.763+0500",
+    "items": [
+      {
+        "field": "description",
+        "fieldtype": "jira",
+        "fieldId": "description",
+        "from": null,
+        "fromString": "As a visitor, I want to register as a member so that I can borrow books.\n\nh2. Acceptance criteria\n\n# Given a name and an email, when a visitor registers, then a member account is created.\n# Given an email that is already registered, when a visitor registers with it, then the request is rejected with error EMAIL_TAKEN.",
+        "to": null,
+        "toString": "As a visitor, I want to register as a member so that I can borrow books.\n\nh2. Acceptance criteria\n\n# Given a name, an email and a password of at least 8 characters, when a visitor registers, then a member account is created.\n# Given an email that is already registered, when a visitor registers with it, then the request is rejected with error EMAIL_TAKEN."
+      }
+    ]
+  },
+  {
+    "id": "10095",
+    "author": {
+      "self": "https://example.atlassian.net/rest/api/3/user?accountId=user-01",
+      "accountId": "user-01",
+      "emailAddress": "user-01@example.test",
+      "avatarUrls": {
+        "48x48": "https://example.atlassian.net/avatar/user-01/48x48",
+        "24x24": "https://example.atlassian.net/avatar/user-01/24x24",
+        "16x16": "https://example.atlassian.net/avatar/user-01/16x16",
+        "32x32": "https://example.atlassian.net/avatar/user-01/32x32"
+      },
+      "displayName": "User 01",
+      "active": true,
+      "timeZone": "Asia/Karachi",
+      "accountType": "atlassian"
+    },
+    "created": "2026-10-07T16:27:56.749+0500",
+    "items": [
+      {
+        "field": "description",
+        "fieldtype": "jira",
+        "fieldId": "description",
+        "from": null,
+        "fromString": "As a visitor, I want to register as a member so that I can borrow books.\n\nh2. Acceptance criteria\n\n# Given a name, an email and a password of at least 8 characters, when a visitor registers, then a member account is created.\n# Given an email that is already registered, when a visitor registers with it, then the request is rejected with error EMAIL_TAKEN.",
+        "to": null,
+        "toString": "As a visitor, I want to register as a member so that I can borrow books.\n\nh2. Acceptance criteria\n\n# Given a name, an email and a password of at least 8 characters, when a visitor registers, then a member account is created and a confirmation email is sent.\n# Given an email that is already registered, when a visitor registers with it, then the request is rejected with error EMAIL_TAKEN.\n# Given a password shorter than 8 characters, then the request is rejected with error WEAK_PASSWORD."
+      }
+    ]
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "sha": "headsha0000000000000000000000000000000002",
+    "commit": {
+      "message": "chore(ownership): transfer loans.py ownership (SBX-5)",
+      "author": {"name": "user-01", "email": "user-01@example.test", "date": "2026-10-08T11:15:00Z"},
+      "committer": {"name": "user-01", "email": "user-01@example.test", "date": "2026-10-08T11:15:00Z"}
+    },
+    "author": {"login": "user-01"},
+    "committer": {"login": "user-01"}
+  }
+]

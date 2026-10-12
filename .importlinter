@@ -13,17 +13,23 @@ type = forbidden
 source_modules =
     codeatlas.evaluate
 forbidden_modules =
+    codeatlas.errors
     codeatlas.collect
     codeatlas.analyze
     codeatlas.bundle
     codeatlas.api
+    codeatlas.web
     codeatlas.cli
+    codeatlas.pipeline
+    codeatlas.config
+    codeatlas.logging
 
 [importlinter:contract:api-reads-bundles-only]
-name = K2: api does not import collect
+name = K2: api and web do not import collect
 type = forbidden
 source_modules =
     codeatlas.api
+    codeatlas.web
 forbidden_modules =
     codeatlas.collect
 
@@ -36,6 +42,7 @@ source_modules =
     codeatlas.bundle
     codeatlas.evaluate
     codeatlas.api
+    codeatlas.web
 forbidden_modules =
     httpx
     githubkit
@@ -47,9 +54,14 @@ type = forbidden
 source_modules =
     codeatlas.schema
 forbidden_modules =
+    codeatlas.errors
     codeatlas.collect
     codeatlas.analyze
     codeatlas.bundle
     codeatlas.evaluate
     codeatlas.api
+    codeatlas.web
     codeatlas.cli
+    codeatlas.pipeline
+    codeatlas.config
+    codeatlas.logging

@@ -1,0 +1,196 @@
+name: cd
+
+# Continuous delivery (spec §12). Runs after code reaches main (merged PR) and on version tags.
+#   1. build   - build the image once, smoke-test the container inside Actions, push to GHCR.
+#   2. deploy  - (needs approval in the `production` environment) tell Render to pull the new
+#                image, then run the same smoke test against the live URL.
+#   3. release - on a v* tag only: a GitHub Release pointing at the exact image digest.
+# If Render is not set up yet (no RENDER_DEPLOY_HOOK secret), `deploy` is skipped and the
+# in-Actions container smoke test in `build` is the deployment evidence.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
+      digest: ${{ steps.push.outputs.digest }}
+      version: ${{ steps.ref.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image name and app version
+        id: ref
+        run: |
+          image="$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')"
+          version="$(grep -oP '__version__ = "\K[^"]+' src/codeatlas/__init__.py)"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: A v* tag must match the app version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          case "$tag" in
+            "${{ steps.ref.outputs.version }}"|"${{ steps.ref.outputs.version }}"-*) ;;
+            *) echo "::error::tag $GITHUB_REF_NAME does not match __version__ ${{ steps.ref.outputs.version }}"; exit 1 ;;
+          esac
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Tags for this image
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.ref.outputs.image }}
+          tags: |
+            type=sha,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=tag
+
+      - name: Build (load locally for the smoke test)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: codeatlas:smoke
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test the container inside Actions
+        run: |
+          docker run -d --name codeatlas -p 8000:8000 codeatlas:smoke
+          python3 scripts/smoke_test.py http://127.0.0.1:8000 \
+            --version "${{ steps.ref.outputs.version }}" --commit "${{ github.sha }}"
+
+      - name: Smoke test with basic auth on (as on Render)
+        env:
+          SMOKE_USER: ci-user
+          SMOKE_PASSWORD: ci-only-password
+        run: |
+          docker run -d --name codeatlas-auth -p 8001:9000 -e PORT=9000 \
+            -e CODEATLAS_WEB_USER="$SMOKE_USER" -e CODEATLAS_WEB_PASSWORD="$SMOKE_PASSWORD" \
+            codeatlas:smoke
+          python3 scripts/smoke_test.py http://127.0.0.1:8001 --commit "${{ github.sha }}"
+
+      - name: Container logs
+        if: always()
+        run: |
+          docker logs codeatlas || true
+          docker logs codeatlas-auth || true
+          docker image ls codeatlas:smoke
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push to GHCR (reuses the cached layers, so the same image)
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: GIT_SHA=${{ github.sha }}
+          cache-from: type=gha
+
+      - name: Summary
+        run: |
+          {
+            echo "### Image pushed"
+            echo ""
+            echo "- Image: \`${{ steps.ref.outputs.image }}\`"
+            echo "- Digest: \`${{ steps.push.outputs.digest }}\`"
+            echo "- Version: ${{ steps.ref.outputs.version }}, commit \`${{ github.sha }}\`"
+            echo "- Container smoke test inside Actions: passed (with and without basic auth)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.APP_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Render is configured
+        id: cfg
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          if [ -z "$HOOK" ] || [ -z "$APP_URL" ]; then
+            echo "Render not configured (RENDER_DEPLOY_HOOK secret / APP_URL variable missing)."
+            echo "The container smoke test in the build job is the deployment evidence."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Trigger Render deploy of this exact image
+        if: steps.cfg.outputs.ready == 'true'
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          IMAGE_REF: ${{ needs.build.outputs.image }}:sha-${{ github.sha }}
+        run: |
+          # The hook URL is a secret: never echo it. imgURL pins the image built from this commit.
+          code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+            --get --data-urlencode "imgURL=$IMAGE_REF" "$HOOK")"
+          echo "Render answered HTTP $code for $IMAGE_REF"
+          test "$code" -ge 200 && test "$code" -lt 300
+
+      - name: Smoke test the live site
+        if: steps.cfg.outputs.ready == 'true'
+        env:
+          SMOKE_USER: ${{ secrets.DEMO_USER }}
+          SMOKE_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
+        # Render's free tier can take a few minutes to pull and start: poll up to ~10 min.
+        run: >
+          python3 scripts/smoke_test.py "${{ vars.APP_URL }}"
+          --version "${{ needs.build.outputs.version }}"
+          --commit "${{ github.sha }}"
+          --attempts 60 --delay 10
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_REF: ${{ needs.build.outputs.image }}@${{ needs.build.outputs.digest }}
+        run: |
+          prerelease=""
+          case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --title "CodeAtlas $GITHUB_REF_NAME" --generate-notes $prerelease \
+            --notes "Container image: \`$IMAGE_REF\`
+
+          Run it: \`docker run -p 8000:8000 $IMAGE_REF\` then open http://localhost:8000"

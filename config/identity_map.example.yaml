@@ -1,0 +1,9 @@
+# Example .codeatlas/identity_map.yaml: git emails and GitHub logins to Jira account ids.
+# Fake values only (spec §8).
+people:
+  - jira_account_id: user-01
+    github_login: user-01
+    git_emails: [user-01@example.test]
+  - jira_account_id: user-02
+    github_login: user-02
+    git_emails: [user-02@example.test]

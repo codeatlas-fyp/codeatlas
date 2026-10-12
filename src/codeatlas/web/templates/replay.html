@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "_macros.html" import case_header %}
+{% block title %}Replay{% endblock %}
+{% block body %}
+{{ case_header(case, tab, replay, bundle_hash=bundle_hash) }}
+{% set o = view.outcome %}
+{% set state = 'pass' if o.match else 'fail' %}
+<main class="wrap page stackpage">
+  <section class="hero hero--{{ state }}" aria-live="polite">
+    <span class="hero__icon" aria-hidden="true">{{ '✓' if o.match else '✕' }}</span>
+    <div class="stack grow">
+      <span class="label hero__kicker">{{ 'Replay result' if not o.refused else 'Replay refused' }}</span>
+      <span class="hero__title">
+        {%- if o.match %}MATCH: same verdict, same hash
+        {%- elif o.refused %}REFUSED: the stored files fail their integrity check
+        {%- else %}MISMATCH: recomputing gives a different verdict{% endif -%}
+      </span>
+      <span class="hero__text">
+        {%- if o.match %}Recomputing from the frozen evidence gives exactly the stored verdict{% if case %} ({{ case.verdict.value }}){% endif %}. Nothing was fetched from Jira or GitHub.
+        {%- else %}{{ o.message }}{% endif -%}
+      </span>
+    </div>
+    <a class="btn-dark" href="/cases/{{ bundle_hash }}/replay">Run replay again</a>
+  </section>
+
+  <div class="split">
+    <section class="card split__side" aria-labelledby="steps-h">
+      <h2 id="steps-h" class="label">What replay does</h2>
+      <ol class="steps">
+        <li class="steps__s steps__s--{{ 'fail' if o.refused else 'ok' }}"><span class="steps__dot" aria-hidden="true">{{ '✕' if o.refused else '✓' }}</span><span class="stack"><span class="strong">Load the stored bundle and check its hash</span><span class="small muted">{{ 'Failed: ' ~ o.message if o.refused else 'SHA-256 of the canonical bytes equals the folder name' }}</span></span></li>
+        <li class="steps__s steps__s--{{ 'skip' if o.refused else 'ok' }}"><span class="steps__dot" aria-hidden="true">{{ '–' if o.refused else '✓' }}</span><span class="stack"><span class="strong">Re-run every rule offline</span><span class="small muted">{{ 'Skipped: the evidence cannot be trusted' if o.refused else 'Same rules, same evidence, no Jira or GitHub calls' }}</span></span></li>
+        <li class="steps__s steps__s--{{ 'skip' if o.refused else ('ok' if o.match else 'fail') }}"><span class="steps__dot" aria-hidden="true">{{ '–' if o.refused else ('✓' if o.match else '✕') }}</span><span class="stack"><span class="strong">Compare verdict hashes</span><span class="small muted">{{ 'Skipped' if o.refused else ('Stored and recomputed are identical' if o.match else 'They differ') }}</span></span></li>
+      </ol>
+      <div class="term mono small">
+        <span class="muted-dark">Same check from the CLI</span>
+        <span><span class="prompt">$</span> uv run codeatlas replay bundles/{{ short(bundle_hash, 8) }}…</span>
+        <span class="{{ 'term--ok' if o.match else 'term--bad' }}">{{ 'match       yes' if o.match else ('error (ReplayMismatchError), exit 5' if o.refused else 'verdict_hash differs, exit 5') }}</span>
+      </div>
+    </section>
+
+    <section class="card card--pad split__main" aria-labelledby="hash-h">
+      <h2 id="hash-h" class="h-md">Verdict hash: stored vs recomputed</h2>
+      {% if view.stored %}
+      <p class="sub small">SHA-256 over the canonical verdict. Every group must match.</p>
+      <div class="hashrow"><span class="label">Stored</span><div class="hash">{% for g in view.stored %}<span class="hash__g {{ 'is-ok' if g.match else 'is-plain' }}">{{ g.text }}</span>{% endfor %}</div></div>
+      <div class="hashrow"><span class="label">Recomputed just now</span><div class="hash">{% for g in view.recomputed %}<span class="hash__g {{ 'is-ok' if g.match else 'is-bad' }}">{{ g.text }}</span>{% endfor %}</div></div>
+      {% else %}
+      <p class="sub">No verdict was recomputed, because the stored files did not prove their identity. This is what protects every verdict on this site from silent edits.</p>
+      {% endif %}
+      <div class="facts">
+        <div class="fact"><span class="small muted">Bundle hash</span><span class="mono small ellipsis">{{ bundle_hash }}</span></div>
+        {% if case %}
+        <div class="fact"><span class="small muted">Ruleset</span><span class="mono small">{{ case.verdict.ruleset_version }}</span></div>
+        <div class="fact"><span class="small muted">Schema · CodeAtlas</span><span class="mono small">v{{ case.bundle.schema_version }} · {{ case.bundle.codeatlas_version }}</span></div>
+        <div class="fact"><span class="small muted">Models (frozen)</span><span class="mono small">{{ case.bundle.model_ids|join(', ') or 'none' }}</span></div>
+        <div class="fact"><span class="small muted">Extractors</span><span class="mono small">{% for k, v in case.bundle.extractor_versions.items() %}{{ k }} {{ v }}{% if not loop.last %} · {% endif %}{% endfor %}</span></div>
+        {% endif %}
+        <div class="fact"><span class="small muted">Raw JSON</span><a class="mono small" href="/api/cases/{{ bundle_hash }}/replay">/api/cases/{{ short(bundle_hash, 8) }}…/replay</a></div>
+      </div>
+    </section>
+  </div>
+</main>
+{% endblock %}

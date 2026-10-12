@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% from "_macros.html" import stamp, findings %}
+{% set nav_active = 'cases' %}
+{% block title %}Cases{% endblock %}
+{% block body %}
+<main class="wrap page">
+  <div class="pagehead">
+    <div>
+      <h1 class="mono h-xl">Cases</h1>
+      <p class="sub">{{ repo_label }} · {{ total }} case{{ '' if total == 1 else 's' }}</p>
+    </div>
+    <details class="howto">
+      <summary class="btn-dark"><span aria-hidden="true">+</span> Evaluate a PR</summary>
+      <div class="howto__panel">
+        <p class="howto__h">Evaluations run from the CLI or CI</p>
+        <p>This site only shows stored results, so it never holds Jira or GitHub tokens. Run the command, and the new case appears here.</p>
+        <div class="cmd"><code><span class="prompt">$</span> uv run codeatlas collect --change change.json --store bundles</code><button type="button" class="btn-ghost" data-copy="uv run codeatlas collect --change change.json --store bundles">Copy</button></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="toolbar">
+    <nav aria-label="Filter by verdict" class="filters">
+      {% for f in filters %}
+      <a class="filter{% if verdict == f %} is-active{% endif %}" href="?{{ {'verdict': f, 'q': q, 'order': order}|urlencode }}"{% if verdict == f %} aria-current="true"{% endif %}>{{ 'All' if f == 'ALL' else f }} <span class="filter__n">{{ counts[f] }}</span></a>
+      {% endfor %}
+    </nav>
+    <form method="get" action="/" class="search" role="search">
+      <input type="hidden" name="verdict" value="{{ verdict }}">
+      <input type="hidden" name="order" value="{{ order }}">
+      <label for="q" class="sr-only">Search cases</label>
+      <input id="q" type="search" name="q" value="{{ q }}" placeholder="Search cases..." maxlength="100">
+    </form>
+  </div>
+
+  <section class="table" aria-label="Cases">
+    <div class="table__scroll">
+      <div class="grid grid--cases grid--head">
+        <span>VERDICT</span><span>CASE</span><span>PR</span><span>ISSUE</span><span>FINDINGS</span><span>AUTHOR</span>
+        <a class="sortlink" href="?{{ {'verdict': verdict, 'q': q, 'order': 'oldest' if order == 'newest' else 'newest'}|urlencode }}">EVALUATED <span aria-hidden="true">{{ '↓' if order == 'newest' else '↑' }}</span><span class="sr-only">{{ 'newest first' if order == 'newest' else 'oldest first' }}, change order</span></a>
+      </div>
+      {% for c in cases %}
+      {% if c.corrupt %}
+      <div class="grid grid--cases row row--corrupt">
+        <span>{{ stamp(None) }}</span>
+        <a class="row__case" href="/cases/{{ c.bundle_hash }}/replay"><span class="mono strong">{{ short(c.bundle_hash, 8) }}</span><span class="row__title">Bundle failed its integrity check</span></a>
+        <span class="muted">—</span><span class="muted">—</span>
+        <span class="mono small fail-text">bundle_corrupt</span>
+        <span class="muted">—</span><span class="muted">—</span>
+      </div>
+      {% else %}
+      <div class="grid grid--cases row">
+        <span>{{ stamp(c.verdict) }}</span>
+        <a class="row__case" href="/cases/{{ c.bundle_hash }}"><span class="mono strong">{{ short(c.bundle_hash, 8) }}</span><span class="row__title">{{ c.title or 'Untitled requirement' }}</span></a>
+        <a class="mono" href="/cases/{{ c.bundle_hash }}">PR #{{ c.pr_number }}</a>
+        <span class="mono">
+          {%- for k in c.keys %}<a class="plainlink" href="/cases/{{ c.bundle_hash }}/requirements/{{ k|urlencode }}">{{ k }}</a>{% if not loop.last %}, {% endif %}{% else %}<span class="muted">none</span>{% endfor -%}
+        </span>
+        {{ findings(c.findings) }}
+        <span class="mono">{{ c.author_login or '—' }}</span>
+        <span class="mono small">{{ fmt_time(c.evaluated_at) }}</span>
+      </div>
+      {% endif %}
+      {% else %}
+      <div class="empty">
+        {% if total %}No cases match. <a href="/">Clear filters</a>{% else %}No cases yet. Evaluate a PR and its bundle appears here.{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <p class="footnote">Case ID = first 8 characters of the evidence bundle hash. Findings count check results: PASS = satisfied, FAIL = blocking violation, REVIEW = review violation, UNKNOWN = required evidence missing. Nothing here writes to Jira or GitHub.</p>
+</main>
+{% endblock %}
