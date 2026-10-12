@@ -424,6 +424,7 @@ def test_ac6_default_rules() -> None:
         "C1",
         "C2",
         "C3",
+        "C4",
         "C5",
         "C6",
         "C7",
