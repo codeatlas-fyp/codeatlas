@@ -60,15 +60,18 @@ class LocalRepo:
             raise ValueError(f"no merge-base between {base_ref} and {head_sha}")
         return str(mb)
 
-    def diff_hunks(self, base_sha: str, head_sha: str) -> list[DiffHunk]:
-        """Return hunks of the diff between base and head, flattened per hunk."""
+    def diff_hunks(self, base_sha: str, head_sha: str, *, context_lines: int = 3) -> list[DiffHunk]:
+        """Return hunks of the diff between base and head, flattened per hunk.
+
+        `context_lines=0` gives hunks that cover only changed lines (what entity mapping needs).
+        """
 
         base_commit = self._repo.get(self._resolve(base_sha))
         head_commit = self._repo.get(self._resolve(head_sha))
         if base_commit is None or head_commit is None:
             raise ValueError("base or head commit not in local repo")
 
-        diff = self._repo.diff(base_commit.id, head_commit.id)
+        diff = self._repo.diff(base_commit.id, head_commit.id, context_lines=context_lines)
         diff.find_similar()  # populate rename info (status 'R')
 
         hunks: list[DiffHunk] = []
@@ -116,6 +119,37 @@ class LocalRepo:
                 seen.add(hunk.file_path)
                 order.append(hunk.file_path)
         return order
+
+    def list_files(self, sha: str, prefix: str = "") -> list[str]:
+        """Every file path at commit `sha` under folder `prefix` (sorted). Used to find ADRs."""
+        import pygit2
+
+        commit = self._repo.get(self._resolve(sha))
+        if commit is None:
+            return []
+        tree = commit.tree
+        folder = prefix.strip("/")
+        if folder:
+            try:
+                entry = tree[folder]
+            except KeyError:
+                return []
+            sub = self._repo[entry.id]
+            if not isinstance(sub, pygit2.Tree):
+                return []
+            tree = sub
+        paths: list[str] = []
+        stack: list[tuple[str, pygit2.Tree]] = [(folder, tree)]
+        while stack:
+            base, current = stack.pop()
+            for item in current:
+                path = f"{base}/{item.name}" if base else str(item.name)
+                obj = self._repo[item.id]
+                if isinstance(obj, pygit2.Tree):
+                    stack.append((path, obj))
+                elif isinstance(obj, pygit2.Blob):
+                    paths.append(path)
+        return sorted(paths)
 
     def _resolve(self, ref: str) -> str:
         """Accept a branch name, tag, or SHA. Returns the SHA as a string."""
