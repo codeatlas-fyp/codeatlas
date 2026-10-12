@@ -31,12 +31,30 @@ from codeatlas.schema import (
     ChangedEntity,
     CodeEdge,
     Commit,
+    EvidenceBundle,
     GovernanceSnapshot,
     LinkState,
     SemanticCandidate,
     TraceLink,
     WorkItemRef,
 )
+
+
+def bundle_links(bundle: EvidenceBundle) -> list[TraceLink]:
+    """Trace links derived from a frozen bundle alone.
+
+    Collect, evaluate, replay and the web pages all call this, so the links the rules see are
+    always the same for the same bundle bytes (links are not stored in the bundle).
+    """
+    return assign_link_states(
+        requirement_keys=sorted({ref.key for ref in bundle.work_items}),
+        changed=bundle.changed,
+        commits=bundle.commits,
+        work_item_refs=bundle.work_items,
+        edges=bundle.edges,
+        governance=bundle.governance,
+        candidates=bundle.candidates,
+    )
 
 
 def assign_link_states(
