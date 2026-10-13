@@ -16,7 +16,7 @@ from codeatlas.bundle.hashing import verdict_hash
 from codeatlas.bundle.replay import replay
 from codeatlas.bundle.store import BUNDLE_FILE, VERDICT_FILE, load_bundle, load_verdict
 from codeatlas.errors import CodeAtlasError, ReplayMismatchError
-from codeatlas.evaluate.links import assign_link_states
+from codeatlas.evaluate.links import bundle_links
 from codeatlas.evaluate.rules import default_rules, ruleset_version
 from codeatlas.evaluate.verdict import decide, run_rules
 from codeatlas.schema import CheckResult, EvidenceBundle, TraceLink, Verdict, VerdictValue
@@ -107,7 +107,7 @@ def evaluate_stored(bundle: EvidenceBundle, bundle_hash: str) -> Verdict:
     test checks both give identical verdicts on every fixture bundle.
     """
     rules = default_rules()
-    results = run_rules(rules, bundle, [])
+    results = run_rules(rules, bundle, bundle_links(bundle))
     value = decide(results)
     version = ruleset_version(rules)
     return Verdict(
@@ -240,17 +240,7 @@ class CaseStore:
 
     def links(self, bundle_hash: str) -> tuple[Case, list[TraceLink]]:
         case = self.get(bundle_hash)
-        bundle = case.bundle
-        links = assign_link_states(
-            requirement_keys=case.summary.keys,
-            changed=bundle.changed,
-            commits=bundle.commits,
-            work_item_refs=bundle.work_items,
-            edges=bundle.edges,
-            governance=bundle.governance,
-            candidates=bundle.candidates,
-        )
-        return case, links
+        return case, bundle_links(case.bundle)
 
     def replay(self, bundle_hash: str) -> ReplayOutcome:
         """Recompute offline; a tampered bundle is reported as refused, never raised."""

@@ -11,6 +11,7 @@ import pytest
 from codeatlas.bundle.replay import replay
 from codeatlas.errors import ReplayMismatchError
 from codeatlas.pipeline import evaluate_bundle
+from codeatlas.schema import EvidenceBundle, Verdict
 
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "bundles"
 
@@ -76,3 +77,18 @@ def test_rewritten_hash_that_disagrees_with_the_bundle_is_refused(sample_copy: P
     file.write_text(json.dumps(data))
     with pytest.raises(ReplayMismatchError, match="verdict_hash differs"):
         replay(sample_copy, evaluate_bundle)
+
+
+def test_evidence_listed_in_another_order_still_matches(sample_copy: Path) -> None:
+    """verdict.json is stored canonical (lists sorted); a rule may list evidence in any order."""
+
+    def reordered(bundle: EvidenceBundle, bundle_hash: str) -> Verdict:
+        verdict = evaluate_bundle(bundle, bundle_hash)
+        results = [
+            r.model_copy(update={"evidence_ids": list(reversed(r.evidence_ids))})
+            for r in verdict.results
+        ]
+        assert any(len(r.evidence_ids) > 1 for r in results), "sample needs a multi-id result"
+        return verdict.model_copy(update={"results": results})
+
+    assert replay(sample_copy, reordered).match
