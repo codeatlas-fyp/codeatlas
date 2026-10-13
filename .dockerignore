@@ -19,6 +19,6 @@ coverage.xml
 *.key
 bundles
 
-# Tests stay out, except the fixture bundles the image serves as demo data.
-tests/**
-!tests/fixtures/bundles/**
+# Tests stay out; the image serves deploy/bundles (real sandbox evaluations) as demo data.
+tests
+deploy/bundles/README.md

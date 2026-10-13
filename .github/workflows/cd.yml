@@ -63,7 +63,7 @@ jobs:
           images: ${{ steps.ref.outputs.image }}
           tags: |
             type=sha,format=long
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=ref,event=tag
 
       - name: Build (load locally for the smoke test)
