@@ -95,10 +95,9 @@ class C5OwnerDidNotApprove:
 
         if missing:
             paths_part = ", ".join(f"{p} (needs one of {owners})" for p, owners in missing[:3])
-            evidence_ids = [
-                bundle.governance.evidence_id,
-                *[r.evidence_id for r in bundle.reviews],
-            ]
+            evidence_ids = sorted(
+                {bundle.governance.evidence_id, *(r.evidence_id for r in bundle.reviews)}
+            )
             return CheckResult(
                 case=CASE,
                 outcome="VIOLATED",

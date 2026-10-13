@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from codeatlas.bundle.canonical import canonical_bytes
 from codeatlas.bundle.hashing import verdict_hash
 from codeatlas.bundle.store import bundle_folder, load_bundle, load_verdict
 from codeatlas.errors import ReplayMismatchError
@@ -41,10 +42,13 @@ def replay(path: Path, evaluate: Evaluator, *, strict: bool = True) -> ReplayRes
             f"to its verdict_hash (stored {stored.verdict_hash}, from fields {self_hash})"
         )
     recomputed = evaluate(bundle, folder.name)
+    # Compare in canonical form: verdict.json is stored canonical (lists sorted), so a rule
+    # that lists its evidence in another order is the same result, as its hash already says.
     differing = [
         name
         for name in ("value", "results", "ruleset_version")
-        if getattr(stored, name) != getattr(recomputed, name)
+        if canonical_bytes({name: getattr(stored, name)})
+        != canonical_bytes({name: getattr(recomputed, name)})
     ]
     result = ReplayResult(
         bundle_hash=folder.name,
