@@ -19,8 +19,9 @@ RUN uv sync --locked --no-dev --no-install-project $(python scripts/docker_exclu
 COPY src ./src
 RUN uv sync --locked --no-dev $(python scripts/docker_excludes.py uv.lock)
 
-# Demo data: the committed fixture bundles. Real bundles can be mounted over /app/bundles.
-COPY tests/fixtures/bundles ./bundles
+# Demo data: real evaluations of the codeatlas-sandbox PRs, produced by `codeatlas collect`
+# (see deploy/bundles/README.md). Other bundles can be mounted over /app/bundles.
+COPY deploy/bundles ./bundles
 
 # Run as a non-root user that cannot modify the code or the bundles.
 RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin codeatlas
