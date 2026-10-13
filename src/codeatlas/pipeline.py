@@ -28,7 +28,7 @@ from codeatlas.analyze import keys as keys_analysis
 from codeatlas.analyze import semantic as semantic_analysis
 from codeatlas.analyze.lifecycle import JiraHistory, LifecycleContext, TextForms, reconstruct
 from codeatlas.bundle.hashing import sha256_hex, verdict_hash
-from codeatlas.bundle.store import BundleStore
+from codeatlas.bundle.store import BundleStore, load_bundle
 from codeatlas.collect.git.repo import DiffHunk
 from codeatlas.collect.jira.adf import adf_to_text, wiki_to_text
 from codeatlas.config import ChangeFile
@@ -717,8 +717,11 @@ def collect_and_evaluate(
     bundle = collect_bundle(request, source, log, sources)
     with log.stage("store"):
         bundle_hash = store.save(bundle)
+        # Saving sorts every list and trims timestamps and scores. Replay judges the saved file,
+        # so collect judges it too; the in-memory bundle could give a different verdict.
+        frozen = load_bundle(store.folder(bundle_hash))
     with log.stage("evaluate"):
-        verdict = evaluate_bundle(bundle, bundle_hash)
+        verdict = evaluate_bundle(frozen, bundle_hash)
     store.save_verdict(verdict)
     return bundle_hash, verdict
 

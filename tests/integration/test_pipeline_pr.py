@@ -15,6 +15,7 @@ import pygit2
 import pytest
 from typer.testing import CliRunner
 
+from codeatlas import pipeline
 from codeatlas.bundle.replay import replay
 from codeatlas.bundle.store import BundleStore, load_bundle
 from codeatlas.cli import app
@@ -33,7 +34,7 @@ from codeatlas.pipeline import (
     collect_bundle,
     evaluate_bundle,
 )
-from codeatlas.schema import CodeEntity, IdentityEntry, IdentityMap
+from codeatlas.schema import CodeEntity, EvidenceBundle, IdentityEntry, IdentityMap, Verdict
 
 ROOT = Path(__file__).parents[2]
 GITHUB = ROOT / "tests" / "fixtures" / "github"
@@ -307,3 +308,23 @@ def test_local_repo_lists_files_and_zero_context_hunks(sandbox: dict[str, str]) 
     assert "payments/fees.py" in git.list_files(base)
     (hunk,) = git.diff_hunks(base, head, context_lines=0)
     assert hunk.old_lines == 0 and hunk.new_lines == ROUND_FEE.count("\n")
+
+
+def test_collect_evaluates_the_stored_bundle_not_the_in_memory_one(
+    sandbox: dict[str, str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Saving sorts lists and trims time and scores; replay reads the saved file, so collect must
+    judge that same file, or a stored verdict can differ from its own replay."""
+    seen: list[EvidenceBundle] = []
+    real = pipeline.evaluate_bundle
+
+    def spy(bundle: EvidenceBundle, bundle_hash: str) -> Verdict:
+        seen.append(bundle)
+        return real(bundle, bundle_hash)
+
+    monkeypatch.setattr(pipeline, "evaluate_bundle", spy)
+    store = BundleStore(tmp_path / "store")
+    bundle_hash, _ = pipeline.collect_and_evaluate(
+        _request(1), FixtureJiraSource(JIRA), store, EventLog("t"), _sources(sandbox)
+    )
+    assert seen == [load_bundle(store.folder(bundle_hash))]
