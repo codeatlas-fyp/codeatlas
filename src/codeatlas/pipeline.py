@@ -27,7 +27,7 @@ from codeatlas.analyze import governance as governance_analysis
 from codeatlas.analyze import keys as keys_analysis
 from codeatlas.analyze import semantic as semantic_analysis
 from codeatlas.analyze.lifecycle import JiraHistory, LifecycleContext, TextForms, reconstruct
-from codeatlas.bundle.hashing import sha256_hex, verdict_hash
+from codeatlas.bundle.hashing import effective_policy_hash, sha256_hex, verdict_hash
 from codeatlas.bundle.store import BundleStore, load_bundle
 from codeatlas.collect.git.repo import DiffHunk
 from codeatlas.collect.jira.adf import adf_to_text, wiki_to_text
@@ -687,6 +687,7 @@ def collect_bundle(
             model_ids=model_ids,
             model_file_hashes={},
             policy=request.policy,
+            effective_policy_hash=effective_policy_hash(request.policy),
             identity_map=request.identity_map,
             work_items=change.work_items,
             change_events=events,

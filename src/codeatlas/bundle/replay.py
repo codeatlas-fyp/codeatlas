@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from codeatlas.bundle.canonical import canonical_bytes
-from codeatlas.bundle.hashing import verdict_hash
+from codeatlas.bundle.hashing import effective_policy_hash, verdict_hash
 from codeatlas.bundle.store import bundle_folder, load_bundle, load_verdict
 from codeatlas.errors import ReplayMismatchError
 from codeatlas.schema import EvidenceBundle, Verdict
@@ -31,6 +31,11 @@ def replay(path: Path, evaluate: Evaluator, *, strict: bool = True) -> ReplayRes
     stored = load_verdict(folder)
     if stored.bundle_hash != folder.name:
         raise ReplayMismatchError("stored verdict belongs to another bundle")
+    if (
+        bundle.effective_policy_hash is not None
+        and bundle.effective_policy_hash != effective_policy_hash(bundle.policy)
+    ):
+        raise ReplayMismatchError("bundle effective policy hash does not match its policy")
     # The stored fields must hash to the stored verdict_hash. This catches edits to
     # value, results or ruleset_version in verdict.json (finding A-1).
     self_hash = verdict_hash(

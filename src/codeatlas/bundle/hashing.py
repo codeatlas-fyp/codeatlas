@@ -3,11 +3,16 @@
 import hashlib
 
 from codeatlas.bundle.canonical import canonical_bytes
-from codeatlas.schema import CheckResult, EvidenceBundle, VerdictValue
+from codeatlas.schema import CheckResult, EvidenceBundle, Policy, VerdictValue
 
 
 def sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def effective_policy_hash(policy: Policy) -> str:
+    """Hash the canonical, effective policy frozen into an evidence bundle."""
+    return sha256_hex(canonical_bytes(policy))
 
 
 def bundle_hash(bundle: EvidenceBundle) -> str:

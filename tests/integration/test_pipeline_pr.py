@@ -16,6 +16,7 @@ import pytest
 from typer.testing import CliRunner
 
 from codeatlas import pipeline
+from codeatlas.bundle.hashing import effective_policy_hash
 from codeatlas.bundle.replay import replay
 from codeatlas.bundle.store import BundleStore, load_bundle
 from codeatlas.cli import app
@@ -155,6 +156,7 @@ def _sources(sandbox: dict[str, str]) -> ChangeSources:
 def test_pr_bundle_holds_real_github_git_and_analysis_evidence(sandbox: dict[str, str]) -> None:
     bundle = collect_bundle(_request(1), FixtureJiraSource(JIRA), EventLog("t"), _sources(sandbox))
 
+    assert bundle.effective_policy_hash == effective_policy_hash(bundle.policy)
     head = sandbox["headsha0000000000000000000000000000000001"]
     assert bundle.change.head_sha == head
     assert bundle.change.merge_base_sha == sandbox["basesha0000000000000000000000000000000001"]

@@ -34,6 +34,14 @@ def test_missing_policy_uses_defaults_and_says_so() -> None:
     assert notes == ["no policy file: built-in default policy used"]
 
 
+def test_policy_rejects_block_severity_for_advisory_c9() -> None:
+    raw = DEFAULT_POLICY.model_dump()
+    raw["cases"]["C9"] = {"severity": "block"}
+
+    with pytest.raises(ValueError, match="C9 is advisory"):
+        type(DEFAULT_POLICY).model_validate(raw)
+
+
 def test_no_identity_map_is_empty() -> None:
     assert load_identity_map(None).people == []
 
