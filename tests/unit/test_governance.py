@@ -89,9 +89,7 @@ def test_no_matching_pattern_returns_empty_list() -> None:
         ("/apps/", "other/apps/github/x.py", False),
     ],
 )
-def test_github_documented_codeowners_patterns(
-    pattern: str, path: str, expected: bool
-) -> None:
+def test_github_documented_codeowners_patterns(pattern: str, path: str, expected: bool) -> None:
     assert codeowners_match(pattern, path) is expected
 
 
