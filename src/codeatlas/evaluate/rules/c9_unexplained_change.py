@@ -140,7 +140,7 @@ def _entity_in_top5_index(bundle: EvidenceBundle) -> dict[str, set[str]]:
     """For each requirement key, the set of entity_ids that are top-5 for one of its criteria."""
     out: dict[str, set[str]] = {}
     for cand in bundle.candidates:
-        if cand.fused_rank > 5:
+        if cand.fused_rank > 5 or (cand.bm25_rank is None and cand.dense_rank is None):
             continue
         req_key = cand.criterion_id.split(":")[0]
         out.setdefault(req_key, set()).add(cand.entity_id)

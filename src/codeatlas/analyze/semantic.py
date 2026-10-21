@@ -95,7 +95,12 @@ def rank_candidates(
         bm25_for_c = bm25_ranks[ci]
         dense_for_c = dense_ranks[ci]
         fused = _reciprocal_rank_fusion(bm25_for_c, dense_for_c)
-        ordered = sorted(range(len(rankable)), key=lambda idx: -fused[idx])[:top_k]
+        evidenced = [
+            idx
+            for idx in range(len(rankable))
+            if bm25_for_c[idx] is not None or dense_for_c[idx] is not None
+        ]
+        ordered = sorted(evidenced, key=lambda idx: -fused[idx])[:top_k]
         for fused_rank, entity_idx in enumerate(ordered, start=1):
             all_candidates.append(
                 SemanticCandidate(
@@ -119,7 +124,7 @@ def _bm25_rank_matrix(
     tokenised_corpus: list[list[str]],
     queries: list[str],
 ) -> list[list[int | None]]:
-    """Return per-query rank of each doc (1 = best). None means doc had zero score."""
+    """Return per-query rank of each doc (1 = best). None means no query-token overlap."""
     try:
         from rank_bm25 import BM25Okapi  # type: ignore[import-untyped]
     except ImportError:
@@ -131,11 +136,16 @@ def _bm25_rank_matrix(
     for query in queries:
         q_tokens = _tokenise(query)
         scores = bm25.get_scores(q_tokens)
-        ordered = sorted(range(len(scores)), key=lambda idx: -scores[idx])
+        query_tokens = set(q_tokens)
+        evidenced = [
+            idx
+            for idx, doc_tokens in enumerate(tokenised_corpus)
+            if query_tokens.intersection(doc_tokens)
+        ]
+        ordered = sorted(evidenced, key=lambda idx: -scores[idx])
         ranks: list[int | None] = [None] * len(scores)
         for rank, idx in enumerate(ordered, start=1):
-            if scores[idx] > 0:
-                ranks[idx] = rank
+            ranks[idx] = rank
         out.append(ranks)
     return out
 

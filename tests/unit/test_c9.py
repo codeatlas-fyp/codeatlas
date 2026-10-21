@@ -186,6 +186,30 @@ def test_violated_when_entity_not_in_top5_for_its_key() -> None:
     assert "top-5" in result.message
 
 
+def test_zero_evidence_candidate_does_not_explain_changed_entity() -> None:
+    rule = C9UnexplainedChange()
+    no_match = SemanticCandidate(
+        criterion_id="SBX-4:v1:ac1",
+        entity_id="pkg.other.format_receipt",
+        bm25_rank=None,
+        dense_rank=None,
+        fused_rank=1,
+        fused_score=0.0,
+        model_id="test@bm25-only",
+    )
+    bundle = _bundle(
+        changed=[_ce("pkg.other.format_receipt", "pkg/other.py", ["sha1"])],
+        commits=[_commit("sha1", "feat: format receipts (SBX-4)")],
+        work_items=[_ref("SBX-4", "sha1")],
+        candidates=[no_match],
+    )
+
+    result = rule.check(bundle, [], bundle.policy)
+
+    assert result.outcome == "VIOLATED"
+    assert "top-5" in result.message
+
+
 def test_test_files_are_excluded() -> None:
     rule = C9UnexplainedChange()
     bundle = _bundle(
