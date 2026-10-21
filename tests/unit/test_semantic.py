@@ -7,6 +7,8 @@ reviewer runs it manually.
 
 from __future__ import annotations
 
+import pytest
+
 from codeatlas.analyze.semantic import rank_candidates
 from codeatlas.schema import CodeEntity, Criterion
 
@@ -57,7 +59,8 @@ def test_bm25_ranks_matching_entity_first() -> None:
     ]
     criteria = [_criterion("SBX-4:v1:ac1", "fees for overdue late books")]
     result = rank_candidates(criteria=criteria, entities=entities, bm25_only=True)
-    assert len(result.candidates) == 3
+    assert len(result.candidates) == 1
+    assert all(c.bm25_rank is not None or c.dense_rank is not None for c in result.candidates)
     # Fee function should rank first (fused_rank == 1).
     first = result.candidates[0]
     assert first.entity_id == "pkg.fees.calculate_late_fee"
@@ -109,6 +112,79 @@ def test_no_entities_or_no_criteria_returns_empty() -> None:
         ).candidates
         == []
     )
+
+
+def test_unrelated_entities_are_not_returned_as_candidates() -> None:
+    entities = [_entity("pkg.delete_accounts", "function", None, "delete user database")]
+    criteria = [_criterion("X-1:v1:ac1", "quasar nebula")]
+
+    result = rank_candidates(criteria=criteria, entities=entities, bm25_only=True)
+
+    assert result.candidates == []
+
+
+def test_relevant_entities_are_returned() -> None:
+    entities = [
+        _entity("pkg.delete_accounts", "function", None, "delete user database"),
+        _entity("pkg.calculate_fee", "function", None, "calculate overdue account fee"),
+    ]
+    criteria = [_criterion("X-1:v1:ac1", "overdue account fee")]
+
+    result = rank_candidates(criteria=criteria, entities=entities, bm25_only=True)
+
+    assert [candidate.entity_id for candidate in result.candidates] == ["pkg.calculate_fee"]
+
+
+@pytest.mark.parametrize("entity_count", [1, 5])
+def test_corpora_of_five_or_fewer_return_only_entities_with_evidence(entity_count: int) -> None:
+    entities = [
+        _entity(
+            f"pkg.fn{i}",
+            "function",
+            None,
+            "calculate overdue account fee" if i == 0 else "delete user database",
+        )
+        for i in range(entity_count)
+    ]
+    criteria = [_criterion("X-1:v1:ac1", "overdue account fee")]
+
+    result = rank_candidates(criteria=criteria, entities=entities, bm25_only=True)
+
+    assert [candidate.entity_id for candidate in result.candidates] == ["pkg.fn0"]
+
+
+def test_corpus_larger_than_five_does_not_fill_top_five_with_zero_evidence() -> None:
+    entities = [
+        _entity(
+            f"pkg.fn{i}",
+            "function",
+            None,
+            "calculate overdue account fee" if i == 0 else "delete user database",
+        )
+        for i in range(8)
+    ]
+    criteria = [_criterion("X-1:v1:ac1", "overdue account fee")]
+
+    result = rank_candidates(criteria=criteria, entities=entities, bm25_only=True)
+
+    assert [candidate.entity_id for candidate in result.candidates] == ["pkg.fn0"]
+
+
+def test_missing_dense_model_falls_back_to_bm25(monkeypatch: pytest.MonkeyPatch) -> None:
+    def missing_model(**_: object) -> tuple[list[list[int | None]], str]:
+        raise ImportError("sentence-transformers not installed")
+
+    monkeypatch.setattr("codeatlas.analyze.semantic._dense_rank_matrix", missing_model)
+    entities = [
+        _entity("pkg.calculate_fee", "function", None, "calculate overdue account fee"),
+        _entity("pkg.delete_accounts", "function", None, "delete user database"),
+    ]
+    criteria = [_criterion("X-1:v1:ac1", "overdue account fee")]
+
+    result = rank_candidates(criteria=criteria, entities=entities)
+
+    assert [candidate.entity_id for candidate in result.candidates] == ["pkg.calculate_fee"]
+    assert result.model_id.endswith("@not-installed")
 
 
 def test_model_id_reflects_bm25_only_mode() -> None:
