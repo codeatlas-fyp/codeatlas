@@ -202,6 +202,20 @@ def test_satisfied_for_paths_with_no_owner_rule() -> None:
     assert result.outcome == "SATISFIED"
 
 
+def test_ownerless_last_match_makes_path_not_applicable_in_c5() -> None:
+    rule = C5OwnerDidNotApprove()
+    bundle = _bundle(
+        governance=_governance("/apps/ @areej\n/apps/github\n"),
+        reviews=[],
+        commits=[_commit("head", "yusra")],
+        changed=[_changed("apps/github/x.py")],
+    )
+
+    result = rule.check(bundle, [], bundle.policy)
+
+    assert result.outcome == "SATISFIED"
+
+
 def test_multiple_owners_any_approving_at_head_satisfies() -> None:
     rule = C5OwnerDidNotApprove()
     bundle = _bundle(

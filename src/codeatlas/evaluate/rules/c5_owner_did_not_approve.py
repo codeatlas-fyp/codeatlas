@@ -24,12 +24,9 @@ Pure. Reads only the bundle.
 
 from __future__ import annotations
 
-import fnmatch
-import re
-from pathlib import PurePosixPath
-
+from codeatlas.codeowners import owners_for as _owners_for
 from codeatlas.evaluate.rules.base import Severity, severity
-from codeatlas.schema import CaseId, CheckResult, EvidenceBundle, OwnerRule, Policy, TraceLink
+from codeatlas.schema import CaseId, CheckResult, EvidenceBundle, Policy, TraceLink
 
 CASE: CaseId = "C5"
 VERSION = "1"
@@ -129,54 +126,3 @@ class C5OwnerDidNotApprove:
             message=f"All owned paths have an owner APPROVED review at head {head_sha[:12]}.",
             evidence_ids=sorted({r.evidence_id for r in bundle.reviews if r.state == "APPROVED"}),
         )
-
-
-# ---- CODEOWNERS matching (inlined from analyze.governance to respect K1 contract) ----
-
-
-def _owners_for(path: str, rules: list[OwnerRule]) -> list[str]:
-    """Last matching pattern wins (GitHub semantics). Empty list if nothing matches."""
-    chosen: list[str] | None = None
-    for rule in rules:
-        if _codeowners_match(rule.pattern, path):
-            chosen = rule.owners
-    return list(chosen or [])
-
-
-def _codeowners_match(pattern: str, path: str) -> bool:
-    """GitHub CODEOWNERS pattern matcher — superset of fnmatch."""
-    if pattern == "*":
-        return True
-
-    anchored = pattern.startswith("/")
-    pat = pattern.lstrip("/")
-
-    if pat.endswith("/"):
-        dirpart = pat.rstrip("/")
-        return path == dirpart or path.startswith(dirpart + "/")
-
-    if "**" in pat:
-        return _glob_match_double_star(pat, path)
-
-    if anchored:
-        return fnmatch.fnmatchcase(path, pat)
-
-    if "/" in pat:
-        return fnmatch.fnmatchcase(path, pat) or fnmatch.fnmatchcase(path, "**/" + pat)
-
-    basename = PurePosixPath(path).name
-    return fnmatch.fnmatchcase(basename, pat)
-
-
-def _glob_match_double_star(pattern: str, path: str) -> bool:
-    """Translate `**` to a regex that spans multiple segments."""
-    parts = pattern.split("/")
-    regex_parts: list[str] = []
-    for part in parts:
-        if part == "**":
-            regex_parts.append(".*")
-        else:
-            escaped = re.escape(part).replace(r"\*", "[^/]*").replace(r"\?", "[^/]")
-            regex_parts.append(escaped)
-    regex = "^" + "/".join(regex_parts) + "$"
-    return re.match(regex, path) is not None

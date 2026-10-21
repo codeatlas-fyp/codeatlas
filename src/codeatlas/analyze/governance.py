@@ -19,12 +19,14 @@ was copied into the bundle).
 
 from __future__ import annotations
 
-import fnmatch
 import re
 from datetime import datetime
+from fnmatch import fnmatchcase
 from pathlib import PurePosixPath
 from typing import Any
 
+from codeatlas.codeowners import codeowners_match
+from codeatlas.codeowners import owners_for as owners_for
 from codeatlas.schema import Adr, GovernanceChange, GovernanceSnapshot, OwnerRule, Policy
 
 EXTRACTOR_VERSION = "governance@0.1.0"
@@ -43,80 +45,22 @@ def parse_codeowners(text: str) -> list[OwnerRule]:
         if not line:
             continue
         tokens = line.split()
-        if len(tokens) < 2:
-            # Pattern with no owners: still record so the panel can show the error.
+        if not tokens:
             continue
         pattern = tokens[0]
-        owners = [t for t in tokens[1:] if t.startswith("@")]
-        if not owners:
+        if len(tokens) == 1:
+            # GitHub allows an ownerless match to clear ownership from earlier rules.
+            owners: list[str] = []
+        else:
+            owners = [t for t in tokens[1:] if t.startswith("@") or "@" in t]
+        if len(tokens) > 1 and not owners:
             continue
         rules.append(OwnerRule(pattern=pattern, owners=owners, line=i))
     return rules
 
 
-def owners_for(path: str, rules: list[OwnerRule]) -> list[str]:
-    """Last matching pattern wins (GitHub semantics). Empty list if nothing matches."""
-    chosen: list[str] | None = None
-    for rule in rules:
-        if _codeowners_match(rule.pattern, path):
-            chosen = rule.owners
-    return list(chosen or [])
-
-
-def _codeowners_match(pattern: str, path: str) -> bool:
-    """GitHub CODEOWNERS pattern matcher — superset of fnmatch.
-
-    Rules we implement (sufficient for mid-eval):
-      - `*` catches everything (always matches).
-      - A leading `/` anchors the pattern to the repo root.
-      - A trailing `/` matches the directory and everything under it.
-      - `**` matches zero or more path segments.
-      - Otherwise behaves like fnmatch, with `/` significant.
-
-    Known gap: GitHub's full semantics include `!` negation, which we omit
-    (the mid-eval `.codeatlas/policy.yaml` governance_paths list doesn't use
-    them either). See known-limitations section of the branch README.
-    """
-    if pattern == "*":
-        return True
-    # Normalise: leading / is a no-op for us since we always match a relative path.
-    anchored = pattern.startswith("/")
-    pat = pattern.lstrip("/")
-
-    if pat.endswith("/"):
-        # Directory pattern: match the dir and anything under it.
-        dirpart = pat.rstrip("/")
-        return path == dirpart or path.startswith(dirpart + "/")
-
-    if "**" in pat:
-        return _glob_match_double_star(pat, path)
-
-    if anchored:
-        return fnmatch.fnmatchcase(path, pat)
-
-    # Unanchored: match in any directory.
-    # fnmatch treats * as any chars; we want it NOT to cross /. Pre-split.
-    if "/" in pat:
-        return fnmatch.fnmatchcase(path, pat) or fnmatch.fnmatchcase(path, "**/" + pat)
-    # No slash: match the basename at any depth.
-    basename = PurePosixPath(path).name
-    return fnmatch.fnmatchcase(basename, pat)
-
-
-def _glob_match_double_star(pattern: str, path: str) -> bool:
-    """Translate `**` to a regex that spans multiple segments."""
-    # Build a regex from the pattern.
-    parts = pattern.split("/")
-    regex_parts: list[str] = []
-    for part in parts:
-        if part == "**":
-            regex_parts.append(".*")
-        else:
-            # Escape path separators by handling * -> [^/]*
-            escaped = re.escape(part).replace(r"\*", "[^/]*").replace(r"\?", "[^/]")
-            regex_parts.append(escaped)
-    regex = "^" + "/".join(regex_parts) + "$"
-    return re.match(regex, path) is not None
+# Kept as a module alias for callers that imported the former private helper.
+_codeowners_match = codeowners_match
 
 
 # ---- ADR front matter ----------------------------------------------------
@@ -263,4 +207,17 @@ def _governance_match(glob: str, path: str) -> bool:
     """fnmatch with `**` glob support (same translation as CODEOWNERS)."""
     if "**" in glob:
         return _glob_match_double_star(glob.lstrip("/"), path)
-    return fnmatch.fnmatchcase(path, glob) or fnmatch.fnmatchcase(path, glob.lstrip("/"))
+    return fnmatchcase(path, glob) or fnmatchcase(path, glob.lstrip("/"))
+
+
+def _glob_match_double_star(pattern: str, path: str) -> bool:
+    """Match governance-path globs, which are separate from CODEOWNERS rules."""
+    parts = pattern.split("/")
+    regex_parts: list[str] = []
+    for part in parts:
+        if part == "**":
+            regex_parts.append(".*")
+        else:
+            escaped = re.escape(part).replace(r"\*", "[^/]*").replace(r"\?", "[^/]")
+            regex_parts.append(escaped)
+    return re.fullmatch("/".join(regex_parts), path) is not None
