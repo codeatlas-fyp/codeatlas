@@ -113,7 +113,7 @@ class C5OwnerDidNotApprove:
                 case=CASE,
                 outcome="INSUFFICIENT_EVIDENCE",
                 severity="none",
-                required=False,
+                required=True,
                 message="; ".join(insufficient_reasons[:3]),
                 evidence_ids=[bundle.governance.evidence_id],
             )
