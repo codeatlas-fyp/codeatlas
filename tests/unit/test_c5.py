@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 
 from codeatlas.analyze.governance import parse_codeowners
 from codeatlas.evaluate.rules.c5_owner_did_not_approve import C5OwnerDidNotApprove
+from codeatlas.evaluate.verdict import decide
 from codeatlas.schema import (
     ApprovalPolicy,
     AuthorityPolicy,
@@ -186,7 +187,40 @@ def test_insufficient_when_only_owner_is_pr_author() -> None:
     )
     result = rule.check(bundle, [], bundle.policy)
     assert result.outcome == "INSUFFICIENT_EVIDENCE"
+    assert result.required is True
     assert "yusra" in result.message
+
+
+def test_unresolved_owner_on_mixed_paths_gives_unknown() -> None:
+    rule = C5OwnerDidNotApprove()
+    bundle = _bundle(
+        governance=_governance("/payments/ @areej\n/platform/ @org/platform-team\n"),
+        reviews=[_review("areej", "APPROVED", "head")],
+        commits=[_commit("head", "yusra")],
+        changed=[_changed("payments/fees.py"), _changed("platform/service.py")],
+    )
+
+    result = rule.check(bundle, [], bundle.policy)
+
+    assert result.outcome == "INSUFFICIENT_EVIDENCE"
+    assert result.required is True
+    assert decide([result]) == "UNKNOWN"
+
+
+def test_unresolved_owner_does_not_hide_a_violated_path() -> None:
+    rule = C5OwnerDidNotApprove()
+    bundle = _bundle(
+        governance=_governance("/payments/ @areej\n/platform/ @org/platform-team\n"),
+        reviews=[],
+        commits=[_commit("head", "yusra")],
+        changed=[_changed("payments/fees.py"), _changed("platform/service.py")],
+    )
+
+    result = rule.check(bundle, [], bundle.policy)
+
+    assert result.outcome == "VIOLATED"
+    assert result.required is False
+    assert decide([result]) == "FAIL"
 
 
 def test_satisfied_for_paths_with_no_owner_rule() -> None:
