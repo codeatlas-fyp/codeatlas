@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 import codeatlas.schema as schema
 from codeatlas.bundle.canonical import canonical_bytes, has_identifier
-from codeatlas.bundle.hashing import bundle_hash, sha256_hex, verdict_hash
+from codeatlas.bundle.hashing import bundle_hash, effective_policy_hash, sha256_hex, verdict_hash
 from codeatlas.bundle.replay import replay
 from codeatlas.bundle.store import BundleStore, load_bundle, load_verdict
 from codeatlas.errors import (
@@ -173,6 +173,22 @@ def test_ac6_saved_verdict_round_trips(tmp_path: Path) -> None:
     folder, hash_ = stored(tmp_path)
 
     assert load_verdict(folder) == evaluator("FAIL", [CHECK])(BUNDLE, hash_)
+
+
+def test_effective_policy_hash_changes_when_policy_changes() -> None:
+    changed_policy = BUNDLE.policy.model_copy(update={"version": BUNDLE.policy.version + 1})
+
+    assert effective_policy_hash(changed_policy) != effective_policy_hash(BUNDLE.policy)
+
+
+def test_replay_refuses_effective_policy_hash_mismatch(tmp_path: Path) -> None:
+    altered = BUNDLE.model_copy(update={"effective_policy_hash": "0" * 64})
+    store = BundleStore(tmp_path / "store")
+    hash_ = store.save(altered)
+    store.save_verdict(evaluator("FAIL", [CHECK])(altered, hash_))
+
+    with pytest.raises(ReplayMismatchError, match="effective policy hash"):
+        replay(store.root / hash_, evaluator("FAIL", [CHECK]))
 
 
 def test_ac6_verdict_needs_its_bundle_in_the_store(tmp_path: Path) -> None:

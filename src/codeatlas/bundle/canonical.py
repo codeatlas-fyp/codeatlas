@@ -19,6 +19,7 @@ from codeatlas.schema import (
     CodeEntity,
     Criterion,
     Evidence,
+    EvidenceBundle,
     IdentityEntry,
     LifecycleFacts,
     OwnerRule,
@@ -65,7 +66,12 @@ def has_identifier(model: type[BaseModel]) -> bool:
 def _plain(value: Any) -> Any:
     """Turn models, datetimes, floats and tuples into JSON values; sort every list."""
     if isinstance(value, BaseModel):
-        return {name: _plain(getattr(value, name)) for name in type(value).model_fields}
+        fields = type(value).model_fields
+        if isinstance(value, EvidenceBundle) and value.effective_policy_hash is None:
+            fields = {
+                name: field for name, field in fields.items() if name != "effective_policy_hash"
+            }
+        return {name: _plain(getattr(value, name)) for name in fields}
     if value is None or isinstance(value, bool | int | str):
         return value
     if isinstance(value, float):

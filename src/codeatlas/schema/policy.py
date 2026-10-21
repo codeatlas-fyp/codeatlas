@@ -55,6 +55,13 @@ class Policy(Model):
     cases: dict[CaseId, CasePolicy]
     semantic: SemanticPolicy
 
+    @model_validator(mode="after")
+    def _c9_is_advisory(self) -> Self:
+        c9 = self.cases.get("C9")
+        if c9 is not None and c9.severity == "block":
+            raise ValueError("C9 is advisory and cannot use block severity")
+        return self
+
 
 class IdentityEntry(Model):
     jira_account_id: str
