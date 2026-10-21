@@ -13,6 +13,7 @@ from codeatlas.analyze.governance import (
     parse_adr,
     parse_codeowners,
 )
+from codeatlas.codeowners import codeowners_match
 from codeatlas.schema import (
     ApprovalPolicy,
     AuthorityPolicy,
@@ -74,6 +75,29 @@ def test_last_match_wins_overrides_earlier_entry() -> None:
 def test_no_matching_pattern_returns_empty_list() -> None:
     rules = parse_codeowners("/explicit.py @yusra\n")
     assert owners_for("other.py", rules) == []
+
+
+@pytest.mark.parametrize(
+    ("pattern", "path", "expected"),
+    [
+        ("docs/*", "docs/getting-started.md", True),
+        ("docs/*", "docs/sub/deep.md", False),
+        ("apps/", "other/apps/x.py", True),
+        ("**/logs", "logs", True),
+        ("**/logs", "deeply/nested/logs/app.log", True),
+        ("/apps/", "apps/github/x.py", True),
+        ("/apps/", "other/apps/github/x.py", False),
+    ],
+)
+def test_github_documented_codeowners_patterns(pattern: str, path: str, expected: bool) -> None:
+    assert codeowners_match(pattern, path) is expected
+
+
+def test_ownerless_last_match_clears_earlier_codeowner() -> None:
+    rules = parse_codeowners("/apps/ @octocat\n/apps/github\n")
+
+    assert owners_for("apps/github/x.py", rules) == []
+    assert owners_for("apps/other/x.py", rules) == ["@octocat"]
 
 
 def test_parse_adr_pulls_scope_and_requirement_keys() -> None:
