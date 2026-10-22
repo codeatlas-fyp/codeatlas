@@ -416,6 +416,18 @@ def test_ac3_no_work_item_verdict_unknown() -> None:
     assert all("no work item" in r.message for r in phase1)
 
 
+def test_no_work_item_with_a_changed_function_is_review_from_c9() -> None:
+    # Without a key the work-item rules give UNKNOWN, but C9 still flags the unexplained
+    # function change (review), and REVIEW takes precedence over UNKNOWN.
+    changed = [c for c in BUNDLE.changed if c.entity_id is not None]
+    assert changed, "the sample bundle must contain a changed function"
+    verdict = evaluate_bundle(bundle(keys=(), governance_changes=[], changed=changed), "a" * 64)
+
+    c9 = next(r for r in verdict.results if r.case == "C9")
+    assert c9.outcome == "VIOLATED"
+    assert verdict.value == "REVIEW"
+
+
 # --- AC6: default rules ------------------------------------------------------------------------
 
 
