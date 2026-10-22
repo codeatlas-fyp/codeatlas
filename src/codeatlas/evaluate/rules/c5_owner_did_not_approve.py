@@ -18,6 +18,8 @@ Edge cases (spec §13 "edge cases"):
                                            is Saleha's identity map; a bare
                                            team mention we don't recognise
                                            drops to INSUFFICIENT)
+    - Owner is an email address          → INSUFFICIENT_EVIDENCE (no GitHub login
+                                           to match reviews against)
 
 Pure. Reads only the bundle.
 """
@@ -78,6 +80,14 @@ class C5OwnerDidNotApprove:
                 # Until that lands, teams are always unresolved.
                 insufficient_reasons.append(
                     f"{path}: owner team {team_owners[0]} not resolved in identity map"
+                )
+                continue
+            # An email owner has no GitHub login to compare reviews against, so it is
+            # unresolved like a team: missing evidence, never a violation.
+            email_owners = [o for o in owners if not o.startswith("@")]
+            if email_owners:
+                insufficient_reasons.append(
+                    f"{path}: owner {email_owners[0]} is an email, not resolved to a GitHub login"
                 )
                 continue
             if owner_logins and owner_logins <= pr_author_logins:

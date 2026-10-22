@@ -223,6 +223,37 @@ def test_unresolved_owner_does_not_hide_a_violated_path() -> None:
     assert decide([result]) == "FAIL"
 
 
+def test_email_owner_is_unresolved_and_gives_unknown() -> None:
+    rule = C5OwnerDidNotApprove()
+    bundle = _bundle(
+        governance=_governance("/payments/ owner@example.com\n"),
+        reviews=[],
+        commits=[_commit("head", "yusra")],
+        changed=[_changed("payments/fees.py")],
+    )
+
+    result = rule.check(bundle, [], bundle.policy)
+
+    assert result.outcome == "INSUFFICIENT_EVIDENCE"
+    assert result.required is True
+    assert decide([result]) == "UNKNOWN"
+
+
+def test_email_owner_does_not_hide_a_violated_path() -> None:
+    rule = C5OwnerDidNotApprove()
+    bundle = _bundle(
+        governance=_governance("/payments/ @areej\n/platform/ owner@example.com\n"),
+        reviews=[],
+        commits=[_commit("head", "yusra")],
+        changed=[_changed("payments/fees.py"), _changed("platform/service.py")],
+    )
+
+    result = rule.check(bundle, [], bundle.policy)
+
+    assert result.outcome == "VIOLATED"
+    assert decide([result]) == "FAIL"
+
+
 def test_satisfied_for_paths_with_no_owner_rule() -> None:
     """CODEOWNERS doesn't cover src/foo.py; C5 should still be SATISFIED."""
     rule = C5OwnerDidNotApprove()
