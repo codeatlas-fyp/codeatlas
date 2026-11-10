@@ -227,3 +227,37 @@ def test_fallback_when_source_is_unparseable() -> None:
     entities = extract_entities(file_path="broken.py", source=source)
     assert len(entities) >= 1
     assert entities[0].kind == "module"
+
+
+@skipif_no_tree_sitter
+def test_relative_imports_resolve_against_the_containing_package() -> None:
+    """In `pkg/subpkg/mod.py`, one dot is `pkg.subpkg` and two dots are `pkg`."""
+    source = b"""\
+from . import sibling
+from .utils import helper
+from ..parent_pkg import something
+"""
+    entities = extract_entities(file_path="pkg/subpkg/mod.py", source=source)
+    edges = build_import_graph(entities=entities, file_sources={"pkg/subpkg/mod.py": source})
+    dests = {e.dst for e in edges if e.kind == "IMPORTS"}
+    assert dests == {"pkg.subpkg", "pkg.subpkg.utils", "pkg.parent_pkg"}
+
+
+@skipif_no_tree_sitter
+def test_relative_imports_in_package_init_resolve_inside_that_package() -> None:
+    """`pkg/subpkg/__init__.py` is the package itself, so `.mod` is `pkg.subpkg.mod`."""
+    source = b"from .mod import thing\nfrom .. import other\n"
+    path = "pkg/subpkg/__init__.py"
+    entities = extract_entities(file_path=path, source=source)
+    edges = build_import_graph(entities=entities, file_sources={path: source})
+    dests = {e.dst for e in edges if e.kind == "IMPORTS"}
+    assert dests == {"pkg.subpkg.mod", "pkg"}
+
+
+@skipif_no_tree_sitter
+def test_relative_import_beyond_the_top_package_keeps_the_tail() -> None:
+    """Too many dots cannot go above the repository root; the named part is kept."""
+    source = b"from ...shared import x\n"
+    entities = extract_entities(file_path="pkg/mod.py", source=source)
+    edges = build_import_graph(entities=entities, file_sources={"pkg/mod.py": source})
+    assert {e.dst for e in edges} == {"shared"}
