@@ -16,8 +16,7 @@ Three jobs, all pure functions over already-collected text:
 
 3. **Module import graph** — walks each entity's AST for `import` /
    `from … import …` statements and emits `CodeEdge(src, dst, kind="IMPORTS",
-   confident=True)`. CALLS edges are deferred to Iteration 2 (D-table D10:
-   "direct call edges deferred to Iteration 2").
+   confident=True)`. CALLS edges come from `analyze.calls.build_call_graph`.
 
 All functions pure. No file I/O — the caller passes file bytes from
 `collect.git.LocalRepo.file_bytes(sha, path)`.
@@ -378,7 +377,7 @@ def build_import_graph(
 
     Resolves relative imports (`from . import foo`) against the module's own
     package. The `confident` flag is True because imports are structural and
-    text-visible — unlike CALLS which require call-graph analysis we deferred.
+    text-visible. CALLS edges are built separately by `analyze.calls`.
     """
     module_entities = [e for e in entities if e.kind == "module"]
 
