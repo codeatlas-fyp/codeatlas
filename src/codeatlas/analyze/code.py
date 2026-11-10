@@ -387,15 +387,16 @@ def build_import_graph(
         if source is None:
             continue
         text = source.decode("utf-8", errors="replace")
+        is_package = PurePosixPath(module.file).name == "__init__.py"
         for from_module, bare_imports in _IMPORT_PATTERN.findall(text):
             targets: list[str] = []
             if from_module:
-                targets.append(_resolve_import(from_module, module.entity_id, package_prefix))
+                targets.append(_resolve_import(from_module, module.entity_id, is_package))
             if bare_imports:
                 for raw in bare_imports.split(","):
                     name = raw.strip()
                     if name:
-                        targets.append(_resolve_import(name, module.entity_id, package_prefix))
+                        targets.append(_resolve_import(name, module.entity_id, is_package))
             for target in targets:
                 if target == module.entity_id:
                     continue  # self-reference, ignore
@@ -420,20 +421,21 @@ def build_import_graph(
     return unique
 
 
-def _resolve_import(name: str, importer_module: str, package_prefix: str) -> str:
-    """Resolve `.foo` and `..bar` relative imports against the importer's package."""
+def _resolve_import(name: str, importer_module: str, is_package: bool = False) -> str:
+    """Resolve `.foo` and `..bar` relative imports against the importer's package.
+
+    One dot means the package that contains the importer: for `pkg/sub/mod.py` that is
+    `pkg.sub`, and for `pkg/sub/__init__.py` (a package itself) it is `pkg.sub` too. Each
+    extra dot goes one package up.
+    """
     if not name.startswith("."):
         return name
-    # Count leading dots to determine how many parent packages to pop.
     dots = len(name) - len(name.lstrip("."))
     tail = name[dots:]
-    importer_parts = importer_module.split(".")
-    # pop `dots` levels; a single '.' means "same package", popping 0 is wrong,
-    # so dots-1 is the pop count for from-imports.
-    pop = max(0, dots - 1)
-    if pop > 0:
-        importer_parts = importer_parts[:-pop] if pop <= len(importer_parts) else []
-    base = ".".join(importer_parts)
+    parts = importer_module.split(".")
+    package = parts if is_package else parts[:-1]
+    keep = max(0, len(package) - (dots - 1))
+    base = ".".join(package[:keep])
     if tail:
         return f"{base}.{tail}" if base else tail
     return base
