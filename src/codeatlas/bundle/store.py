@@ -5,6 +5,7 @@
 """
 
 import os
+import tempfile
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -19,10 +20,14 @@ VERDICT_FILE = "verdict.json"
 
 
 def _write_atomically(path: Path, data: bytes) -> None:
-    """Write to a temporary file, then rename: a crash never leaves a half-written file."""
-    tmp = path.with_name(path.name + ".tmp")
+    """Use a unique sibling temp file so concurrent writers cannot collide."""
+    descriptor, name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    tmp = Path(name)
     try:
-        tmp.write_bytes(data)
+        with os.fdopen(descriptor, "wb") as output:
+            output.write(data)
+            output.flush()
+            os.fsync(output.fileno())
         os.replace(tmp, path)
     finally:
         tmp.unlink(missing_ok=True)

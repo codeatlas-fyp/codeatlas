@@ -21,6 +21,9 @@
 
   <nav class="side__nav" aria-label="Main">
     <p class="side__h">Workspace</p>
+    <a class="side__a{% if nav_active|default('') == 'setup' %} is-active{% endif %}" href="/setup"{% if nav_active|default('') == 'setup' %} aria-current="page"{% endif %}>
+      <span>Connect and evaluate</span>
+    </a>
     <a class="side__a{% if nav_active|default('') == 'cases' %} is-active{% endif %}" href="/"{% if nav_active|default('') == 'cases' %} aria-current="page"{% endif %}>
       <svg class="side__i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
       <span>Cases</span><span class="side__n mono">{{ nav_total }}</span>

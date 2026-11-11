@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% set nav_active = 'setup' %}
+{% block title %}Connect and evaluate{% endblock %}
+{% block body %}
+<main class="wrap page stackpage" data-dashboard data-source-mode="{{ source_mode }}">
+  <div class="pagehead"><div><h1 class="mono h-xl">Connect and evaluate</h1><p class="sub">Connect read-only Jira and GitHub accounts, then evaluate a pull request with the CodeAtlas evidence pipeline.</p></div></div>
+  {% if source_mode == 'fixtures' %}
+  <section class="card card--pad"><h2 class="h-md">Fixture mode</h2><p class="sub">Using committed, sanitized SBX and sandbox recordings. No live provider account is contacted.</p></section>
+  {% else %}
+  <div class="split">
+    <section class="card card--pad"><h2 class="h-md">Jira Cloud</h2><p class="sub">Read-only access to projects, issues, changelogs, and policy groups.</p>
+      <form data-connection="jira" class="stack">
+        <label>Site URL<input name="base_url" type="url" placeholder="https://example.atlassian.net" required></label>
+        <label>Account email<input name="email" type="email" autocomplete="username" required></label>
+        <label>API token<input name="api_token" type="password" autocomplete="new-password" required></label>
+        <button class="btn-dark" type="submit">Validate and save Jira</button><p data-message role="status" class="small muted"></p>
+      </form><p data-connection-state="jira" class="small muted"></p>
+    </section>
+    <section class="card card--pad"><h2 class="h-md">GitHub</h2><p class="sub">Use a read-only token that can access the repositories you want to evaluate.</p>
+      <form data-connection="github" class="stack">
+        <label>Personal access token<input name="personal_access_token" type="password" autocomplete="new-password" required></label>
+        <button class="btn-dark" type="submit">Validate and save GitHub</button><p data-message role="status" class="small muted"></p>
+      </form><p data-connection-state="github" class="small muted"></p>
+    </section>
+  </div>
+  {% endif %}
+  <section class="card card--pad stack" data-project-picker>
+    <h2 class="h-md">Project and repository</h2>
+    <div class="split">
+      <label>Jira project<select name="jira_project" required><option value="">Load projects…</option></select></label>
+      <label>GitHub repository<select name="github_repository" required><option value="">Load repositories…</option></select></label>
+    </div>
+    <button class="btn-dark" type="button" data-save-project>Save selection</button>
+    <p data-project-message role="status" class="small muted"></p>
+  </section>
+  <section class="card card--pad stack">
+    <h2 class="h-md">Pull request</h2>
+    <label>Open pull request<select name="pull_request" required><option value="">Select a project and repository first</option></select></label>
+    <div data-pr-details class="small muted"></div>
+    <button class="btn-dark" type="button" data-evaluate disabled>Evaluate</button>
+    <div data-progress aria-live="polite"></div>
+  </section>
+  <section class="card card--pad stack"><h2 class="h-md">Evaluation history</h2><div data-history class="stack"><p class="small muted">Loading…</p></div></section>
+  <section class="card card--pad stack" data-result hidden><h2 class="h-md">Evaluation result</h2><div data-result-body></div></section>
+</main>
+{% endblock %}

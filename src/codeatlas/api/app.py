@@ -7,10 +7,15 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import RequestResponseEndpoint
 
 from codeatlas import __version__
+from codeatlas.api import catalog as catalog_api
 from codeatlas.api.auth import BasicAuthMiddleware
 from codeatlas.api.cases import CaseError, CaseStore, ErrorCode
+from codeatlas.api.connections import router as connections_router
+from codeatlas.api.evaluations import router as evaluations_router
 from codeatlas.api.routes import router as api_router
 from codeatlas.api.settings import WebSettings
+from codeatlas.db import make_engine, make_session_factory
+from codeatlas.jobs.service import JobService
 from codeatlas.web.pages import STATIC_DIR, render_error
 from codeatlas.web.pages import router as page_router
 
@@ -29,8 +34,15 @@ _SECURITY_HEADERS = {
 
 def create_app(settings: WebSettings | None = None) -> FastAPI:
     settings = settings or WebSettings()
+    settings.validate_runtime()
     application = FastAPI(title="CodeAtlas", version=__version__)
     application.state.store = CaseStore(settings.bundle_dir)
+    application.state.settings = settings
+    application.state.engine = make_engine(settings.database_url)
+    application.state.session_factory = make_session_factory(application.state.engine)
+    application.state.jobs = JobService(
+        application.state.session_factory, lease_seconds=settings.job_lease_seconds
+    )
 
     @application.get("/health")
     def health() -> dict[str, str]:
@@ -42,15 +54,33 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
     async def case_error(request: Request, error: Exception) -> Response:
         if not isinstance(error, CaseError):
             raise error
+        safe_error = error
+        if error.code in {"bundle_corrupt", "internal_error"}:
+            safe_error = CaseError(
+                error.code,
+                "Stored evaluation data failed validation."
+                if error.code == "bundle_corrupt"
+                else "The request could not be completed.",
+                status=error.status,
+            )
         if request.url.path.startswith("/api/"):
-            return JSONResponse(error.body(), status_code=error.status)
-        return render_error(request, error)
+            return JSONResponse(safe_error.body(), status_code=safe_error.status)
+        return render_error(request, safe_error)
 
     @application.exception_handler(StarletteHTTPException)
     async def http_error(request: Request, error: Exception) -> Response:
         """Unknown paths and methods get the same error shape (API) or error page (HTML)."""
         if not isinstance(error, StarletteHTTPException):
             raise error
+        if (
+            request.url.path.startswith("/api/")
+            and not request.url.path.startswith("/api/cases")
+            and error.status_code < 500
+        ):
+            return JSONResponse(
+                {"error": {"code": "request_rejected", "message": error.detail, "details": {}}},
+                status_code=error.status_code,
+            )
         code: ErrorCode = "case_not_found" if error.status_code == 404 else "internal_error"
         return await case_error(
             request, CaseError(code, str(error.detail), status=error.status_code)
@@ -70,6 +100,9 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
         )
 
     application.include_router(api_router)
+    application.include_router(connections_router)
+    application.include_router(catalog_api.router)
+    application.include_router(evaluations_router)
     application.include_router(page_router)
     application.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     return application

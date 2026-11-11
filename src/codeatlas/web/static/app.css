@@ -347,3 +347,15 @@ a.ev:hover { background: var(--accent-bg); border-color: #a4b0f5; color: var(--i
   .side__case, .side__foot { display: none; }
   .side__h--recent { display: none; }
 }
+
+/* Single-user evaluation dashboard */
+[data-dashboard] label { display: flex; flex-direction: column; gap: 6px; color: var(--ink-2); font-weight: 600; }
+[data-dashboard] input, [data-dashboard] select { width: 100%; min-height: 42px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); padding: 8px 10px; color: var(--ink); font: inherit; }
+[data-dashboard] button:disabled { opacity: .55; cursor: not-allowed; }
+[data-dashboard] .pass-text, .verdict-pass { color: var(--pass); }
+.verdict-fail { color: var(--fail); }
+.verdict-review { color: var(--review); }
+.verdict-unknown { color: var(--unknown); }
+.job-progress { border-left: 3px solid var(--accent); padding: 10px 16px; background: var(--paper-2); border-radius: 6px; overflow-wrap: anywhere; }
+.history-row { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(120px, .6fr) minmax(150px, .6fr) auto; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line-2); }
+@media (max-width: 760px) { .history-row { grid-template-columns: 1fr; gap: 4px; } }

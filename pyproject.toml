@@ -24,6 +24,11 @@ dependencies = [
     "uvicorn>=0.54.0",
     "numpy>=1.26",
     "jinja2>=3.1.6",
+    "sqlalchemy>=2.0.36",
+    "alembic>=1.14.0",
+    "psycopg[binary]>=3.2.3",
+    "cryptography>=44.0.0",
+    "filelock>=3.16.1",
 ]
 
 [project.scripts]
@@ -32,6 +37,9 @@ codeatlas = "codeatlas.cli:app"
 [build-system]
 requires = ["uv_build>=0.12.22,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.alembic]
+script_location = "migrations"
 
 [dependency-groups]
 dev = [

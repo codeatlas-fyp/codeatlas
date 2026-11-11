@@ -20,6 +20,7 @@ header has no `rel="next"`.
 from __future__ import annotations
 
 import os
+import re
 import time
 from dataclasses import dataclass
 from typing import Any, cast
@@ -70,6 +71,24 @@ class GitHubClient:
                 detail="GitHub pull-request response was not a JSON object",
             )
         return cast("dict[str, Any]", data)
+
+    def authenticated_user(self) -> dict[str, Any]:
+        """Validate the token and return the account's public profile fields."""
+        data = self._get_json("/user")
+        if not isinstance(data, dict):
+            raise CollectionError(
+                "github", status=None, retryable=False, detail="invalid user response"
+            )
+        return cast("dict[str, Any]", data)
+
+    def repositories(self) -> list[dict[str, Any]]:
+        """Repositories visible to the authenticated user."""
+        return self._get_paged("/user/repos?sort=updated&per_page=100")
+
+    def pull_requests(self, repo: str) -> list[dict[str, Any]]:
+        """Open pull requests for a repository selected from the account catalog."""
+        _checked_repo(repo)
+        return self._get_paged(f"/repos/{repo}/pulls?state=open&per_page=100")
 
     def commits(self, repo: str, number: int) -> list[dict[str, Any]]:
         """GET /repos/{repo}/pulls/{number}/commits — all commits, oldest first."""
@@ -139,8 +158,9 @@ class GitHubClient:
                 time.sleep(min(wait, 60))
 
             if resp.status_code == 429:
-                retry_after = int(resp.headers.get("Retry-After", "5"))
-                time.sleep(min(retry_after, 60))
+                if attempt == MAX_5XX_RETRIES:
+                    break
+                time.sleep(_retry_seconds(resp.headers.get("Retry-After"), 5))
                 continue
 
             if 500 <= resp.status_code < 600 and attempt < MAX_5XX_RETRIES:
@@ -169,10 +189,12 @@ class GitHubClient:
     def _get_paged(self, path: str) -> list[dict[str, Any]]:
         """Follow `Link: rel=next` until exhausted."""
         results: list[dict[str, Any]] = []
-        next_path: str | None = f"{path}?per_page={PER_PAGE}"
+        next_path: str | None = path
+        if "per_page=" not in next_path:
+            next_path += ("&" if "?" in next_path else "?") + f"per_page={PER_PAGE}"
         pages = 0
         while next_path is not None and pages < MAX_PAGES:
-            resp = self._session_().get(next_path)
+            resp = self._paged_response(next_path)
             if resp.status_code >= 400:
                 raise CollectionError(
                     source="github",
@@ -182,11 +204,47 @@ class GitHubClient:
                 )
             page = resp.json()
             if not isinstance(page, list):
-                break
+                raise CollectionError(
+                    source="github",
+                    status=resp.status_code,
+                    retryable=False,
+                    detail="GitHub paginated response was not a list",
+                )
             results.extend(page)
             next_path = _next_link(resp.headers.get("Link", ""))
             pages += 1
+        if next_path is not None:
+            raise CollectionError(
+                source="github",
+                status=None,
+                retryable=False,
+                detail=f"pagination exceeded the {MAX_PAGES}-page safety limit",
+            )
         return results
+
+    def _paged_response(self, path: str) -> httpx.Response:
+        for attempt in range(MAX_5XX_RETRIES + 1):
+            try:
+                response = self._session_().get(path)
+            except httpx.TransportError as error:
+                if attempt == MAX_5XX_RETRIES:
+                    raise CollectionError(
+                        "github", status=None, retryable=True, detail="request transport failed"
+                    ) from error
+                time.sleep(2**attempt)
+                continue
+            if response.status_code == 429:
+                if attempt == MAX_5XX_RETRIES:
+                    return response
+                time.sleep(_retry_seconds(response.headers.get("Retry-After"), 5))
+                continue
+            if 500 <= response.status_code < 600 and attempt < MAX_5XX_RETRIES:
+                time.sleep(2**attempt)
+                continue
+            return response
+        raise CollectionError(
+            "github", status=None, retryable=True, detail="page retries exhausted"
+        )
 
 
 def client_from_env() -> GitHubClient:
@@ -220,3 +278,17 @@ def _next_link(link_header: str) -> str | None:
                 return "/" + path_and_query
             return url
     return None
+
+
+def _checked_repo(repo: str) -> str:
+    if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
+        raise ValueError("repository must be an owner/name identifier")
+    return repo
+
+
+def _retry_seconds(value: str | None, default: int) -> float:
+    try:
+        seconds = float(value) if value is not None else float(default)
+    except ValueError:
+        seconds = float(default)
+    return min(max(seconds, 0.0), 60.0)

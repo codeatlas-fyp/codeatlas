@@ -9,7 +9,7 @@ import json
 import re
 import sys
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from typing import Any, TextIO
@@ -33,10 +33,18 @@ def redact(key: str, value: Any) -> Any:
 
 
 class EventLog:
-    def __init__(self, run_id: str, *, stream: TextIO | None = None, level: str = "INFO") -> None:
+    def __init__(
+        self,
+        run_id: str,
+        *,
+        stream: TextIO | None = None,
+        level: str = "INFO",
+        stage_callback: Callable[[str, str], None] | None = None,
+    ) -> None:
         self.run_id = run_id
         self._stream = stream or sys.stderr
         self._threshold = _LEVELS.get(level.upper(), 20)
+        self._stage_callback = stage_callback
 
     def event(self, event: str, *, level: str = "INFO", **fields: Any) -> None:
         if _LEVELS.get(level, 20) < self._threshold:
@@ -56,9 +64,13 @@ class EventLog:
         """Log the start and end (with duration) of a pipeline stage; failures are logged too."""
         started = time.perf_counter()
         self.event("stage_start", stage=name)
+        if self._stage_callback:
+            self._stage_callback(name, "started")
         try:
             yield
         except Exception as error:
+            if self._stage_callback:
+                self._stage_callback(name, "failed")
             self.event(
                 "stage_failed",
                 level="ERROR",
@@ -71,3 +83,5 @@ class EventLog:
         self.event(
             "stage_end", stage=name, duration_ms=round((time.perf_counter() - started) * 1000)
         )
+        if self._stage_callback:
+            self._stage_callback(name, "completed")

@@ -12,9 +12,9 @@
     <details class="howto">
       <summary class="btn-dark"><span aria-hidden="true">+</span> Evaluate a PR</summary>
       <div class="howto__panel">
-        <p class="howto__h">Evaluations run from the CLI or CI</p>
-        <p>This site only shows stored results, so it never holds Jira or GitHub tokens. Run the command, and the new case appears here.</p>
-        <div class="cmd"><code><span class="prompt">$</span> uv run codeatlas collect --change change.json --store bundles</code><button type="button" class="btn-ghost" data-copy="uv run codeatlas collect --change change.json --store bundles">Copy</button></div>
+        <p class="howto__h">Evaluate from the dashboard</p>
+        <p>Connect read-only Jira and GitHub accounts, select a project, repository, and pull request, then follow the persisted job progress.</p>
+        <p><a class="btn-dark" href="/setup">Open evaluation setup</a></p>
       </div>
     </details>
   </div>
@@ -69,6 +69,6 @@
     </div>
   </section>
 
-  <p class="footnote">Case ID = first 8 characters of the evidence bundle hash. Findings count check results: PASS = satisfied, FAIL = blocking violation, REVIEW = review violation, UNKNOWN = required evidence missing. Nothing here writes to Jira or GitHub.</p>
+  <p class="footnote">Case ID = first 8 characters of the evidence bundle hash. Findings count check results: PASS = satisfied, FAIL = blocking violation, REVIEW = review violation, UNKNOWN = required evidence missing. CodeAtlas reads Jira and GitHub; it does not write to either service.</p>
 </main>
 {% endblock %}

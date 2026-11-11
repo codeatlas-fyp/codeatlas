@@ -114,6 +114,16 @@ def case_list(
     )
 
 
+@router.get("/setup", response_class=HTMLResponse)
+def setup_page(request: Request) -> HTMLResponse:
+    return _page(
+        request,
+        "setup.html",
+        nav_active="setup",
+        source_mode=request.app.state.settings.source_mode,
+    )
+
+
 @router.get("/cases/{bundle_hash}", response_class=HTMLResponse)
 def case_page(request: Request, bundle_hash: str, store: Store) -> HTMLResponse:
     case = store.get(bundle_hash)

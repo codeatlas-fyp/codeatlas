@@ -1,0 +1,71 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: codeatlas
+      POSTGRES_USER: codeatlas
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codeatlas -d codeatlas"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    build: .
+    command: ["alembic", "upgrade", "head"]
+    environment: &app-environment
+      CODEATLAS_PRODUCTION: "true"
+      CODEATLAS_DATABASE_URL: postgresql+psycopg://codeatlas:${POSTGRES_PASSWORD}@db:5432/codeatlas
+      CODEATLAS_CREDENTIAL_KEY: ${CODEATLAS_CREDENTIAL_KEY:?Set CODEATLAS_CREDENTIAL_KEY in .env}
+      CODEATLAS_WEB_USER: ${CODEATLAS_WEB_USER:?Set CODEATLAS_WEB_USER in .env}
+      CODEATLAS_WEB_PASSWORD: ${CODEATLAS_WEB_PASSWORD:?Set CODEATLAS_WEB_PASSWORD in .env}
+      CODEATLAS_BUNDLE_DIR: /data/bundles
+      CODEATLAS_REPO_CACHE_DIR: /data/repo-cache
+      CODEATLAS_SOURCE_MODE: ${CODEATLAS_SOURCE_MODE:-live}
+      CODEATLAS_JIRA_FIXTURE_DIR: /app/tests/fixtures/jira
+      CODEATLAS_GITHUB_FIXTURE_DIR: /app/tests/fixtures/github
+    volumes:
+      - bundle-data:/data/bundles
+      - repository-cache:/data/repo-cache
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: .
+    command: ["sh", "-c", "exec uvicorn codeatlas.api.app:app --host 0.0.0.0 --port 8000 --proxy-headers"]
+    environment: *app-environment
+    ports:
+      - "8000:8000"
+    volumes:
+      - bundle-data:/data/bundles
+      - repository-cache:/data/repo-cache
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build: .
+    command: ["python", "-m", "codeatlas.jobs.worker"]
+    environment: *app-environment
+    volumes:
+      - bundle-data:/data/bundles
+      - repository-cache:/data/repo-cache
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  bundle-data:
+  repository-cache:

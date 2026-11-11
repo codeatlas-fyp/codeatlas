@@ -91,6 +91,14 @@ class JiraClient:
         """The issue with all fields; rich text stays ADF."""
         return self._get(f"/issue/{_checked(key)}", {"fields": "*all"})
 
+    def current_user(self) -> dict[str, Any]:
+        """Validate the configured account and return its non-secret profile metadata."""
+        return self._get("/myself", {})
+
+    def projects(self) -> list[dict[str, Any]]:
+        """List projects visible to this account, using Jira's paginated project search."""
+        return list(self._pages("/project/search", {}, "values"))
+
     def fetch_changelog(self, key: str) -> list[dict[str, Any]]:
         """Every changelog history, all pages, in server order (oldest first)."""
         return list(self._pages(f"/issue/{_checked(key)}/changelog", {}, "values"))

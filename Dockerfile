@@ -1,4 +1,4 @@
-# CodeAtlas web service image (read-only API + pages over stored evidence bundles).
+# CodeAtlas API, worker, and server-rendered web application image.
 # Built and pushed by .github/workflows/cd.yml; built and smoke-tested on every PR by ci.yml.
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
@@ -17,6 +17,9 @@ COPY scripts/docker_excludes.py ./scripts/
 RUN uv sync --locked --no-dev --no-install-project $(python scripts/docker_excludes.py uv.lock)
 
 COPY src ./src
+COPY migrations ./migrations
+COPY alembic.ini ./
+COPY tests/fixtures ./tests/fixtures
 RUN uv sync --locked --no-dev $(python scripts/docker_excludes.py uv.lock)
 
 # Demo data: real evaluations of the codeatlas-sandbox PRs, produced by `codeatlas collect`
@@ -25,9 +28,11 @@ COPY deploy/bundles ./bundles
 
 # Run as a non-root user that cannot modify the code or the bundles.
 RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin codeatlas
+RUN mkdir -p /data/bundles /data/repo-cache && chown -R codeatlas:codeatlas /data
 
 ENV PATH="/app/.venv/bin:$PATH" \
-    CODEATLAS_BUNDLE_DIR=/app/bundles \
+    CODEATLAS_BUNDLE_DIR=/data/bundles \
+    CODEATLAS_REPO_CACHE_DIR=/data/repo-cache \
     CODEATLAS_COMMIT=$GIT_SHA \
     PORT=8000
 
