@@ -252,7 +252,7 @@ CASE_POLICY = CasePolicy(severity="block")
 SEMANTIC_POLICY = SemanticPolicy(top_k=5)
 POLICY = Policy(
     version=1,
-    workitem_key_pattern="[A-Z]+-\d+",
+    workitem_key_pattern=r"[A-Z]+-\d+",
     requirement_fields=["summary", "description"],
     governance_paths=["CODEOWNERS", ".codeatlas/**"],
     approval=APPROVAL_POLICY,
