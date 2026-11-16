@@ -22,6 +22,7 @@ from codeatlas.schema.evidence import (
     ResolvedPerson,
     Review,
     SemanticCandidate,
+    SemanticRunSummary,
     WorkItemRef,
 )
 from codeatlas.schema.policy import IdentityMap, Policy
@@ -72,3 +73,5 @@ class EvidenceBundle(Model):
     criteria: list[Criterion]
     candidates: list[SemanticCandidate]
     collection_notes: list[str]  # e.g. "work item SBX-99 not found"
+    # CA-02: None in bundles made before semantic-run-v1, and then left out of the hash.
+    semantic_run: SemanticRunSummary | None = None
