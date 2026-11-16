@@ -128,3 +128,50 @@ def test_corpus_is_deterministic_and_hash_tracks_content() -> None:
     assert changed.corpus_hash != first.corpus_hash
     other_limits = _corpus(max_lines=5)
     assert other_limits.corpus_hash != first.corpus_hash
+
+
+def test_bad_limits_are_refused() -> None:
+    import pytest
+
+    with pytest.raises(ValueError, match="at least 1"):
+        _corpus(max_lines=0)
+
+
+def test_entity_outside_the_file_is_reported() -> None:
+    entity = CodeEntity(
+        entity_id="library.loans.ghost",
+        kind="function",
+        file="library/loans.py",
+        start_line=500,
+        end_line=510,
+        signature=None,
+        docstring=None,
+    )
+    corpus = build_corpus(
+        entities=[entity], file_sources={"library/loans.py": LOANS}, pinned_sha="a" * 40
+    )
+    assert corpus.skipped == (("library.loans.ghost", "entity lines fall outside the file"),)
+
+
+def test_class_whose_lines_are_all_methods_gets_a_header_only_chunk() -> None:
+    source = b"class Only:\n    def a(self):\n        pass\n"
+    entities = extract_entities(file_path="library/loans.py", source=source)
+    # Start the class on its method's line, so every body line belongs to the method.
+    shrunk = [
+        e.model_copy(update={"start_line": 2}) if e.entity_id == "library.loans.Only" else e
+        for e in entities
+    ]
+    corpus = build_corpus(
+        entities=shrunk, file_sources={"library/loans.py": source}, pinned_sha="a" * 40
+    )
+    (chunk,) = _doc(corpus, "library.loans.Only").chunks
+    assert (chunk.spans, chunk.body) == ((), "")
+    assert chunk.text == _doc(corpus, "library.loans.Only").header
+
+
+def test_chunks_lists_every_chunk_in_document_order() -> None:
+    corpus = _corpus()
+    assert [c.chunk_id for c in corpus.chunks()] == [
+        c.chunk_id for d in corpus.docs for c in d.chunks
+    ]
+    assert len(corpus.chunks()) == len(corpus.docs)
