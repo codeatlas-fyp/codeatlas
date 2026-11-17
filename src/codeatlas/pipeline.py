@@ -25,7 +25,7 @@ from codeatlas.analyze import code as code_analysis
 from codeatlas.analyze import criteria as criteria_analysis
 from codeatlas.analyze import governance as governance_analysis
 from codeatlas.analyze import keys as keys_analysis
-from codeatlas.analyze import semantic as semantic_analysis
+from codeatlas.analyze import semantic_run as semantic_run_analysis
 from codeatlas.analyze.lifecycle import JiraHistory, LifecycleContext, TextForms, reconstruct
 from codeatlas.bundle.hashing import effective_policy_hash, sha256_hex, verdict_hash
 from codeatlas.bundle.store import BundleStore, load_bundle
@@ -56,6 +56,7 @@ from codeatlas.schema import (
     ResolvedPerson,
     Review,
     SemanticCandidate,
+    SemanticRunSummary,
     TraceLink,
     Verdict,
     WorkItemRef,
@@ -119,7 +120,7 @@ class CollectRequest:
     collected_at: datetime
     notes: list[str] = field(default_factory=list)
     target: PullRequestTarget | None = None
-    embedding_model: str | None = None  # None: the semantic module's pinned default
+    embedding_model: str | None = None  # ignored since CA-02: models come from model_registry
     bm25_only: bool = False  # skip the embedding model (offline runs and tests)
 
 
@@ -448,8 +449,11 @@ def _split_by_entity(span: tuple[int, int], entities: list[CodeEntity]) -> list[
 
 def _code(
     change: ChangeRef, hunks: list[DiffHunk], commits: list[Commit], git: GitSource, at: datetime
-) -> tuple[list[CodeEntity], list[ChangedEntity], list[CodeEdge]]:
+) -> tuple[list[CodeEntity], list[ChangedEntity], list[CodeEdge], dict[str, bytes]]:
     """Entities of every Python file at head, the entity each hunk falls in, and imports.
+
+    The last item is the text of every file read at head (deleted files, read at the merge
+    base, are left out): the semantic corpus is built from it.
 
     The whole repository is parsed (not just the changed files) so that semantic ranking picks
     the top candidates out of all the code; ranking only the changed files would put every
@@ -465,9 +469,12 @@ def _code(
     entities: list[CodeEntity] = []
     changed: list[ChangedEntity] = []
     sources: dict[str, bytes] = {}
+    deleted_files: set[str] = set()
     for path in sorted(by_file):
         file_hunks = by_file[path]
         deleted = all(h.change_type == "deleted" for h in file_hunks)
+        if deleted:
+            deleted_files.add(path)
         sha = change.merge_base_sha if deleted else change.head_sha
         source = git.file_bytes(sha, path)
         if source is None:
@@ -500,7 +507,8 @@ def _code(
         entities += code_analysis.extract_entities(file_path=path, source=source)
     entities.sort(key=lambda e: (e.file, e.start_line, e.entity_id))
     edges = code_analysis.build_import_graph(entities=entities, file_sources=sources)
-    return entities, changed, edges
+    head_sources = {path: text for path, text in sources.items() if path not in deleted_files}
+    return entities, changed, edges, head_sources
 
 
 def _latest_versions(versions: list[RequirementVersion]) -> list[RequirementVersion]:
@@ -637,6 +645,8 @@ def collect_bundle(
     criteria: list[Criterion] = []
     candidates: list[SemanticCandidate] = []
     model_ids: list[str] = []
+    model_file_hashes: dict[str, str] = {}
+    semantic_run: SemanticRunSummary | None = None
     people: list[ResolvedPerson] = []
 
     if request.target is not None and sources is not None:
@@ -646,7 +656,7 @@ def collect_bundle(
             "governance": governance_analysis.EXTRACTOR_VERSION,
             "code": code_analysis.EXTRACTOR_VERSION,
             "criteria": criteria_analysis.EXTRACTOR_VERSION,
-            "semantic": semantic_analysis.EXTRACTOR_VERSION,
+            "semantic": semantic_run_analysis.EXTRACTOR_VERSION,
         }
         with log.stage("diff"):
             hunks = sources.git.diff_hunks(
@@ -658,22 +668,31 @@ def collect_bundle(
             )
             notes += governance_notes
         with log.stage("code"):
-            entities, changed, edges = _code(change.ref, hunks, change.commits, sources.git, at)
+            entities, changed, edges, head_sources = _code(
+                change.ref, hunks, change.commits, sources.git, at
+            )
         with log.stage("criteria"):
             criteria = _criteria(versions)
             if keys and not criteria:
                 notes.append("no acceptance criteria found in the linked requirements")
         with log.stage("semantic"):
-            ranked = semantic_analysis.rank_candidates(
+            run = semantic_run_analysis.run_semantic(
                 criteria=criteria,
                 entities=entities,
+                file_sources=head_sources,
+                pinned_sha=change.ref.head_sha,
                 top_k=request.policy.semantic.top_k,
-                model_name=request.embedding_model or semantic_analysis.DEFAULT_MODEL,
                 bm25_only=request.bm25_only,
             )
-            candidates = ranked.candidates
-            if candidates:
-                model_ids = [ranked.model_id]
+            candidates = run.candidates
+            model_ids = run.model_ids
+            model_file_hashes = run.model_file_hashes
+            semantic_run = run.summary if criteria else None
+            notes += [
+                f"semantic ranker {r.name} {r.state}: {r.reason}"
+                for r in run.summary.rankers
+                if r.state != "ok" and not request.bm25_only
+            ]
         people = _people(change.commits, change.reviews, request.identity_map)
 
     with log.stage("freeze"):
@@ -685,7 +704,7 @@ def collect_bundle(
             run_id=request.run_id,
             extractor_versions=extractor_versions,
             model_ids=model_ids,
-            model_file_hashes={},
+            model_file_hashes=model_file_hashes,
             policy=request.policy,
             effective_policy_hash=effective_policy_hash(request.policy),
             identity_map=request.identity_map,
@@ -704,6 +723,7 @@ def collect_bundle(
             criteria=criteria,
             candidates=candidates,
             collection_notes=sorted(set(notes)),
+            semantic_run=semantic_run,
         )
 
 
