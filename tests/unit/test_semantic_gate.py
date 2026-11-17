@@ -57,6 +57,19 @@ def test_middle_score_is_review_and_low_score_abstains() -> None:
     assert abstain.gate == "abstain" and "no confident match" in abstain.reason
 
 
+def test_never_accept_calibration_says_so_in_the_reason() -> None:
+    never = GateCalibration(
+        calibration_id="gate@never",
+        provisional=True,
+        order=("codet5p",),
+        thresholds={"codet5p": Thresholds(math.inf, 0.4)},
+    )
+    outputs = [_out("codet5p", {"C1": [("a.f", 0.9)]}), _out("bm25", {"C1": [("a.f", 9.0)]})]
+    (gate,) = decide(["C1"], outputs, never)
+    assert gate.gate == "review"
+    assert gate.reason == "score 0.9; this calibration never auto-accepts"
+
+
 def test_falls_back_to_minilm_when_codet5p_is_unavailable() -> None:
     outputs = [
         _out("codet5p", {}, state="unavailable"),
