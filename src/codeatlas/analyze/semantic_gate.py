@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Literal
 
 from codeatlas.analyze.rankers import RankerOutput
-from codeatlas.schema import CriterionGate, SemanticCandidate
+from codeatlas.schema import Criterion, CriterionGate, SemanticCandidate
 
 GATE_VERSION = "gate@1"
 AGREE_TOP_N = 5
@@ -154,7 +154,12 @@ def _decide_one(
     if score >= limits.accept and agree >= calibration.min_agree:
         gate, reason = "accept", f"score {score} >= {limits.accept}, {agree} rankers agree"
     elif score >= limits.review:
-        why = "rankers disagree" if score >= limits.accept else f"score below {limits.accept}"
+        if score >= limits.accept:
+            why = "rankers disagree"
+        elif math.isinf(limits.accept):
+            why = "this calibration never auto-accepts"
+        else:
+            why = f"score below {limits.accept}"
         gate, reason = "review", f"score {score}; {why}"
     else:
         gate, reason = "abstain", f"score {score} < {limits.review}: no confident match"
@@ -182,6 +187,18 @@ class DevCriterion:
     criterion_id: str
     text: str
     relevant: frozenset[str]  # empty = nothing in the repository should match
+
+    def as_criterion(self) -> Criterion:
+        """The criterion, word for word; key and version come from the id ("KEY:v2:ac1")."""
+        parts = self.criterion_id.split(":")
+        version = parts[1][1:] if len(parts) > 1 and parts[1][:1] == "v" else ""
+        return Criterion(
+            criterion_id=self.criterion_id,
+            key=parts[0],
+            version_no=int(version) if version.isdigit() else 1,
+            text=self.text,
+            derived_from_description=False,
+        )
 
 
 def read_dev_labels(path: Path) -> list[DevCriterion]:
