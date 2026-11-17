@@ -240,3 +240,43 @@ def test_message_shows_up_to_three_entities_then_count() -> None:
     bundle = _bundle(changed=changed, commits=commits, work_items=[], candidates=[])
     result = rule.check(bundle, [], bundle.policy)
     assert "+3 more" in result.message
+
+
+def test_abstained_candidate_does_not_explain_changed_entity() -> None:
+    """A top-1 candidate the CA-02 gate abstained on is "no confident match": C9 still fires."""
+    rule = C9UnexplainedChange()
+    abstained = _cand("SBX-4:v1:ac1", "pkg.fees.calc", rank=1).model_copy(
+        update={"gate": "abstain"}
+    )
+    bundle = _bundle(
+        changed=[_ce("pkg.fees.calc", "pkg/fees.py", ["sha1"])],
+        commits=[_commit("sha1", "feat: fees (SBX-4)")],
+        work_items=[_ref("SBX-4", "sha1")],
+        candidates=[abstained],
+    )
+    result = rule.check(bundle, [], bundle.policy)
+    assert result.outcome == "VIOLATED"
+
+
+def test_codet5_rank_alone_counts_as_evidence() -> None:
+    """With MiniLM off and no BM25 hit, a CodeT5+ rank still explains the entity."""
+    rule = C9UnexplainedChange()
+    only_codet5 = SemanticCandidate(
+        criterion_id="SBX-4:v1:ac1",
+        entity_id="pkg.fees.calc",
+        bm25_rank=None,
+        dense_rank=None,
+        codet5_rank=1,
+        fused_rank=1,
+        fused_score=round(1 / 61, 4),
+        model_id="test@codet5p",
+        gate="review",
+    )
+    bundle = _bundle(
+        changed=[_ce("pkg.fees.calc", "pkg/fees.py", ["sha1"])],
+        commits=[_commit("sha1", "feat: fees (SBX-4)")],
+        work_items=[_ref("SBX-4", "sha1")],
+        candidates=[only_codet5],
+    )
+    result = rule.check(bundle, [], bundle.policy)
+    assert result.outcome == "SATISFIED"
