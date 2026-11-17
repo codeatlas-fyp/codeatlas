@@ -6,9 +6,13 @@ A run directory holds two files:
   the model ids and weight hashes, the corpus facts (pinned SHA, hash, chunker, skipped
   entities), the criteria word for word, and each ranker's state, time and top-N with
   scores and the chunk that won. It also holds the fused candidates with their gate.
-- `predictions.csv`: one row per (criterion, ranker, rank), with the entity's file and
-  line span. It is the file Saleha's evaluation harness reads next to her labels. The
-  "fused" ranker rows are the RRF candidates, which are what the bundle shows.
+- `predictions.csv`: one row per (criterion, ranker, rank) for the top of each list, with
+  the entity's file and line span, for reading by people. The "fused" ranker rows are the
+  RRF candidates, which are what the bundle shows.
+- `rankings.csv`: every entity each ranker ranked, for every criterion, including the full
+  fused (RRF) ranking. Evaluation reads this file, so a relevant entity's rank is known
+  wherever it lands, not only when it is in the top 5 or 10. BM25 ranks only entities that
+  share a word with the criterion; an entity missing here is "not ranked" by that ranker.
 
 Raw scores and spans live only here, never in the bundle, so the bundle hash does not
 depend on float noise from a model.
@@ -22,12 +26,26 @@ import json
 from pathlib import Path
 from typing import Any
 
+from codeatlas.analyze.rankers import fused_ranking
 from codeatlas.analyze.semantic_run import SCHEMA_ID, SemanticRunResult
 from codeatlas.schema import Criterion
 
 EXPORT_VERSION = "semantic-export@1"
 JSON_NAME = "semantic-run-v1.json"
 CSV_NAME = "predictions.csv"
+RANKINGS_NAME = "rankings.csv"
+RANKINGS_COLUMNS = (
+    "run_id",
+    "repo",
+    "pinned_sha",
+    "criterion_id",
+    "ranker",
+    "rank",
+    "entity_id",
+    "score",
+    "gate",
+    "entities_in_corpus",
+)
 CSV_COLUMNS = (
     "run_id",
     "repo",
@@ -181,9 +199,47 @@ def prediction_rows(
     return rows
 
 
-def predictions_csv(rows: list[dict[str, str]]) -> str:
+def ranking_rows(
+    result: SemanticRunResult,
+    criteria: list[Criterion],
+    *,
+    run_id: str,
+    repo: str,
+) -> list[dict[str, str]]:
+    """Every ranked entity for every criterion and ranker, plus the full fused ranking."""
+    gates = {g.criterion_id: g.gate for g in result.gates}
+    size = str(len(result.corpus.docs))
+    rows: list[dict[str, str]] = []
+
+    def add(cid: str, ranker: str, rank: int, entity_id: str, score: float) -> None:
+        rows.append(
+            {
+                "run_id": run_id,
+                "repo": repo,
+                "pinned_sha": result.corpus.pinned_sha,
+                "criterion_id": cid,
+                "ranker": ranker,
+                "rank": str(rank),
+                "entity_id": entity_id,
+                "score": f"{score:.6f}",
+                "gate": gates.get(cid, ""),
+                "entities_in_corpus": size,
+            }
+        )
+
+    for c in criteria:
+        cid = c.criterion_id
+        for o in result.outputs:
+            for r in o.rankings.get(cid, []):
+                add(cid, o.name, r.rank, r.entity_id, r.score)
+        for rank, (entity_id, score) in enumerate(fused_ranking(cid, result.outputs), start=1):
+            add(cid, "fused", rank, entity_id, score)
+    return rows
+
+
+def predictions_csv(rows: list[dict[str, str]], columns: tuple[str, ...] = CSV_COLUMNS) -> str:
     buffer = io.StringIO()
-    writer = csv.DictWriter(buffer, fieldnames=CSV_COLUMNS, lineterminator="\n")
+    writer = csv.DictWriter(buffer, fieldnames=columns, lineterminator="\n")
     writer.writeheader()
     writer.writerows(rows)
     return buffer.getvalue()
@@ -198,13 +254,20 @@ def write_export(
     repo: str,
     top_n: int = 10,
 ) -> tuple[Path, Path]:
-    """Write `<out_dir>/semantic-run-v1.json` and `<out_dir>/predictions.csv`."""
+    """Write semantic-run-v1.json, predictions.csv and rankings.csv into `out_dir`.
+
+    Returns the JSON and predictions paths; rankings.csv sits next to them.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     doc = export_document(result, criteria, run_id=run_id, repo=repo, top_n=top_n)
     rows = prediction_rows(result, criteria, run_id=run_id, repo=repo, top_n=top_n)
     json_path, csv_path = out_dir / JSON_NAME, out_dir / CSV_NAME
     json_path.write_text(json.dumps(doc, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     csv_path.write_text(predictions_csv(rows), encoding="utf-8", newline="")
+    full = ranking_rows(result, criteria, run_id=run_id, repo=repo)
+    (out_dir / RANKINGS_NAME).write_text(
+        predictions_csv(full, RANKINGS_COLUMNS), encoding="utf-8", newline=""
+    )
     return json_path, csv_path
 
 
@@ -213,8 +276,11 @@ __all__ = [
     "CSV_NAME",
     "EXPORT_VERSION",
     "JSON_NAME",
+    "RANKINGS_COLUMNS",
+    "RANKINGS_NAME",
     "export_document",
     "prediction_rows",
     "predictions_csv",
+    "ranking_rows",
     "write_export",
 ]
