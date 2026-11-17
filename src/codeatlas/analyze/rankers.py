@@ -175,11 +175,7 @@ def fuse_candidates(
     fused_id = "+".join(o.model_id for o in sorted(used, key=lambda o: o.name)) or "none"
     candidates: list[SemanticCandidate] = []
     for criterion in criteria:
-        scores: dict[str, float] = {}
-        for output in used:
-            for item in output.rankings.get(criterion.criterion_id, []):
-                scores[item.entity_id] = scores.get(item.entity_id, 0.0) + 1.0 / (RRF_K + item.rank)
-        ordered = sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))[:top_k]
+        ordered = fused_ranking(criterion.criterion_id, outputs)[:top_k]
         for fused_rank, (entity_id, score) in enumerate(ordered, start=1):
             cid = criterion.criterion_id
             candidates.append(
@@ -195,6 +191,21 @@ def fuse_candidates(
                 )
             )
     return candidates
+
+
+def fused_ranking(criterion_id: str, outputs: list[RankerOutput]) -> list[tuple[str, float]]:
+    """The whole RRF ranking for one criterion: (entity id, fused score), best first.
+
+    `fuse_candidates` keeps the top k of this list; the evaluation reads all of it, so an
+    entity's fused rank is known even when it is far below the candidates shown.
+    """
+    scores: dict[str, float] = {}
+    for output in outputs:
+        if output.state == "unavailable":
+            continue
+        for item in output.rankings.get(criterion_id, []):
+            scores[item.entity_id] = scores.get(item.entity_id, 0.0) + 1.0 / (RRF_K + item.rank)
+    return sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))
 
 
 def _rank(output: RankerOutput | None, criterion_id: str, entity_id: str) -> int | None:
