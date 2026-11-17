@@ -101,3 +101,37 @@ def test_export_script_writes_a_run_folder(tmp_path: Path) -> None:
     assert doc["corpus"]["pinned_sha"] == "working-tree"
     rows = list(csv.DictReader((run / "predictions.csv").open(encoding="utf-8")))
     assert rows and {r["ranker"] for r in rows} == {"bm25", "fused"}
+
+
+def test_run_name_has_no_double_dash_for_the_working_tree() -> None:
+    export = _load("export_semantic_run")
+    assert export.run_name("codeatlas", "working-tree", "T") == "codeatlas-worktree-T"
+    assert export.run_name("airflow", "4f1c2ab9" + "0" * 32, "T") == "airflow-4f1c2ab9-T"
+
+
+def test_evaluate_script_writes_tables_next_to_the_run(tmp_path: Path) -> None:
+    export = _load("export_semantic_run")
+    evaluate = _load("evaluate_semantic")
+    labels = tmp_path / "labels.csv"
+    labels.write_text(
+        "criterion_id,criterion_text,entity_id\n"
+        "DEV-01:v1:ac1,Split the acceptance criteria text into criteria.,"
+        "codeatlas.analyze.criteria.split_criteria\n"
+        "DEV-02:v1:ac1,Encrypt the zebra.,\n",
+        encoding="utf-8",
+    )
+    runs = tmp_path / "runs"
+    args = ["--criteria", str(labels), "--out", str(runs), "--run-id", "t2", "--bm25-only"]
+    assert export.main(args) == 0
+    assert evaluate.main(["--run", str(runs / "t2"), "--labels", str(labels)]) == 0
+    text = (runs / "t2" / "evaluation.md").read_text(encoding="utf-8")
+    assert "| bm25 | 1 |" in text and "no-match criteria abstained" in text
+    data = json.loads((runs / "t2" / "evaluation.json").read_text(encoding="utf-8"))
+    assert data["labels"] == "labels.csv"
+
+
+def test_evaluate_script_refuses_a_folder_without_predictions(tmp_path: Path) -> None:
+    evaluate = _load("evaluate_semantic")
+    labels = tmp_path / "labels.csv"
+    labels.write_text("criterion_id,criterion_text,entity_id\n", encoding="utf-8")
+    assert evaluate.main(["--run", str(tmp_path), "--labels", str(labels)]) == 1
