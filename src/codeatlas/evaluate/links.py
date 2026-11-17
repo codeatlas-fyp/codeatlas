@@ -18,7 +18,9 @@ state. First match wins — order matters:
        key in its `requirement_keys` (Branch 3's governance snapshot).
 
     4. SEMANTIC_CANDIDATE          — entity is in top-5 for at least one of
-       the requirement's criteria.
+       the requirement's criteria. Candidates the CA-02 gate marked `abstain`
+       ("no confident match") are left out first; candidates with no gate
+       (bundles from before CA-02) count as before.
 
     5. UNRESOLVED                  — nothing above matched.
 
@@ -57,6 +59,14 @@ def bundle_links(bundle: EvidenceBundle) -> list[TraceLink]:
     )
 
 
+def usable_candidates(candidates: list[SemanticCandidate]) -> list[SemanticCandidate]:
+    """Candidates that may link or explain code: everything except gate == "abstain".
+
+    `gate` is None in bundles written before CA-02, so their links do not change on replay.
+    """
+    return [c for c in candidates if c.gate != "abstain"]
+
+
 def assign_link_states(
     *,
     requirement_keys: list[str],
@@ -82,7 +92,7 @@ def assign_link_states(
             import_reverse.setdefault(edge.dst, set()).add(edge.src)
     adr_scope_by_key = _adr_scope_index(governance)
     candidates_by_criterion: dict[str, list[SemanticCandidate]] = {}
-    for cand in candidates:
+    for cand in usable_candidates(candidates):
         candidates_by_criterion.setdefault(cand.criterion_id, []).append(cand)
     for cands in candidates_by_criterion.values():
         cands.sort(key=lambda c: c.fused_rank)
