@@ -74,3 +74,18 @@ def test_changed_paths_dedupes(tmp_path: Path) -> None:
     repo = LocalRepo(path)
     paths = repo.changed_paths(base, head)
     assert paths == sorted(paths) or set(paths) == {"foo.py", "bar.py"}
+
+
+def test_resolve_turns_a_branch_into_its_full_sha(tmp_path: Path) -> None:
+    path, _, head = _build_repo(tmp_path)
+    repo = LocalRepo(path)
+    assert repo.resolve("main") == head
+    assert repo.resolve(head[:8]) == head
+
+
+def test_python_sources_reads_every_py_file_at_that_commit(tmp_path: Path) -> None:
+    path, base, head = _build_repo(tmp_path)
+    (path / "notes.txt").write_text("not python\n")
+    repo = LocalRepo(path)
+    assert repo.python_sources(base) == {"foo.py": b"def a():\n    return 1\n"}
+    assert sorted(repo.python_sources(head)) == ["bar.py", "foo.py"]

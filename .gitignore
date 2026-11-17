@@ -23,3 +23,5 @@ htmlcov/
 # CodeAtlas output and raw data (spec section 8)
 /bundles/
 .recordings/
+.codeatlas-cache/
+/runs/

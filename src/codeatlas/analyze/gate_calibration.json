@@ -1,0 +1,42 @@
+{
+  "calibration_id": "gate@dev-codeatlas-self",
+  "dev_set": "dev-codeatlas-self.csv",
+  "dev_set_sha256": "03018f960d7ef0c3476e03030650b98a9f7ce3fbee60e6969fd00d65b0544147",
+  "min_agree": 2,
+  "n_criteria": 24,
+  "order": [
+    "codet5p",
+    "minilm"
+  ],
+  "provisional": true,
+  "report": {
+    "codet5p": {
+      "abstained": 6.0,
+      "abstained_with_hit": 1.0,
+      "accepted": 0.0,
+      "accepted_precision": 0.0,
+      "criteria": 24.0,
+      "hit_at_5": 0.7083,
+      "top1_accuracy": 0.4167
+    },
+    "minilm": {
+      "abstained": 16.0,
+      "abstained_with_hit": 3.0,
+      "accepted": 0.0,
+      "accepted_precision": 0.0,
+      "criteria": 24.0,
+      "hit_at_5": 0.3333,
+      "top1_accuracy": 0.2917
+    }
+  },
+  "thresholds": {
+    "codet5p": {
+      "accept": null,
+      "review": 0.4845
+    },
+    "minilm": {
+      "accept": null,
+      "review": 0.4941
+    }
+  }
+}

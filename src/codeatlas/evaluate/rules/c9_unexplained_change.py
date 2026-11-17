@@ -13,6 +13,7 @@ Pure. Reads only the bundle + the pre-computed TraceLinks (Branch 5
 
 from __future__ import annotations
 
+from codeatlas.evaluate.links import usable_candidates
 from codeatlas.evaluate.rules.base import Severity, severity
 from codeatlas.schema import (
     CaseId,
@@ -139,8 +140,9 @@ def _commit_key_index(refs: list[WorkItemRef]) -> dict[str, set[str]]:
 def _entity_in_top5_index(bundle: EvidenceBundle) -> dict[str, set[str]]:
     """For each requirement key, the set of entity_ids that are top-5 for one of its criteria."""
     out: dict[str, set[str]] = {}
-    for cand in bundle.candidates:
-        if cand.fused_rank > 5 or (cand.bm25_rank is None and cand.dense_rank is None):
+    for cand in usable_candidates(bundle.candidates):  # gate "abstain" never explains code
+        ranks = (cand.bm25_rank, cand.dense_rank, cand.codet5_rank)
+        if cand.fused_rank > 5 or all(r is None for r in ranks):
             continue
         req_key = cand.criterion_id.split(":")[0]
         out.setdefault(req_key, set()).add(cand.entity_id)
