@@ -151,6 +151,20 @@ class LocalRepo:
                     paths.append(path)
         return sorted(paths)
 
+    def resolve(self, ref: str) -> str:
+        """Full SHA of a branch name, tag or (short) SHA, so a run can be pinned to it."""
+        return self._resolve(ref)
+
+    def python_sources(self, sha: str) -> dict[str, bytes]:
+        """Every `.py` file at commit `sha`, path -> bytes (the semantic corpus input)."""
+        out: dict[str, bytes] = {}
+        for path in self.list_files(sha):
+            if path.endswith(".py"):
+                data = self.file_bytes(sha, path)
+                if data is not None:
+                    out[path] = data
+        return out
+
     def _resolve(self, ref: str) -> str:
         """Accept a branch name, tag, or SHA. Returns the SHA as a string."""
         obj = self._repo.revparse_single(ref)
