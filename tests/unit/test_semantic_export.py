@@ -71,3 +71,20 @@ def test_export_is_deterministic(tmp_path: Path) -> None:
     a = write_export(tmp_path / "a", _run(), CRITERIA, run_id="r", repo="lib")
     b = write_export(tmp_path / "b", _run(), CRITERIA, run_id="r", repo="lib")
     assert a[1].read_bytes() == b[1].read_bytes()
+
+
+def test_rankings_csv_holds_every_ranked_entity_and_the_full_fused_list(tmp_path: Path) -> None:
+    from codeatlas.analyze.semantic_export import RANKINGS_COLUMNS, RANKINGS_NAME, ranking_rows
+
+    result = _run(top_k=1)  # the bundle shows one candidate per criterion
+    rows = ranking_rows(result, CRITERIA, run_id="r1", repo="lib")
+    fee = [r for r in rows if r["criterion_id"] == FEE.criterion_id]
+    n = len(result.corpus.docs)
+    assert len([r for r in fee if r["ranker"] == "codet5p"]) == n  # dense ranks everything
+    fused = [r for r in fee if r["ranker"] == "fused"]
+    assert len(fused) == n > 1  # full RRF list, not the single shown candidate
+    assert [r["rank"] for r in fused] == [str(i) for i in range(1, n + 1)]
+    assert {r["entities_in_corpus"] for r in rows} == {str(n)}
+    write_export(tmp_path / "r1", result, CRITERIA, run_id="r1", repo="lib")
+    header = (tmp_path / "r1" / RANKINGS_NAME).read_text(encoding="utf-8").splitlines()[0]
+    assert header == ",".join(RANKINGS_COLUMNS)
