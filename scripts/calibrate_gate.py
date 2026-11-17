@@ -1,8 +1,10 @@
 """Fit the accept/review/abstain gate on labelled dev criteria (CA-02).
 
     uv run python scripts/calibrate_gate.py --labels calibration/dev-codeatlas-self.csv
+    uv run python scripts/calibrate_gate.py --labels airflow-dev.csv --repo D:/airflow@4f1c2ab
 
-Builds the corpus from this repository's `src`, runs BM25, MiniLM and CodeT5+, fits the
+Builds the corpus from this repository's `src` (or, with --repo, from that repository at
+that commit: see semantic_target.py), runs BM25, MiniLM and CodeT5+, fits the
 thresholds (see `semantic_gate.calibrate`), writes them to
 `src/codeatlas/analyze/gate_calibration.json`, and prints what the gate now decides for
 every dev criterion. Labels from CodeAtlas's own code give a PROVISIONAL calibration; the
@@ -15,7 +17,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from codeatlas.analyze.code import extract_entities
+from semantic_target import ROOT, load_target
+
 from codeatlas.analyze.codet5p import load_codet5p
 from codeatlas.analyze.minilm import load_minilm
 from codeatlas.analyze.rankers import rank_bm25, rank_dense
@@ -26,9 +29,7 @@ from codeatlas.analyze.semantic_gate import (
     decide,
     read_dev_labels,
 )
-from codeatlas.schema import Criterion
 
-ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / ".codeatlas-cache" / "embeddings"
 
 
@@ -37,26 +38,17 @@ def main() -> int:
     parser.add_argument("--labels", type=Path, required=True)
     parser.add_argument("--out", type=Path, default=DEFAULT_CALIBRATION_FILE)
     parser.add_argument("--id", default=None, help="calibration id, default gate@<labels stem>")
+    parser.add_argument("--repo", default=None, help="PATH or PATH@SHA; default CodeAtlas src")
     parser.add_argument("--final", action="store_true", help="not provisional (real dev split)")
     args = parser.parse_args()
 
     dev = read_dev_labels(args.labels)
-    sources = {
-        p.relative_to(ROOT / "src").as_posix(): p.read_bytes()
-        for p in sorted((ROOT / "src").rglob("*.py"))
-    }
-    entities = [e for p, s in sources.items() for e in extract_entities(file_path=p, source=s)]
-    corpus = build_corpus(entities=entities, file_sources=sources, pinned_sha="working-tree")
-    criteria = [
-        Criterion(
-            criterion_id=d.criterion_id,
-            key=d.criterion_id.split(":")[0],
-            version_no=1,
-            text=d.text,
-            derived_from_description=False,
-        )
-        for d in dev
-    ]
+    target = load_target(args.repo)
+    corpus = build_corpus(
+        entities=target.entities, file_sources=target.sources, pinned_sha=target.pinned_sha
+    )
+    print(f"repo {target.label} @ {target.pinned_sha}: {len(corpus.docs)} entities")
+    criteria = [d.as_criterion() for d in dev]
     outputs = [
         rank_bm25(corpus, criteria),
         rank_dense("minilm", corpus, criteria, lambda: load_minilm(embedding_cache_dir=CACHE)),
