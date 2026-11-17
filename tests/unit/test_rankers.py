@@ -146,3 +146,23 @@ def test_empty_corpus_gives_empty_rankings() -> None:
 
 def _raise_unavailable() -> BagOfWords:
     raise EmbedderUnavailable("not installed")
+
+
+def test_fused_ranking_is_the_whole_list_fuse_candidates_cuts() -> None:
+    from codeatlas.analyze.rankers import fused_ranking
+
+    corpus = _corpus()
+    crit = [
+        Criterion(
+            criterion_id="SBX-1:v1:ac1",
+            key="SBX-1",
+            version_no=1,
+            text="late fee for overdue book",
+            derived_from_description=False,
+        )
+    ]
+    outputs = [rank_bm25(corpus, crit), rank_dense("codet5p", corpus, crit, BagOfWords)]
+    full = fused_ranking("SBX-1:v1:ac1", outputs)
+    top = fuse_candidates(crit, outputs, top_k=2)
+    assert [c.entity_id for c in top] == [e for e, _ in full[:2]]
+    assert len(full) == len({c.entity_id for c in corpus.chunks()})
