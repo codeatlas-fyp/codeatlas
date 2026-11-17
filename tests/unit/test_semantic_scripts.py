@@ -135,3 +135,94 @@ def test_evaluate_script_refuses_a_folder_without_predictions(tmp_path: Path) ->
     labels = tmp_path / "labels.csv"
     labels.write_text("criterion_id,criterion_text,entity_id\n", encoding="utf-8")
     assert evaluate.main(["--run", str(tmp_path), "--labels", str(labels)]) == 1
+
+
+def _git_repo_with_code(path: Path) -> str:
+    pygit2 = pytest.importorskip("pygit2")
+    repo = pygit2.init_repository(str(path))
+    sig = pygit2.Signature("Test", "test@example.com")
+    (path / "lib").mkdir()
+    (path / "tests").mkdir()
+    (path / "lib" / "fees.py").write_text(
+        "class Fees:\n    def late(self, days):\n        return days * 2\n"
+    )
+    (path / "tests" / "test_fees.py").write_text("def test_late():\n    assert True\n")
+    repo.index.add_all()
+    repo.index.write()
+    return str(repo.create_commit("refs/heads/main", sig, sig, "one", repo.index.write_tree(), []))
+
+
+def test_prepare_case_writes_neutral_entities_and_criteria(tmp_path: Path) -> None:
+    prepare = _load("prepare_case")
+    sha = _git_repo_with_code(tmp_path / "repo")
+    issue = tmp_path / "issue.txt"
+    issue.write_text(
+        "Late fees.\n\nAcceptance criteria:\n- Charge two per day late.\n- Show the fee.\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "case"
+    args = ["--repo", f"{tmp_path / 'repo'}@{sha}", "--key", "LIB-7", "--version", "2"]
+    assert prepare.main([*args, "--issue-text", str(issue), "--out", str(out)]) == 0
+
+    entities = list(csv.DictReader((out / "entities.csv").open(encoding="utf-8")))
+    by_id = {e["entity_id"]: e for e in entities}
+    assert by_id["lib.fees.Fees.late"]["label_ref"] == "lib/fees.py::Fees.late"
+    assert by_id["lib.fees.Fees.late"]["is_test"] == "0"
+    assert by_id["tests.test_fees.test_late"]["is_test"] == "1"
+    assert "score" not in entities[0] and "rank" not in entities[0]  # a list, not a ranking
+    criteria = list(csv.DictReader((out / "criteria.csv").open(encoding="utf-8")))
+    assert [c["criterion_id"] for c in criteria] == ["LIB-7:v2:ac1", "LIB-7:v2:ac2"]
+    assert criteria[0]["criterion_text"] == "Charge two per day late."
+
+
+def test_prepare_case_root_limits_the_entity_list(tmp_path: Path) -> None:
+    prepare = _load("prepare_case")
+    sha = _git_repo_with_code(tmp_path / "repo")
+    issue = tmp_path / "issue.txt"
+    issue.write_text("Acceptance criteria:\n- Charge late fees.\n", encoding="utf-8")
+    out = tmp_path / "case"
+    args = ["--repo", f"{tmp_path / 'repo'}@{sha}", "--key", "LIB-7", "--root", "lib/"]
+    assert prepare.main([*args, "--issue-text", str(issue), "--out", str(out)]) == 0
+    files = {e["file"] for e in csv.DictReader((out / "entities.csv").open(encoding="utf-8"))}
+    assert files == {"lib/fees.py"}
+
+
+def test_is_test_file() -> None:
+    prepare = _load("prepare_case")
+    assert prepare.is_test_file("tests/unit/test_x.py")
+    assert prepare.is_test_file("pkg/test_fees.py")
+    assert prepare.is_test_file("pkg/fees_test.py")
+    assert not prepare.is_test_file("pkg/fees.py")
+
+
+def test_evaluate_script_writes_full_ranking_outputs(tmp_path: Path) -> None:
+    export = _load("export_semantic_run")
+    evaluate = _load("evaluate_semantic")
+    labels = tmp_path / "labels.csv"
+    labels.write_text(
+        "criterion_id,criterion_text,entity_id\n"
+        "DEV-01:v1:ac1,Split the acceptance criteria text into criteria.,"
+        "codeatlas/analyze/criteria.py::split_criteria\n",
+        encoding="utf-8",
+    )
+    runs = tmp_path / "runs"
+    args = ["--criteria", str(labels), "--out", str(runs), "--run-id", "t3", "--bm25-only"]
+    assert export.main(args) == 0
+    assert (runs / "t3" / "rankings.csv").is_file()
+    assert evaluate.main(["--run", str(runs / "t3"), "--labels", str(labels)]) == 0
+    for name in ("evaluation.md", "evaluation.json", "recall_curve.csv", "recall_curve.svg"):
+        assert (runs / "t3" / name).is_file()
+    data = json.loads((runs / "t3" / "evaluation.json").read_text(encoding="utf-8"))
+    assert data["source"] == "rankings.csv (full)"
+    assert data["rankers"][0]["first_ranks"][0] is not None  # BM25 found it somewhere
+
+
+def test_evaluate_script_needs_out_for_several_runs(tmp_path: Path) -> None:
+    evaluate = _load("evaluate_semantic")
+    labels = tmp_path / "labels.csv"
+    labels.write_text("criterion_id,criterion_text,entity_id\n", encoding="utf-8")
+    for name in ("a", "b"):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "predictions.csv").write_text("run_id\n", encoding="utf-8")
+    runs = ["--run", str(tmp_path / "a"), "--run", str(tmp_path / "b")]
+    assert evaluate.main([*runs, "--labels", str(labels)]) == 1
