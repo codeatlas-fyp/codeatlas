@@ -174,6 +174,16 @@ def test_pr_bundle_holds_real_github_git_and_analysis_evidence(sandbox: dict[str
     ]
     assert bundle.criteria, "SBX-4's acceptance criteria were not split"
     assert bundle.candidates and bundle.model_ids
+    run = bundle.semantic_run  # CA-02: how the candidates were made is frozen in the bundle
+    assert run is not None and run.pinned_sha == head
+    assert {r.name: (r.state, r.reason) for r in run.rankers} == {
+        "bm25": ("ok", None),
+        "minilm": ("unavailable", "disabled (bm25_only)"),
+        "codet5p": ("unavailable", "disabled (bm25_only)"),
+    }
+    assert bundle.model_ids == ["bm25@rank-bm25-okapi"] and bundle.model_file_hashes == {}
+    assert {g.criterion_id for g in run.gates} == {c.criterion_id for c in bundle.criteria}
+    assert all(c.gate in ("review", "abstain") for c in bundle.candidates)  # BM25 never accepts
     assert {"github", "keys", "governance", "code", "criteria", "semantic"} <= set(
         bundle.extractor_versions
     )
