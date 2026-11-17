@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Literal
 
 from codeatlas.analyze.rankers import RankerOutput
+from codeatlas.analyze.semantic_labels import entity_id_from_ref
 from codeatlas.schema import Criterion, CriterionGate, SemanticCandidate
 
 GATE_VERSION = "gate@1"
@@ -202,7 +203,10 @@ class DevCriterion:
 
 
 def read_dev_labels(path: Path) -> list[DevCriterion]:
-    """CSV with columns criterion_id, criterion_text, entity_id (empty for no-match rows)."""
+    """CSV with columns criterion_id, criterion_text, entity_id (empty for no-match rows).
+
+    entity_id may be a CodeAtlas id or the labeller's `path.py::Qualified.name` form.
+    """
     import csv
 
     texts: dict[str, str] = {}
@@ -212,8 +216,8 @@ def read_dev_labels(path: Path) -> list[DevCriterion]:
             cid = row["criterion_id"].strip()
             texts[cid] = row["criterion_text"]
             relevant.setdefault(cid, set())
-            if row.get("entity_id", "").strip():
-                relevant[cid].add(row["entity_id"].strip())
+            if row.get("entity_id", "").strip():  # an id or a labeller's path.py::Name
+                relevant[cid].add(entity_id_from_ref(row["entity_id"]))
     return [DevCriterion(cid, texts[cid], frozenset(relevant[cid])) for cid in sorted(texts)]
 
 
