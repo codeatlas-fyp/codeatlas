@@ -26,6 +26,12 @@ from codeatlas.analyze.semantic_run import default_loaders, run_semantic
 CACHE = ROOT / ".codeatlas-cache"
 
 
+def run_name(label: str, pinned_sha: str, stamp: str) -> str:
+    """<repo>-<sha8>-<UTC time>; the working tree has no SHA, so it is called "worktree"."""
+    sha = "worktree" if pinned_sha == "working-tree" else pinned_sha[:8]
+    return f"{label}-{sha}-{stamp}"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--criteria", type=Path, required=True)
@@ -52,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
         loaders=default_loaders(CACHE),
     )
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
-    run_id = args.run_id or f"{target.label}-{target.pinned_sha[:8]}-{stamp}"
+    run_id = args.run_id or run_name(target.label, target.pinned_sha, stamp)
     json_path, csv_path = write_export(
         args.out / run_id,
         result,
