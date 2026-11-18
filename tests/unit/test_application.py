@@ -246,6 +246,12 @@ def test_fixture_dashboard_evaluation_persists_history_bundle_and_replay(
         assert canonical_bytes(data["bundle"]["policy"]) == canonical_bytes(original_policy)
         assert data["verdict"]["results"]
         assert client.get(data["replay_url"]).json()["match"] is True
+        graph = client.get(f"/api/cases/{data['bundle_hash']}/graph")
+        assert graph.status_code == 200
+        assert graph.json()["schema_version"] == "graph-view-v1"
+        runs = client.get(f"/api/cases/{data['bundle_hash']}/semantic-runs")
+        assert runs.status_code == 200
+        assert all(run["status"] == "unavailable" for run in runs.json())
         assert client.get("/api/evaluations").json()[0]["id"] == job_id
 
     restarted = _app(tmp_path, database_url=settings.database_url)
