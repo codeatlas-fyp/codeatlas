@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from codeatlas.evaluate.rules.c9_unexplained_change import C9UnexplainedChange
+from codeatlas.evaluate.verdict import decide
 from codeatlas.schema import (
     ApprovalPolicy,
     AuthorityPolicy,
@@ -208,6 +209,21 @@ def test_zero_evidence_candidate_does_not_explain_changed_entity() -> None:
 
     assert result.outcome == "VIOLATED"
     assert "top-5" in result.message
+
+
+def test_missing_semantic_candidate_is_review_not_functional_failure() -> None:
+    bundle = _bundle(
+        changed=[_ce("pkg.other.format_receipt", "pkg/other.py", ["sha1"])],
+        commits=[_commit("sha1", "feat: format receipts (SBX-4)")],
+        work_items=[_ref("SBX-4", "sha1")],
+        candidates=[],
+    )
+    raw_policy = bundle.policy.model_dump()
+    raw_policy["cases"]["C9"] = {"severity": "review"}
+    policy = Policy.model_validate(raw_policy)
+    result = C9UnexplainedChange().check(bundle, [], policy)
+    assert result.severity == "review"
+    assert decide([result]) == "REVIEW"
 
 
 def test_test_files_are_excluded() -> None:
