@@ -66,7 +66,7 @@ from codeatlas.schema import (
 NOTE_NOT_COLLECTED = "governance, reviews, code and semantic evidence not collected (steps 9-13)"
 TEXT_FORMS = TextForms(current=adf_to_text, history=wiki_to_text)
 
-CODEOWNERS_PATHS = ("CODEOWNERS", ".github/CODEOWNERS", "docs/CODEOWNERS")
+CODEOWNERS_PATHS = (".github/CODEOWNERS", "CODEOWNERS", "docs/CODEOWNERS")
 ADR_FOLDER = "docs/adr"
 POLICY_PATH = ".codeatlas/policy.yaml"
 REVIEW_STATES = frozenset({"APPROVED", "CHANGES_REQUESTED", "COMMENTED", "DISMISSED"})
