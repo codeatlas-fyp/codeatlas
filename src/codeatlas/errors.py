@@ -34,6 +34,17 @@ class SourceUnavailable(CollectionError):
     """The source could not be reached at all (network error, timeout, retries exhausted)."""
 
 
+class HistoricalCutoffUnavailable(CollectionError):
+    """Current source data cannot be safely treated as a submission-time snapshot."""
+
+    code = "historical_source_changed"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "jira", status=None, retryable=False, detail="historical snapshot unavailable"
+        )
+
+
 class ConfigError(CodeAtlasError):
     """Invalid policy, identity map or settings."""
 

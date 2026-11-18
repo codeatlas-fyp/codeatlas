@@ -7,6 +7,7 @@ the recorded SBX issues. The network is blocked.
 """
 
 import json
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -23,7 +24,7 @@ from codeatlas.cli import app
 from codeatlas.collect.git.repo import LocalRepo
 from codeatlas.collect.jira.recorder import FixtureJiraSource
 from codeatlas.config import load_policy
-from codeatlas.errors import CollectionError
+from codeatlas.errors import CollectionError, HistoricalCutoffUnavailable
 from codeatlas.evaluate.links import bundle_links
 from codeatlas.logging import EventLog
 from codeatlas.pipeline import (
@@ -178,6 +179,44 @@ def test_pr_bundle_holds_real_github_git_and_analysis_evidence(sandbox: dict[str
         bundle.extractor_versions
     )
     assert not any("not collected" in note for note in bundle.collection_notes)
+
+
+def test_review_after_cutoff_is_not_used_as_prior_approval(sandbox: dict[str, str]) -> None:
+    class LaterReview(RecordedGitHub):
+        def reviews(self, repo: str, number: int) -> list[dict[str, Any]]:
+            reviews = super().reviews(repo, number)
+            return [{**review, "submitted_at": "2026-10-13T12:00:00Z"} for review in reviews]
+
+    sources = ChangeSources(github=LaterReview(sandbox), git=LocalRepo(Path(sandbox["path"])))
+    bundle = collect_bundle(_request(1), FixtureJiraSource(JIRA), EventLog("t"), sources)
+    assert bundle.reviews == []
+    assert "Reviews submitted after the evaluation cutoff were excluded." in bundle.collection_notes
+    verdict = evaluate_bundle(bundle, "0" * 64)
+    assert next(result for result in verdict.results if result.case == "C5").outcome != "SATISFIED"
+
+
+@pytest.mark.parametrize("changed", ["updated", "missing_updated", "history"])
+def test_changed_jira_issue_fails_closed_when_snapshot_is_required(
+    sandbox: dict[str, str], changed: str
+) -> None:
+    class ChangedJira(FixtureJiraSource):
+        def fetch_issue(self, key: str) -> dict[str, Any]:
+            issue = super().fetch_issue(key)
+            if changed == "updated":
+                issue["fields"]["updated"] = "2026-10-13T12:00:00Z"
+            elif changed == "missing_updated":
+                issue["fields"].pop("updated", None)
+            return issue
+
+        def fetch_changelog(self, key: str) -> list[dict[str, Any]]:
+            entries = super().fetch_changelog(key)
+            if changed == "history":
+                entries.append({"id": "99999", "created": "2026-10-13T12:00:00Z", "items": []})
+            return entries
+
+    request = replace(_request(1), require_unchanged_jira=True)
+    with pytest.raises(HistoricalCutoffUnavailable):
+        collect_bundle(request, ChangedJira(JIRA), EventLog("t"), _sources(sandbox))
 
 
 def test_pr_verdict_uses_the_new_evidence(sandbox: dict[str, str]) -> None:

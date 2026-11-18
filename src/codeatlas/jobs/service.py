@@ -407,6 +407,9 @@ def _safe_failure_message(code: str) -> str:
             "A required pull request commit is unavailable. Refresh the PR list and retry."
         ),
         "worker_lost": "The worker stopped repeatedly before finishing this evaluation.",
+        "historical_source_changed": (
+            "Jira changed after submission or its update time is unavailable. Submit again."
+        ),
     }
     return messages.get(code, "Evaluation failed. Check the connection and retry.")
 

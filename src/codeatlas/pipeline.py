@@ -32,7 +32,12 @@ from codeatlas.bundle.store import BundleStore, load_bundle
 from codeatlas.collect.git.repo import DiffHunk
 from codeatlas.collect.jira.adf import adf_to_text, wiki_to_text
 from codeatlas.config import ChangeFile
-from codeatlas.errors import CollectionError, ConfigError, EvidenceValidationError
+from codeatlas.errors import (
+    CollectionError,
+    ConfigError,
+    EvidenceValidationError,
+    HistoricalCutoffUnavailable,
+)
 from codeatlas.evaluate.links import bundle_links
 from codeatlas.evaluate.rules import default_rules, ruleset_version
 from codeatlas.evaluate.rules.base import NOTE_APPROVERS_UNKNOWN, Rule
@@ -122,6 +127,7 @@ class CollectRequest:
     embedding_model: str | None = None  # None: the semantic module's pinned default
     bm25_only: bool = False  # skip the embedding model (offline runs and tests)
     policy_source: str | None = None
+    require_unchanged_jira: bool = False
 
 
 def evaluate_bundle(
@@ -187,6 +193,7 @@ class _Change:
     reviews: list[Review] = field(default_factory=list)
     raw_commits: list[dict[str, Any]] = field(default_factory=list)
     pr_author_login: str | None = None
+    collection_notes: list[str] = field(default_factory=list)
 
 
 def _from_change_file(change: ChangeFile, label: str, at: datetime) -> _Change:
@@ -305,6 +312,7 @@ def _from_pull_request(
         )
 
     reviews: list[Review] = []
+    excluded_future_reviews = False
     for raw in raw_reviews:
         state = raw.get("state")
         login = _text(raw, "user", "login")
@@ -312,6 +320,10 @@ def _from_pull_request(
         if state not in REVIEW_STATES or login is None or not isinstance(commit_id, str):
             continue  # PENDING (unsubmitted) reviews and deleted users carry no decision
         review_id = raw.get("id")
+        submitted_at = _timestamp(_text(raw, "submitted_at"), f"review {review_id}")
+        if submitted_at > at:
+            excluded_future_reviews = True
+            continue
         reviews.append(
             Review(
                 evidence_id=f"github:review:{number}:{review_id}",
@@ -322,7 +334,7 @@ def _from_pull_request(
                 reviewer_login=login,
                 state=state,
                 commit_id=commit_id,
-                submitted_at=_timestamp(_text(raw, "submitted_at"), f"review {review_id}"),
+                submitted_at=submitted_at,
             )
         )
 
@@ -347,6 +359,11 @@ def _from_pull_request(
         reviews=reviews,
         raw_commits=raw_commits,
         pr_author_login=_text(pr, "user", "login"),
+        collection_notes=(
+            ["Reviews submitted after the evaluation cutoff were excluded."]
+            if excluded_future_reviews
+            else []
+        ),
     )
 
 
@@ -581,6 +598,7 @@ def collect_bundle(
             notes.append(NOTE_NOT_COLLECTED)
         else:
             raise ConfigError("give either a change file or a pull request to collect")
+        notes.extend(change.collection_notes)
 
     events: list[ChangeEvent] = []
     versions: list[RequirementVersion] = []
@@ -607,7 +625,22 @@ def collect_bundle(
                 categories[project] = source.fetch_status_categories(project)
             if approvers is None:
                 notes.append(f"{NOTE_APPROVERS_UNKNOWN}{key}")
-            history = JiraHistory(issue=issue, changelog=source.fetch_changelog(key))
+            changelog = source.fetch_changelog(key)
+            if request.require_unchanged_jira:
+                try:
+                    updated = _text(issue, "fields", "updated")
+                    if updated is None or _timestamp(updated, "Jira issue") > at:
+                        raise HistoricalCutoffUnavailable()
+                    if any(
+                        _timestamp(_text(entry, "created"), "Jira history") > at
+                        for entry in changelog
+                    ):
+                        raise HistoricalCutoffUnavailable()
+                except CollectionError as error:
+                    if isinstance(error, HistoricalCutoffUnavailable):
+                        raise
+                    raise HistoricalCutoffUnavailable() from error
+            history = JiraHistory(issue=issue, changelog=changelog)
             context = LifecycleContext(
                 policy=request.policy,
                 approvers=approvers or frozenset(),
