@@ -22,6 +22,8 @@ coverage.xml
 *.key
 bundles
 
-# Tests stay out; the image serves deploy/bundles (real sandbox evaluations) as demo data.
-tests
+# Include recorded fixtures required by fixture mode, but not test code or local test output.
+tests/*
+!tests/fixtures/
+!tests/fixtures/**
 deploy/bundles/README.md
