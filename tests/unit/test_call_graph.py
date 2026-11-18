@@ -336,3 +336,243 @@ def test_parameter_receiver_still_uses_unique_method_guess() -> None:
         }
     )
     assert edges == {("m.save_all", "m.Repo.persist", False)}
+
+
+# ---- ambiguous bindings (handover gaps G7, G8) ------------------------------
+
+
+def test_module_level_rebinding_of_a_def_is_not_confident() -> None:
+    edges = _graph(
+        {
+            "m.py": (
+                "def g():\n    pass\n\ndef f2():\n    pass\n\nf2 = g\n\ndef caller():\n    f2()\n"
+            )
+        }
+    )
+    assert edges == {("m.caller", "m.f2", False)}
+
+
+def test_conditional_imports_with_different_targets_give_no_edge() -> None:
+    edges = _graph(
+        {
+            "pkg/a.py": "def x():\n    pass\n",
+            "pkg/b.py": "def x():\n    pass\n",
+            "pkg/m.py": (
+                "try:\n    from pkg.a import x\nexcept ImportError:\n    from pkg.b import x\n\n"
+                "def f():\n    x()\n"
+            ),
+        }
+    )
+    assert edges == set()
+
+
+def test_optional_import_with_none_fallback_is_not_confident() -> None:
+    edges = _graph(
+        {
+            "pkg/a.py": "def x():\n    pass\n",
+            "pkg/m.py": (
+                "try:\n    from pkg.a import x\nexcept ImportError:\n    x = None\n\n"
+                "def f():\n    x()\n"
+            ),
+        }
+    )
+    assert edges == {("pkg.m.f", "pkg.a.x", False)}
+
+
+def test_same_import_in_both_branches_stays_confident() -> None:
+    edges = _graph(
+        {
+            "pkg/a.py": "def x():\n    pass\n",
+            "pkg/m.py": (
+                "if True:\n    from pkg.a import x\nelse:\n    from pkg.a import x\n\n"
+                "def f():\n    x()\n"
+            ),
+        }
+    )
+    assert edges == {("pkg.m.f", "pkg.a.x", True)}
+
+
+def test_global_rebinding_inside_a_function_is_not_confident() -> None:
+    edges = _graph(
+        {
+            "m.py": (
+                "def g():\n    pass\n\ndef target():\n    pass\n\n"
+                "def swap():\n    global target\n    target = g\n\n"
+                "def caller():\n    target()\n"
+            )
+        }
+    )
+    assert edges == {("m.caller", "m.target", False)}
+
+
+def test_redefining_the_same_def_stays_confident() -> None:
+    edges = _graph({"m.py": "def g():\n    pass\n\ndef g():\n    return 1\n\ndef f():\n    g()\n"})
+    assert edges == {("m.f", "m.g", True)}
+
+
+def test_local_name_both_imported_and_assigned_gives_no_edge() -> None:
+    edges = _graph(
+        {
+            "pkg/b.py": "def helper():\n    pass\n",
+            "pkg/a.py": (
+                "def f(flag):\n    from pkg.b import helper\n"
+                "    if flag:\n        helper = print\n    helper()\n"
+            ),
+        }
+    )
+    assert edges == set()
+
+
+def test_local_name_imported_from_two_places_gives_no_edge() -> None:
+    edges = _graph(
+        {
+            "pkg/b.py": "def helper():\n    pass\n",
+            "pkg/c.py": "def helper():\n    pass\n",
+            "pkg/a.py": (
+                "def f(flag):\n    if flag:\n        from pkg.b import helper\n"
+                "    else:\n        from pkg.c import helper\n    helper()\n"
+            ),
+        }
+    )
+    assert edges == set()
+
+
+def test_class_body_import_does_not_bind_a_module_name() -> None:
+    edges = _graph(
+        {
+            "pkg/b.py": "def helper():\n    pass\n",
+            "pkg/a.py": ("class Holder:\n    from pkg.b import helper\n\ndef f():\n    helper()\n"),
+        }
+    )
+    assert edges == set()
+
+
+# ---- negative fixtures (SG-03) ----------------------------------------------
+
+
+def test_duplicate_method_names_give_no_guess() -> None:
+    edges = _graph(
+        {
+            "m.py": (
+                "class A:\n    def persist(self):\n        pass\n\n"
+                "class B:\n    def persist(self):\n        pass\n\n"
+                "def save_all(repo):\n    repo.persist()\n"
+            )
+        }
+    )
+    assert edges == set()
+
+
+def test_reexport_cycle_terminates_without_edge() -> None:
+    edges = _graph(
+        {
+            "pkg/__init__.py": "from pkg.a import thing\n",
+            "pkg/a.py": "from pkg import thing\n",
+            "pkg/m.py": "from pkg import thing\n\ndef f():\n    thing()\n",
+        }
+    )
+    assert edges == set()
+
+
+def test_multiple_inheritance_takes_the_left_most_base() -> None:
+    edges = _graph(
+        {
+            "m.py": (
+                "class A:\n    def run(self):\n        pass\n\n"
+                "class B:\n    def run(self):\n        pass\n\n"
+                "class C(A, B):\n    def go(self):\n        self.run()\n"
+            )
+        }
+    )
+    assert edges == {("m.C.go", "m.A.run", True)}
+
+
+def test_super_call_gives_no_edge() -> None:
+    edges = _graph(
+        {
+            "m.py": (
+                "class A:\n    def run(self):\n        pass\n\n"
+                "class B(A):\n    def run(self):\n        super().run()\n"
+            )
+        }
+    )
+    assert edges == set()
+
+
+def test_star_import_gives_no_edge() -> None:
+    edges = _graph(
+        {
+            "pkg/b.py": "def helper():\n    pass\n",
+            "pkg/a.py": "from pkg.b import *\n\ndef f():\n    helper()\n",
+        }
+    )
+    assert edges == set()
+
+
+def test_getattr_dispatch_gives_no_edge() -> None:
+    edges = _graph(
+        {"m.py": "def target():\n    pass\n\ndef f(obj):\n    getattr(obj, 'target')()\n"}
+    )
+    assert edges == set()
+
+
+def test_assignment_only_module_name_gives_no_edge() -> None:
+    edges = _graph({"m.py": "def g():\n    pass\n\nh = g\n\ndef f():\n    h()\n"})
+    assert edges == set()
+
+
+def test_optional_import_of_external_module_takes_no_guess() -> None:
+    edges = _graph(
+        {
+            "m.py": (
+                "try:\n    import simplejson as json\nexcept ImportError:\n    json = None\n\n"
+                "class Codec:\n    def dumps(self):\n        pass\n\n"
+                "def f():\n    json.dumps()\n"
+            )
+        }
+    )
+    assert edges == set()
+
+
+# ---- lambda, comprehension and default-value scope ---------------------------
+
+
+def test_lambda_parameter_shadows_global_function() -> None:
+    edges = _graph(
+        {"m.py": "def f():\n    pass\n\ndef run(xs):\n    return map(lambda f: f(), xs)\n"}
+    )
+    assert edges == set()
+
+
+def test_lambda_body_still_resolves_free_names() -> None:
+    edges = _graph(
+        {"m.py": "def g():\n    pass\n\ndef run(xs):\n    return map(lambda x: g(), xs)\n"}
+    )
+    assert edges == {("m.run", "m.g", True)}
+
+
+def test_comprehension_variable_shadows_global_function() -> None:
+    edges = _graph({"m.py": "def f():\n    pass\n\ndef run(fs):\n    return [f() for f in fs]\n"})
+    assert edges == set()
+
+
+def test_comprehension_body_still_resolves_free_names() -> None:
+    edges = _graph({"m.py": "def g(x):\n    pass\n\ndef run(xs):\n    return [g(x) for x in xs]\n"})
+    assert edges == {("m.run", "m.g", True)}
+
+
+def test_default_value_call_runs_in_the_enclosing_scope() -> None:
+    edges = _graph({"m.py": "def make():\n    return 1\n\ndef run(make=make()):\n    pass\n"})
+    assert edges == {("m", "m.make", True)}
+
+
+def test_method_default_value_is_credited_to_the_class() -> None:
+    edges = _graph(
+        {
+            "m.py": (
+                "def make():\n    return 1\n\n"
+                "class Job:\n    def run(self, n=make()):\n        pass\n"
+            )
+        }
+    )
+    assert edges == {("m.Job", "m.make", True)}
