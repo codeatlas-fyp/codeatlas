@@ -10,10 +10,7 @@ default behaviour — the spec section 3 lists C5 as block.
 Edge cases (spec §13 "edge cases"):
     - No CODEOWNERS file at base         → NOT_APPLICABLE
     - CODEOWNERS has no rule for a path  → NOT_APPLICABLE *for that path only*
-    - Owner is only the PR author        → INSUFFICIENT_EVIDENCE (handled upstream
-                                           by identity map; here, if the owner
-                                           login matches an authored commit's
-                                           author_login, we return INSUFFICIENT)
+    - Owner is only the PR author        → INSUFFICIENT_EVIDENCE
     - Owner team can't be expanded       → INSUFFICIENT_EVIDENCE (team expansion
                                            is Saleha's identity map; a bare
                                            team mention we don't recognise
@@ -31,7 +28,7 @@ from codeatlas.evaluate.rules.base import Severity, severity
 from codeatlas.schema import CaseId, CheckResult, EvidenceBundle, Policy, TraceLink
 
 CASE: CaseId = "C5"
-VERSION = "1"
+VERSION = "2"
 REQUIRED_EVIDENCE = ("governance", "reviews", "changed", "commits", "change")
 
 
@@ -55,26 +52,43 @@ class C5OwnerDidNotApprove:
             )
 
         head_sha = bundle.change.head_sha
+        latest_reviews = {}
+        for review in sorted(
+            bundle.reviews, key=lambda item: (item.submitted_at, item.evidence_id)
+        ):
+            if review.state in {"APPROVED", "CHANGES_REQUESTED", "DISMISSED"}:
+                latest_reviews[review.reviewer_login.casefold()] = review
         approvers_at_head = {
-            review.reviewer_login
-            for review in bundle.reviews
+            login
+            for login, review in latest_reviews.items()
             if review.state == "APPROVED" and review.commit_id == head_sha
         }
 
-        pr_author_logins = {commit.author_login for commit in bundle.commits if commit.author_login}
+        pr_author = bundle.pr_author_login.casefold() if bundle.pr_author_login else None
 
         changed_paths = sorted({ce.file for ce in bundle.changed})
         missing: list[tuple[str, list[str]]] = []
         insufficient_reasons: list[str] = []
+        owned_paths = 0
 
         for path in changed_paths:
             owners = _owners_for(path, bundle.governance.owner_rules)
             if not owners:
                 continue  # NOT_APPLICABLE for this path; keep checking the rest
+            owned_paths += 1
 
             # Author-is-sole-owner → INSUFFICIENT (can't self-approve)
-            owner_logins = {o.lstrip("@") for o in owners if o.startswith("@") and "/" not in o}
+            owner_logins = {
+                o.lstrip("@").casefold() for o in owners if o.startswith("@") and "/" not in o
+            }
             team_owners = [o for o in owners if o.startswith("@") and "/" in o]
+            if pr_author is None:
+                insufficient_reasons.append(f"{path}: pull request author is unavailable")
+                continue
+            # A confirmed independent owner approval satisfies the path even if
+            # another listed owner is an unresolved team or email address.
+            if (owner_logins & approvers_at_head) - {pr_author}:
+                continue
             if team_owners:
                 # Team ownership requires identity-map expansion (Saleha's work).
                 # Until that lands, teams are always unresolved.
@@ -90,14 +104,14 @@ class C5OwnerDidNotApprove:
                     f"{path}: owner {email_owners[0]} is an email, not resolved to a GitHub login"
                 )
                 continue
-            if owner_logins and owner_logins <= pr_author_logins:
+            if owner_logins and owner_logins <= {pr_author}:
                 insufficient_reasons.append(
                     f"{path}: only owner(s) {sorted(owner_logins)} authored the PR"
                 )
                 continue
 
             # Finally, the real check.
-            if not (owner_logins & approvers_at_head):
+            if not (owner_logins & approvers_at_head - {pr_author}):
                 missing.append((path, sorted(owner_logins)))
 
         if missing:
@@ -125,6 +139,16 @@ class C5OwnerDidNotApprove:
                 severity="none",
                 required=True,
                 message="; ".join(insufficient_reasons[:3]),
+                evidence_ids=[bundle.governance.evidence_id],
+            )
+
+        if not owned_paths:
+            return CheckResult(
+                case=CASE,
+                outcome="NOT_APPLICABLE",
+                severity="none",
+                required=False,
+                message="No changed paths have a CODEOWNERS owner.",
                 evidence_ids=[bundle.governance.evidence_id],
             )
 

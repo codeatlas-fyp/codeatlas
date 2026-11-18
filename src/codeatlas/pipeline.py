@@ -135,7 +135,11 @@ def evaluate_bundle(
     replay always see the same links. A rule that raises is a bug: no verdict is produced and the
     error has exit code 4.
     """
-    chosen = tuple(default_rules() if rules is None else rules)
+    chosen = tuple(
+        default_rules(legacy_c5="pr_author_login" not in bundle.model_fields_set)
+        if rules is None
+        else rules
+    )
     try:
         trace = bundle_links(bundle) if links is None else links
         results = run_rules(chosen, bundle, trace)
@@ -181,6 +185,7 @@ class _Change:
     commits: list[Commit]
     reviews: list[Review] = field(default_factory=list)
     raw_commits: list[dict[str, Any]] = field(default_factory=list)
+    pr_author_login: str | None = None
 
 
 def _from_change_file(change: ChangeFile, label: str, at: datetime) -> _Change:
@@ -340,6 +345,7 @@ def _from_pull_request(
         commits=commits,
         reviews=reviews,
         raw_commits=raw_commits,
+        pr_author_login=_text(pr, "user", "login"),
     )
 
 
@@ -680,6 +686,7 @@ def collect_bundle(
         return EvidenceBundle(
             schema_version="0",
             change=change.ref,
+            pr_author_login=change.pr_author_login,
             codeatlas_version=__version__,
             collected_at=at,
             run_id=request.run_id,

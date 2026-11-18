@@ -48,6 +48,8 @@ class Verdict(Model):
 class EvidenceBundle(Model):
     schema_version: Literal["0"]
     change: ChangeRef
+    # Absent in legacy bundles; explicit null means the provider did not expose it.
+    pr_author_login: str | None = None
     codeatlas_version: str
     collected_at: UtcDatetime  # rules use this, never the clock
     run_id: str

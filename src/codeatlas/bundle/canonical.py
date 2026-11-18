@@ -71,6 +71,8 @@ def _plain(value: Any) -> Any:
             fields = {
                 name: field for name, field in fields.items() if name != "effective_policy_hash"
             }
+        if isinstance(value, EvidenceBundle) and "pr_author_login" not in value.model_fields_set:
+            fields = {name: field for name, field in fields.items() if name != "pr_author_login"}
         return {name: _plain(getattr(value, name)) for name in fields}
     if value is None or isinstance(value, bool | int | str):
         return value

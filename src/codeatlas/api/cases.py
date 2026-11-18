@@ -106,7 +106,7 @@ def evaluate_stored(bundle: EvidenceBundle, bundle_hash: str) -> Verdict:
     `api` cannot import `pipeline`, because `pipeline` imports `collect` (contract K2). A unit
     test checks both give identical verdicts on every fixture bundle.
     """
-    rules = default_rules()
+    rules = default_rules(legacy_c5="pr_author_login" not in bundle.model_fields_set)
     results = run_rules(rules, bundle, bundle_links(bundle))
     value = decide(results)
     version = ruleset_version(rules)

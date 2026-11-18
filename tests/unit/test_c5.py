@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from codeatlas.analyze.governance import parse_codeowners
 from codeatlas.evaluate.rules.c5_owner_did_not_approve import C5OwnerDidNotApprove
@@ -104,12 +104,14 @@ def _bundle(
     commits: list[Commit],
     changed: list[ChangedEntity],
     head_sha: str = "head",
+    pr_author_login: str | None = "someone",
 ) -> EvidenceBundle:
     return EvidenceBundle(
         schema_version="0",
         change=ChangeRef(
             repo="x/y", pr_number=1, base_sha="base", head_sha=head_sha, merge_base_sha="base"
         ),
+        pr_author_login=pr_author_login,
         codeatlas_version="0.1.0",
         collected_at=NOW,
         run_id="r",
@@ -184,6 +186,7 @@ def test_insufficient_when_only_owner_is_pr_author() -> None:
         reviews=[],  # no reviews but author can't self-approve
         commits=[_commit("head", "yusra")],
         changed=[_changed("payments/fees.py")],
+        pr_author_login="yusra",
     )
     result = rule.check(bundle, [], bundle.policy)
     assert result.outcome == "INSUFFICIENT_EVIDENCE"
@@ -254,8 +257,8 @@ def test_email_owner_does_not_hide_a_violated_path() -> None:
     assert decide([result]) == "FAIL"
 
 
-def test_satisfied_for_paths_with_no_owner_rule() -> None:
-    """CODEOWNERS doesn't cover src/foo.py; C5 should still be SATISFIED."""
+def test_not_applicable_for_paths_with_no_owner_rule() -> None:
+    """CODEOWNERS doesn't cover src/foo.py; no ownership obligation applies."""
     rule = C5OwnerDidNotApprove()
     bundle = _bundle(
         governance=_governance("/payments/ @areej\n"),
@@ -264,7 +267,7 @@ def test_satisfied_for_paths_with_no_owner_rule() -> None:
         changed=[_changed("src/foo.py")],  # not under /payments/
     )
     result = rule.check(bundle, [], bundle.policy)
-    assert result.outcome == "SATISFIED"
+    assert result.outcome == "NOT_APPLICABLE"
 
 
 def test_ownerless_last_match_makes_path_not_applicable_in_c5() -> None:
@@ -278,7 +281,7 @@ def test_ownerless_last_match_makes_path_not_applicable_in_c5() -> None:
 
     result = rule.check(bundle, [], bundle.policy)
 
-    assert result.outcome == "SATISFIED"
+    assert result.outcome == "NOT_APPLICABLE"
 
 
 def test_multiple_owners_any_approving_at_head_satisfies() -> None:
@@ -291,3 +294,94 @@ def test_multiple_owners_any_approving_at_head_satisfies() -> None:
     )
     result = rule.check(bundle, [], bundle.policy)
     assert result.outcome == "SATISFIED"
+
+
+def test_commit_author_approval_cannot_prove_independence_with_multiple_owners() -> None:
+    bundle = _bundle(
+        governance=_governance("/payments/ @areej @yusra\n"),
+        reviews=[_review("yusra", "APPROVED", "head")],
+        commits=[_commit("head", "yusra")],
+        changed=[_changed("payments/fees.py")],
+        pr_author_login=None,
+    )
+    result = C5OwnerDidNotApprove().check(bundle, [], bundle.policy)
+    assert result.outcome == "INSUFFICIENT_EVIDENCE"
+    assert decide([result]) == "UNKNOWN"
+
+
+def test_author_approval_does_not_count_when_other_owner_exists() -> None:
+    bundle = _bundle(
+        governance=_governance("/payments/ @areej @yusra\n"),
+        reviews=[_review("yusra", "APPROVED", "head")],
+        commits=[_commit("head", "yusra")],
+        changed=[_changed("payments/fees.py")],
+        pr_author_login="yusra",
+    )
+    assert C5OwnerDidNotApprove().check(bundle, [], bundle.policy).outcome == "VIOLATED"
+
+
+def test_commit_author_who_is_not_pr_author_can_approve() -> None:
+    bundle = _bundle(
+        governance=_governance("/payments/ @areej\n"),
+        reviews=[_review("areej", "APPROVED", "head")],
+        commits=[_commit("head", "areej")],
+        changed=[_changed("payments/fees.py")],
+        pr_author_login="yusra",
+    )
+    assert C5OwnerDidNotApprove().check(bundle, [], bundle.policy).outcome == "SATISFIED"
+
+
+def test_later_changes_requested_supersedes_approval() -> None:
+    change_request = _review("areej", "CHANGES_REQUESTED", "head").model_copy(
+        update={"submitted_at": NOW + timedelta(seconds=1), "evidence_id": "review:later"}
+    )
+    bundle = _bundle(
+        governance=_governance("/payments/ @areej\n"),
+        reviews=[_review("areej", "APPROVED", "head"), change_request],
+        commits=[_commit("head", "yusra")],
+        changed=[_changed("payments/fees.py")],
+        pr_author_login="yusra",
+    )
+    assert C5OwnerDidNotApprove().check(bundle, [], bundle.policy).outcome == "VIOLATED"
+
+
+def test_independent_owner_approval_satisfies_with_unresolved_other_owner() -> None:
+    bundle = _bundle(
+        governance=_governance("/payments/ @areej @org/team\n"),
+        reviews=[_review("areej", "APPROVED", "head")],
+        commits=[_commit("head", "yusra")],
+        changed=[_changed("payments/fees.py")],
+    )
+    assert C5OwnerDidNotApprove().check(bundle, [], bundle.policy).outcome == "SATISFIED"
+
+
+def test_legacy_bundle_replays_original_c5_without_author_evidence(tmp_path) -> None:
+    from codeatlas.bundle.replay import replay
+    from codeatlas.bundle.store import BundleStore
+    from codeatlas.pipeline import evaluate_bundle
+
+    current = _bundle(
+        governance=_governance("/payments/ @areej\n"),
+        reviews=[_review("areej", "APPROVED", "head")],
+        commits=[_commit("head", "yusra")],
+        changed=[_changed("payments/fees.py")],
+        pr_author_login=None,
+    )
+    assert C5OwnerDidNotApprove().check(current, [], current.policy).outcome == (
+        "INSUFFICIENT_EVIDENCE"
+    )
+    legacy = EvidenceBundle.model_validate(current.model_dump(exclude={"pr_author_login"}))
+    store = BundleStore(tmp_path)
+    bundle_hash = store.save(legacy)
+    verdict = evaluate_bundle(legacy, bundle_hash)
+    assert "C5@1" in verdict.ruleset_version
+    assert next(result for result in verdict.results if result.case == "C5").outcome == "SATISFIED"
+    store.save_verdict(verdict)
+    assert replay(store.folder(bundle_hash), evaluate_bundle).match
+
+
+def test_new_bundle_uses_versioned_c5() -> None:
+    from codeatlas.pipeline import evaluate_bundle
+
+    bundle = _bundle(governance=_governance(), reviews=[], commits=[], changed=[])
+    assert "C5@2" in evaluate_bundle(bundle, "a" * 64).ruleset_version
