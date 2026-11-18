@@ -73,14 +73,15 @@ def test_ac2_changelog_follows_every_page_in_order(client: JiraClient) -> None:
 
 
 @respx.mock
-def test_ac2_empty_page_stops_paging(client: JiraClient) -> None:
+def test_ac2_empty_page_before_reported_total_is_rejected(client: JiraClient) -> None:
     route = respx.get(f"{API}/group/member")
     route.side_effect = [
         httpx.Response(200, json=page([{"accountId": "user-01"}], 0, False)),
         httpx.Response(200, json=page([], 1, False)),
     ]
 
-    assert client.group_members("approvers") == {"user-01"}
+    with pytest.raises(CollectionError, match="incomplete paginated response"):
+        client.group_members("approvers")
     assert route.calls.last.request.url.params["groupname"] == "approvers"
 
 
@@ -98,6 +99,16 @@ def test_ac2_comments_page_by_total(client: JiraClient) -> None:
 
     assert [c["id"] for c in client.fetch_comments("SBX-6")] == ["a", "b"]
     assert route.call_count == 2
+
+
+@respx.mock
+@pytest.mark.parametrize("payload", [{}, {"values": None}, {"values": ["invalid"]}])
+def test_missing_or_malformed_group_page_is_not_treated_as_empty(
+    client: JiraClient, payload: dict[str, object]
+) -> None:
+    respx.get(f"{API}/group/member").respond(200, json=payload)
+    with pytest.raises(CollectionError, match="invalid paginated response"):
+        client.group_members("approvers")
 
 
 # --- AC3: 429 with Retry-After -----------------------------------------------------------------

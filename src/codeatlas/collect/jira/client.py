@@ -18,6 +18,7 @@ from codeatlas.errors import CollectionError, SourceUnavailable
 
 SOURCE = "jira"
 PAGE_SIZE = 100
+MAX_PAGES = 1000
 BACKOFF_BASE_SECONDS = 2.0
 _KEY = re.compile(r"[A-Z][A-Z0-9_]*-\d+")
 _PROJECT = re.compile(r"[A-Z][A-Z0-9_]*")
@@ -128,16 +129,27 @@ class JiraClient:
 
     def _pages(self, path: str, params: dict[str, Any], key: str) -> Iterator[dict[str, Any]]:
         start = 0
-        while True:
+        for _ in range(MAX_PAGES):
             page = self._get(path, {**params, "startAt": start, "maxResults": PAGE_SIZE})
-            values = page.get(key) or []
+            values = page.get(key)
+            if not isinstance(values, list) or any(not isinstance(item, dict) for item in values):
+                raise CollectionError(
+                    SOURCE, status=200, retryable=False, detail="invalid paginated response"
+                )
             yield from values
             start += len(values)
             total = page.get("total")
+            if not values and isinstance(total, int) and start < total:
+                raise CollectionError(
+                    SOURCE, status=200, retryable=False, detail="incomplete paginated response"
+                )
             if page.get("isLast") is True or not values:
                 return
             if isinstance(total, int) and start >= total:
                 return
+        raise CollectionError(
+            SOURCE, status=None, retryable=False, detail="pagination limit exceeded"
+        )
 
     def _get(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
         data = self._request(path, params)

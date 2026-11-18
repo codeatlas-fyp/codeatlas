@@ -92,6 +92,45 @@ def test_non_404_error_raises_collection_error() -> None:
 
 
 @respx.mock
+def test_pagination_network_path_cannot_redirect_token_to_another_host() -> None:
+    respx.get("https://api.github.com/repos/x/y/pulls/1/commits?per_page=100").mock(
+        return_value=Response(
+            200,
+            json=[{"sha": "first"}],
+            headers={"Link": '<//attacker.example/next?page=2>; rel="next"'},
+        )
+    )
+    same_host = respx.get("https://api.github.com/next?page=2").mock(
+        return_value=Response(200, json=[{"sha": "second"}])
+    )
+    with _client() as client:
+        assert [item["sha"] for item in client.commits("x/y", 1)] == ["first", "second"]
+    assert same_host.called
+
+
+@respx.mock
+def test_provider_error_body_is_not_exposed() -> None:
+    respx.get("https://api.github.com/repos/x/y/pulls/1").mock(
+        return_value=Response(401, text="fake-token private provider content")
+    )
+    with _client() as client, pytest.raises(CollectionError) as exc:
+        client.pull_request("x/y", 1)
+    assert "fake-token" not in str(exc.value)
+    assert "private provider content" not in str(exc.value)
+
+
+@respx.mock
+def test_malformed_next_link_fails_instead_of_silently_truncating() -> None:
+    respx.get("https://api.github.com/repos/x/y/pulls/1/commits?per_page=100").mock(
+        return_value=Response(
+            200, json=[{"sha": "first"}], headers={"Link": '<http://[bad/>; rel="next"'}
+        )
+    )
+    with _client() as client, pytest.raises(CollectionError, match="invalid next-page link"):
+        client.commits("x/y", 1)
+
+
+@respx.mock
 def test_500_retries_then_raises() -> None:
     respx.get("https://api.github.com/repos/x/y/pulls/1").mock(
         return_value=Response(503, json={"message": "Service Unavailable"})

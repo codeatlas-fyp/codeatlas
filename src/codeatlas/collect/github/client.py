@@ -24,7 +24,7 @@ import re
 import time
 from dataclasses import dataclass
 from typing import Any, cast
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 import httpx
 
@@ -172,7 +172,7 @@ class GitHubClient:
                     source="github",
                     status=resp.status_code,
                     retryable=resp.status_code in (502, 503, 504),
-                    detail=f"GET {path} -> {resp.status_code}: {resp.text[:200]}",
+                    detail=f"GitHub request returned HTTP {resp.status_code}",
                 )
 
             if accept == "application/vnd.github.raw":
@@ -271,12 +271,22 @@ def _next_link(link_header: str) -> str | None:
         url_chunk = chunks[0]
         if url_chunk.startswith("<") and url_chunk.endswith(">"):
             url = url_chunk[1:-1]
-            # Strip base so httpx uses the client's base_url.
-            if "://" in url:
-                _, _, tail = url.partition("://")
-                _, _, path_and_query = tail.partition("/")
-                return "/" + path_and_query
-            return url
+            try:
+                parsed = urlsplit(url)
+            except ValueError as error:
+                raise CollectionError(
+                    "github", status=None, retryable=False, detail="invalid next-page link"
+                ) from error
+            # Constrain every next-page request to the configured API host.
+            if not parsed.path or parsed.scheme not in {"", "http", "https"}:
+                raise CollectionError(
+                    "github", status=None, retryable=False, detail="invalid next-page link"
+                )
+            path = "/" + parsed.path.lstrip("/")
+            return f"{path}?{parsed.query}" if parsed.query else path
+        raise CollectionError(
+            "github", status=None, retryable=False, detail="invalid next-page link"
+        )
     return None
 
 
