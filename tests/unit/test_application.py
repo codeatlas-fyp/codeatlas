@@ -79,6 +79,47 @@ def test_credential_vault_encrypts_and_authenticates() -> None:
         CredentialVault(Fernet.generate_key().decode()).decrypt(stored)
 
 
+def test_browser_origin_is_checked_for_state_changes(tmp_path) -> None:
+    app = _app(tmp_path)
+    selection = {"jira_project": "SBX", "github_repository": "codeatlas-fyp/codeatlas-sandbox"}
+    with TestClient(app) as client:
+        rejected = client.put(
+            "/api/project-config", json=selection, headers={"Origin": "https://attacker.example"}
+        )
+        assert rejected.status_code == 403
+        assert rejected.json()["error"]["code"] == "cross_origin_rejected"
+        assert client.get("/api/setup").json()["project"] is None
+        assert (
+            client.put(
+                "/api/project-config", json=selection, headers={"Sec-Fetch-Site": "cross-site"}
+            ).status_code
+            == 403
+        )
+        assert (
+            client.put(
+                "/api/project-config", json=selection, headers={"Origin": "http://testserver"}
+            ).status_code
+            == 200
+        )
+
+
+@pytest.mark.parametrize(
+    "origin,expected",
+    [
+        ("https://example.test", True),
+        ("https://example.test:443", True),
+        ("https://example.test:444", False),
+        ("null", False),
+        ("https://example.test/path", False),
+        ("https://other.test", False),
+    ],
+)
+def test_origin_comparison_handles_ports_and_invalid_origins(origin, expected) -> None:
+    from codeatlas.api.app import _same_origin
+
+    assert _same_origin(origin, "https://example.test/api/evaluations") is expected
+
+
 @respx.mock
 def test_live_credentials_validate_store_encrypted_and_never_return_tokens(tmp_path) -> None:
     app = _app(tmp_path, mode="live")

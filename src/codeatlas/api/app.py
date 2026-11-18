@@ -1,5 +1,7 @@
 """The deployed service: read-only JSON API and server-rendered pages over stored bundles."""
 
+from urllib.parse import urlsplit
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -30,6 +32,33 @@ _SECURITY_HEADERS = {
         "frame-ancestors 'none'; form-action 'self'"
     ),
 }
+
+
+def _same_origin(origin: str, request_url: str) -> bool:
+    try:
+        supplied, actual = urlsplit(origin), urlsplit(request_url)
+        if supplied.scheme not in {"http", "https"} or not supplied.hostname:
+            return False
+        if (
+            supplied.username
+            or supplied.password
+            or supplied.path
+            or supplied.query
+            or supplied.fragment
+        ):
+            return False
+        ports = {"http": 80, "https": 443}
+        return (
+            supplied.scheme.lower(),
+            supplied.hostname.lower(),
+            supplied.port or ports[supplied.scheme],
+        ) == (
+            actual.scheme.lower(),
+            (actual.hostname or "").lower(),
+            actual.port or ports.get(actual.scheme),
+        )
+    except ValueError:
+        return False
 
 
 def create_app(settings: WebSettings | None = None) -> FastAPI:
@@ -88,6 +117,21 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
 
     @application.middleware("http")
     async def security_headers(request: Request, call_next: RequestResponseEndpoint) -> Response:
+        if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            origin = request.headers.get("origin")
+            if request.headers.get("sec-fetch-site", "").lower() == "cross-site" or (
+                origin is not None and not _same_origin(origin, str(request.url))
+            ):
+                return JSONResponse(
+                    {
+                        "error": {
+                            "code": "cross_origin_rejected",
+                            "message": "Cross-origin request rejected.",
+                        }
+                    },
+                    status_code=403,
+                    headers=_SECURITY_HEADERS,
+                )
         response = await call_next(request)
         response.headers.update(_SECURITY_HEADERS)
         return response
