@@ -30,6 +30,24 @@ so a call through it is not resolved to the module-level name it shadows. `globa
 module-level. An import inside a function binds only in that function and its nested
 functions; it never leaks to the rest of the module.
 
+Parameter defaults, annotations and decorators run when the `def` runs, so calls in them are
+read in the enclosing scope and credited to the enclosing entity. A lambda's parameters and a
+comprehension's loop variables are local to the lambda or comprehension.
+
+Names bound more than once, at module level:
+
+- one target only (a `def`, `class` or import, even if bound twice): confident, as above;
+- one `def`/`class`/import target plus assignments, as in the optional-import idiom
+  `try: from x import Hook` / `except ImportError: Hook = None`, or a `def` later rebound by
+  `f = g` or through `global`: an edge to that target with `confident=False`;
+- two different `def`/`class`/import targets (`try: from a import x` / `except: from b import
+  x`): no edge, because the source text does not say which one runs;
+- assignments only (`h = g`): an unknown value, so no edge for `h()`.
+
+Inside a function, a name that is both imported and assigned, or imported from two places, is
+treated as a local variable: no edge for `x()`. In every unresolved case `x.m()` may still take
+the unconfident guess in step 6.
+
 Calls made at module level have the module entity as `src`. Calls inside a
 nested function are credited to the nearest enclosing entity, since nested
 functions are not entities. Self-calls (recursion) are dropped, matching how
@@ -50,7 +68,7 @@ from codeatlas.schema import CodeEdge, CodeEntity
 if TYPE_CHECKING:
     import tree_sitter
 
-EXTRACTOR_VERSION = "calls@0.2.0"
+EXTRACTOR_VERSION = "calls@0.3.0"
 _MAX_HOPS = 4  # re-export and base-class lookups; stops cycles
 
 # Method names that built-in types already have. `d.get(k)` on a dict must not be guessed as
@@ -69,6 +87,8 @@ class _Module:
     name: str
     is_package: bool
     names: dict[str, str] = field(default_factory=dict)  # local name -> dotted target
+    ambiguous: set[str] = field(default_factory=set)  # bound to different things; never resolved
+    uncertain: dict[str, str] = field(default_factory=dict)  # one target plus assignments
     bases: dict[str, list[str]] = field(default_factory=dict)  # class fqn -> base targets
 
 
@@ -134,8 +154,7 @@ def build_call_graph(
     resolver = _Resolver(known=known, modules=modules, module_of_file=module_of_file)
     edges: set[tuple[str, str, bool]] = set()
     for call in calls:
-        dst, bound = resolver.resolve(call)
-        confident = True
+        dst, bound, confident = resolver.resolve(call)
         if dst is None and not bound:
             dst = _unique_method(call.expr, methods_by_name)
             confident = False
@@ -159,34 +178,68 @@ def _text(node: tree_sitter.Node, source: bytes) -> str:
     return source[node.start_byte : node.end_byte].decode("utf-8", errors="replace")
 
 
+_ASSIGNED = "<assigned>"  # a binding whose value is not known statically
+
+
 def _collect_bindings(root: tree_sitter.Node, source: bytes, mod: _Module) -> None:
-    """Fill `mod.names` from top-level defs and every import in the file."""
-    for child in root.children:
-        node = child
-        if node.type == "decorated_definition":
-            inner = node.child_by_field_name("definition")
-            if inner is None:
-                continue
-            node = inner
-        if node.type in ("function_definition", "class_definition"):
-            name = node.child_by_field_name("name")
-            if name is not None:
-                mod.names[_text(name, source)] = f"{mod.name}.{_text(name, source)}"
-    _collect_imports(root, source, mod)
+    """Fill `mod.names` from module-level bindings; a name bound to different things is ambiguous.
 
-
-def _collect_imports(node: tree_sitter.Node, source: bytes, mod: _Module) -> None:
-    """Module-level imports, including those under `if`/`try` and in class bodies.
-
-    Imports inside a function body bind only in that function (see `_function_scope`).
+    Module-level bindings are top-level `def`/`class` names, imports (also under `if`/`try`),
+    assignment-like targets outside functions and classes, and names a function rebinds through
+    `global`. Class bodies bind class attributes, not module names, so they are skipped.
     """
+    bindings: dict[str, set[str]] = {}
+    _collect_module_bindings(root, source, mod, bindings)
+    _collect_global_rebinds(root, source, mod, bindings)
+    for name, targets in bindings.items():
+        concrete = targets - {_ASSIGNED}
+        if len(concrete) == 1 and _ASSIGNED not in targets:
+            mod.names[name] = next(iter(concrete))
+        elif len(concrete) == 1:
+            mod.uncertain[name] = next(iter(concrete))
+        else:
+            mod.ambiguous.add(name)
+
+
+def _collect_module_bindings(
+    node: tree_sitter.Node, source: bytes, mod: _Module, bindings: dict[str, set[str]]
+) -> None:
     for child in node.children:
-        if child.type in ("import_statement", "import_from_statement"):
-            mod.names.update(_import_bindings(child, source, mod))
-        elif child.type == "function_definition":
+        kind = child.type
+        if kind in ("function_definition", "class_definition"):
+            name = child.child_by_field_name("name")
+            if name is not None:
+                bindings.setdefault(_text(name, source), set()).add(
+                    f"{mod.name}.{_text(name, source)}"
+                )
+            continue  # their bodies are not module scope
+        if kind in _OWN_SCOPE or kind in ("string", "comment"):
             continue
-        elif child.type not in ("string", "comment"):
-            _collect_imports(child, source, mod)
+        if kind in ("import_statement", "import_from_statement"):
+            for local, target in _import_bindings(child, source, mod).items():
+                bindings.setdefault(local, set()).add(target)
+            continue
+        for bound in _bound_names(child, source):
+            bindings.setdefault(bound, set()).add(_ASSIGNED)
+        _collect_module_bindings(child, source, mod, bindings)
+
+
+def _collect_global_rebinds(
+    node: tree_sitter.Node, source: bytes, mod: _Module, bindings: dict[str, set[str]]
+) -> None:
+    """`def f(): global x; x = ...` rebinds module-level `x` at run time."""
+    for child in node.children:
+        if child.type == "function_definition":
+            names: set[str] = set()
+            imports: dict[str, set[str]] = {}
+            declared_global: set[str] = set()
+            body = child.child_by_field_name("body")
+            if body is not None:
+                _scan_locals(body, source, mod, names, imports, declared_global)
+            for name in declared_global & (names | set(imports)):
+                bindings.setdefault(name, set()).add(_ASSIGNED)
+        if child.type not in ("string", "comment"):
+            _collect_global_rebinds(child, source, mod, bindings)
 
 
 def _import_bindings(stmt: tree_sitter.Node, source: bytes, mod: _Module) -> dict[str, str]:
@@ -238,7 +291,7 @@ def _function_scope(
 ) -> tuple[set[str], dict[str, str]]:
     """(local variable names, local imports) of one function, as Python scoping defines them."""
     names: set[str] = set()
-    imports: dict[str, str] = {}
+    imports: dict[str, set[str]] = {}
     declared_global: set[str] = set()
     params = fn.child_by_field_name("parameters")
     if params is not None:
@@ -250,8 +303,13 @@ def _function_scope(
     for name in declared_global:
         names.discard(name)
         imports.pop(name, None)
-    names -= set(imports)  # a local import is resolved through `imports`, not hidden
-    return names, imports
+    resolved: dict[str, str] = {}
+    for name, targets in imports.items():
+        if len(targets) == 1 and name not in names:
+            resolved[name] = next(iter(targets))
+        else:
+            names.add(name)  # imported from two places, or imported and assigned: ambiguous
+    return names, resolved
 
 
 def _param_names(node: tree_sitter.Node, source: bytes) -> set[str]:
@@ -283,12 +341,27 @@ def _target_names(node: tree_sitter.Node, source: bytes) -> set[str]:
     return out
 
 
+def _bound_names(node: tree_sitter.Node, source: bytes) -> set[str]:
+    """Names one assignment-like node binds: assignment, `for`, walrus or `as` target."""
+    kind = node.type
+    if kind in ("assignment", "augmented_assignment", "for_statement"):
+        left = node.child_by_field_name("left")
+        return _target_names(left, source) if left is not None else set()
+    if kind == "named_expression":
+        target = node.child_by_field_name("name")
+        return _target_names(target, source) if target is not None else set()
+    if kind == "as_pattern":
+        alias = node.child_by_field_name("alias")
+        return _target_names(alias, source) if alias is not None else set()
+    return set()
+
+
 def _scan_locals(
     node: tree_sitter.Node,
     source: bytes,
     mod: _Module,
     names: set[str],
-    imports: dict[str, str],
+    imports: dict[str, set[str]],
     declared_global: set[str],
 ) -> None:
     for child in node.children:
@@ -301,23 +374,13 @@ def _scan_locals(
         if kind in _OWN_SCOPE:
             continue
         if kind in ("import_statement", "import_from_statement"):
-            imports.update(_import_bindings(child, source, mod))
+            for local, target in _import_bindings(child, source, mod).items():
+                imports.setdefault(local, set()).add(target)
             continue
         if kind == "global_statement":
             declared_global |= {_text(c, source) for c in child.named_children}
             continue
-        if kind in ("assignment", "augmented_assignment", "for_statement"):
-            left = child.child_by_field_name("left")
-            if left is not None:
-                names |= _target_names(left, source)
-        elif kind == "named_expression":
-            target = child.child_by_field_name("name")
-            if target is not None:
-                names |= _target_names(target, source)
-        elif kind == "as_pattern":
-            alias = child.child_by_field_name("alias")
-            if alias is not None:
-                names |= _target_names(alias, source)
+        names |= _bound_names(child, source)
         _scan_locals(child, source, mod, names, imports, declared_global)
 
 
@@ -375,19 +438,62 @@ def _collect_calls(
             name = child.child_by_field_name("name")
             fqn = f"{current}.{_text(name, source)}" if name else None
             inner = scope.enter(*_function_scope(child, source, mod))
-            if fqn and fqn in known and known[current].kind in ("module", "class"):
-                _collect_calls(child, source, mod, known, fqn, enclosing_class, inner, out)
-            else:
-                _collect_calls(child, source, mod, known, current, enclosing_class, inner, out)
+            owner = (
+                fqn
+                if fqn and fqn in known and known[current].kind in ("module", "class")
+                else current
+            )
+            for part in child.children:
+                if part.type == "block":  # the body runs in the function's own scope
+                    _collect_calls(part, source, mod, known, owner, enclosing_class, inner, out)
+                else:  # defaults and annotations run when the `def` runs
+                    _collect_calls(part, source, mod, known, current, enclosing_class, scope, out)
+            continue
+        if child.type == "lambda":
+            params = child.child_by_field_name("parameters")
+            bound: set[str] = set()
+            if params is not None:
+                for p in params.named_children:
+                    bound |= _param_names(p, source)
+            body = child.child_by_field_name("body")
+            if body is not None:
+                inner = scope.enter(bound, {})
+                _collect_calls(body, source, mod, known, current, enclosing_class, inner, out)
+                if body.type == "call":
+                    _record_call(body, source, current, enclosing_class, inner, out)
+            continue
+        if child.type in _COMPREHENSIONS:
+            loop_vars: set[str] = set()
+            for clause in child.named_children:
+                if clause.type == "for_in_clause":
+                    left = clause.child_by_field_name("left")
+                    if left is not None:
+                        loop_vars |= _target_names(left, source)
+            inner = scope.enter(loop_vars, {})
+            _collect_calls(child, source, mod, known, current, enclosing_class, inner, out)
             continue
         if child.type == "call":
-            fn = child.child_by_field_name("function")
-            expr = _dotted(fn, source) if fn is not None else None
-            if expr is not None:
-                out.append(
-                    _Call(src=current, expr=expr, enclosing_class=enclosing_class, scope=scope)
-                )
+            _record_call(child, source, current, enclosing_class, scope, out)
         _collect_calls(child, source, mod, known, current, enclosing_class, scope, out)
+
+
+_COMPREHENSIONS = frozenset(
+    {"list_comprehension", "set_comprehension", "dictionary_comprehension", "generator_expression"}
+)
+
+
+def _record_call(
+    node: tree_sitter.Node,
+    source: bytes,
+    current: str,
+    enclosing_class: str | None,
+    scope: _Scope,
+    out: list[_Call],
+) -> None:
+    fn = node.child_by_field_name("function")
+    expr = _dotted(fn, source) if fn is not None else None
+    if expr is not None:
+        out.append(_Call(src=current, expr=expr, enclosing_class=enclosing_class, scope=scope))
 
 
 def _dotted(node: tree_sitter.Node, source: bytes) -> str | None:
@@ -413,8 +519,8 @@ class _Resolver:
     modules: dict[str, _Module]
     module_of_file: dict[str, str]
 
-    def resolve(self, call: _Call) -> tuple[str | None, bool]:
-        """Return (entity or None, whether the head name is bound in the caller's module).
+    def resolve(self, call: _Call) -> tuple[str | None, bool, bool]:
+        """Return (entity or None, whether the head name is bound, whether the edge is confident).
 
         A bound head that resolves to nothing is an external call (`json.dumps`) and must not
         fall back to the unique-method guess.
@@ -422,20 +528,26 @@ class _Resolver:
         head, _, rest = call.expr.partition(".")
         mod = self.modules.get(self._module_of(call.src))
         if mod is None:
-            return None, False
+            return None, False, True
         if head in ("self", "cls") and call.enclosing_class and rest:
-            return self._method(call.enclosing_class, rest, 0), "." not in rest
+            return self._method(call.enclosing_class, rest, 0), "." not in rest, True
         local_import = dict(call.scope.imports).get(head)
         if local_import is not None:
-            return self._entity(_join(local_import, rest), 0), True
+            return self._entity(_join(local_import, rest), 0), True, True
         if head in call.scope.names:
             # A local variable: its value is unknown here. `x()` gets no edge; `x.m()` may
             # still take the unique-method guess (confident=False), as for any unknown receiver.
-            return None, False
+            return None, False, True
+        if head in mod.uncertain:
+            # One real target plus fallback assignments (`except ImportError: X = None`).
+            # An external target (`json`) stays bound, so it never takes the unique-method guess.
+            return self._entity(_join(mod.uncertain[head], rest), 0), True, False
+        if head in mod.ambiguous:
+            return None, False, True  # bound to different things: an unknown receiver
         target = mod.names.get(head)
         if target is None:
-            return None, False
-        return self._entity(_join(target, rest), 0), True
+            return None, False, True
+        return self._entity(_join(target, rest), 0), True, True
 
     def _module_of(self, entity_id: str) -> str:
         return self.module_of_file.get(self.known[entity_id].file, entity_id)
