@@ -280,6 +280,8 @@ def test_compare_two_completed_fixture_evaluations(tmp_path) -> None:
         result = response.json()
         assert result["before"]["evaluation_id"] == ids[0]
         assert result["after"]["evaluation_id"] == ids[1]
+        assert result["before"]["source_mode"] == "fixtures"
+        assert result["after"]["source_mode"] == "fixtures"
         assert result["directly_comparable"] is False
         assert "Different repository or pull request." in result["limitations"]
         assert "cannot be compared" in result["semantic_note"]

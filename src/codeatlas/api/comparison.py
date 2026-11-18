@@ -32,11 +32,31 @@ def _finding_change(left: CheckResult | None, right: CheckResult | None) -> str:
 def compare_cases(left: Case, right: Case, left_id: str, right_id: str) -> dict[str, Any]:
     a, b = left.bundle, right.bundle
     reasons: list[str] = []
+
+    def source_mode(case: Case) -> str | None:
+        prefix = "explicit source mode: "
+        modes = {
+            note.removeprefix(prefix)
+            for note in case.bundle.collection_notes
+            if note.startswith(prefix) and note.removeprefix(prefix) in {"live", "fixtures"}
+        }
+        return next(iter(modes)) if len(modes) == 1 else None
+
     same_target = (a.change.repo, a.change.pr_number) == (b.change.repo, b.change.pr_number)
     if not same_target:
         reasons.append("Different repository or pull request.")
     if (a.change.base_sha, a.change.head_sha) != (b.change.base_sha, b.change.head_sha):
         reasons.append("Different base or head revision.")
+    if a.change.merge_base_sha != b.change.merge_base_sha:
+        reasons.append("Different merge-base revision.")
+    same_issues = {item.key for item in a.work_items} == {item.key for item in b.work_items}
+    if not same_issues:
+        reasons.append("Different linked Jira issues.")
+    left_mode, right_mode = source_mode(left), source_mode(right)
+    if left_mode is None or right_mode is None:
+        reasons.append("Source mode is missing or ambiguous for at least one evaluation.")
+    elif left_mode != right_mode:
+        reasons.append("Different source modes.")
     if effective_policy_hash(a.policy) != effective_policy_hash(b.policy):
         reasons.append("Different effective policy content.")
     if not a.policy_source or not b.policy_source:
@@ -57,7 +77,13 @@ def compare_cases(left: Case, right: Case, left_id: str, right_id: str) -> dict[
                 "case": case,
                 "change": (
                     _finding_change(old, new)
-                    if same_target and left.verdict.ruleset_version == right.verdict.ruleset_version
+                    if (
+                        same_target
+                        and same_issues
+                        and left_mode is not None
+                        and left_mode == right_mode
+                        and left.verdict.ruleset_version == right.verdict.ruleset_version
+                    )
                     else "not_comparable"
                 ),
                 "before": old.model_dump(mode="json") if old else None,
@@ -75,6 +101,8 @@ def compare_cases(left: Case, right: Case, left_id: str, right_id: str) -> dict[
             "base_sha": bundle.change.base_sha,
             "head_sha": bundle.change.head_sha,
             "cutoff": bundle.collected_at.isoformat(),
+            "source_mode": source_mode(case),
+            "merge_base_sha": bundle.change.merge_base_sha,
             "verdict": case.verdict.value,
             "policy_source": bundle.policy_source,
             "policy_hash": effective_policy_hash(bundle.policy),
