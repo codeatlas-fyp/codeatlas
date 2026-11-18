@@ -58,6 +58,7 @@ class EvidenceBundle(Model):
     model_file_hashes: dict[str, str]  # model_id -> sha256 of the model file
     policy: Policy  # copied in so replay never reads live files
     effective_policy_hash: str | None = None
+    policy_source: str | None = None
     identity_map: IdentityMap
     work_items: list[WorkItemRef]
     change_events: list[ChangeEvent]

@@ -201,6 +201,7 @@ def test_fixture_dashboard_evaluation_persists_history_bundle_and_replay(
         )
         assert data["bundle"]["change"]["pr_number"] == 1
         assert data["bundle"]["pr_author_login"] == "user-01"
+        assert data["bundle"]["policy_source"] == "built-in default at submission"
         assert canonical_bytes(data["bundle"]["policy"]) == canonical_bytes(original_policy)
         assert data["verdict"]["results"]
         assert client.get(data["replay_url"]).json()["match"] is True

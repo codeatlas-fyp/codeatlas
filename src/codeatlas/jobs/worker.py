@@ -74,6 +74,7 @@ def _execute(job, settings: WebSettings, factory, jobs: JobService, lease_token:
                 change=None,
                 change_label=f"pr:{job.repository}#{job.pr_number}",
                 policy=contract.policy,
+                policy_source=contract.policy_source,
                 identity_map=contract.identity_map,
                 run_id=log.run_id,
                 collected_at=contract.cutoff,

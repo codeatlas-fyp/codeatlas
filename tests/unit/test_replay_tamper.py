@@ -34,6 +34,7 @@ def _edit_verdict(folder: Path, edit: Callable[[dict[str, Any]], None]) -> None:
 def test_untampered_sample_replays_with_match(sample_copy: Path) -> None:
     result = replay(sample_copy, evaluate_bundle)
     assert result.match
+    assert result.limitations == ("Effective policy source was not recorded in this bundle.",)
 
 
 def test_changed_value_is_refused(sample_copy: Path) -> None:

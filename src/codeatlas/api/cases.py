@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from codeatlas.bundle.hashing import verdict_hash
 from codeatlas.bundle.replay import replay
@@ -92,6 +92,7 @@ class ReplayOutcome(_Out):
     match: bool
     refused: bool  # True when the bundle or verdict failed its integrity check
     message: str
+    limitations: list[str] = Field(default_factory=list)
 
 
 def check_hash(bundle_hash: str) -> None:
@@ -265,4 +266,5 @@ class CaseStore:
             match=result.match,
             refused=False,
             message="recomputed verdict is identical" if result.match else "verdict differs",
+            limitations=list(result.limitations),
         )

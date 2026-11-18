@@ -120,6 +120,7 @@ def collect(
             change=load_change(change) if change is not None else None,
             change_label=change.name if change is not None else f"pr:{repo}#{pr}",
             policy=loaded_policy,
+            policy_source="caller-supplied local policy" if policy else "built-in default",
             identity_map=load_identity_map(identity_map),
             run_id=log.run_id,
             collected_at=now_utc(),

@@ -22,6 +22,7 @@ class ReplayResult:
     stored_verdict_hash: str
     recomputed_verdict_hash: str
     match: bool
+    limitations: tuple[str, ...] = ()
 
 
 def replay(path: Path, evaluate: Evaluator, *, strict: bool = True) -> ReplayResult:
@@ -60,6 +61,9 @@ def replay(path: Path, evaluate: Evaluator, *, strict: bool = True) -> ReplayRes
         stored_verdict_hash=stored.verdict_hash,
         recomputed_verdict_hash=recomputed.verdict_hash,
         match=stored.verdict_hash == recomputed.verdict_hash and not differing,
+        limitations=("Effective policy source was not recorded in this bundle.",)
+        if bundle.policy_source is None
+        else (),
     )
     if strict and not result.match:
         raise ReplayMismatchError(

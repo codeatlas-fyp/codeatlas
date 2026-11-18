@@ -121,6 +121,7 @@ class CollectRequest:
     target: PullRequestTarget | None = None
     embedding_model: str | None = None  # None: the semantic module's pinned default
     bm25_only: bool = False  # skip the embedding model (offline runs and tests)
+    policy_source: str | None = None
 
 
 def evaluate_bundle(
@@ -695,6 +696,7 @@ def collect_bundle(
             model_file_hashes={},
             policy=request.policy,
             effective_policy_hash=effective_policy_hash(request.policy),
+            policy_source=request.policy_source,
             identity_map=request.identity_map,
             work_items=change.work_items,
             change_events=events,
