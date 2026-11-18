@@ -13,7 +13,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from codeatlas import __version__
 from codeatlas.api.cases import CaseError, CaseStore, CaseSummary
-from codeatlas.api.routes import Store
+from codeatlas.api.routes import Store, get_graph, get_semantic_runs
 from codeatlas.web.views import (
     CASE_NAMES,
     LINK_LABELS,
@@ -159,6 +159,8 @@ def links_page(request: Request, bundle_hash: str, store: Store) -> HTMLResponse
         "links.html",
         case=case,
         view=links_view(case, links),
+        graph=get_graph(bundle_hash, store),
+        semantic_runs=get_semantic_runs(bundle_hash, store),
         replay=store.replay(bundle_hash),
         tab="links",
     )

@@ -85,6 +85,8 @@
       </div>
       <div class="cmd cmd--light"><code class="mono ellipsis">{{ case.summary.bundle_hash }}</code><button type="button" class="btn-ghost" data-copy="{{ case.summary.bundle_hash }}" aria-label="Copy bundle hash">Copy</button></div>
       <p class="small muted">Ruleset <span class="mono">{{ case.verdict.ruleset_version }}</span></p>
+      <p class="small muted">Policy source: {{ case.bundle.policy_source or 'Not recorded in this bundle' }}</p>
+      {% for limitation in replay.limitations %}<p class="small muted">{{ limitation }}</p>{% endfor %}
     </div>
 
     {% if view.notes %}

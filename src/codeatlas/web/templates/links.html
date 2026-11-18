@@ -5,6 +5,16 @@
 {{ case_header(case, tab, replay) }}
 <main class="wrap page stackpage">
 
+  <section class="card card--pad" aria-labelledby="integration-h">
+    <h2 id="integration-h" class="h-md">Graph and semantic evidence</h2>
+    <p class="small muted">Graph status: {{ graph.status }} · {{ graph.nodes|length }} entities · {{ graph.edges|length }} edges.</p>
+    {% for note in graph.limitations %}<p class="small muted">{{ note }}</p>{% endfor %}
+    {% if graph.edges %}
+    <ul class="notes">{% for edge in graph.edges %}<li><span class="mono">{{ edge.src }} → {{ edge.dst }}</span> · {{ edge.kind }} · {{ 'confidence unavailable' if edge.confident is none else ('confident static resolution' if edge.confident else 'uncertain static resolution') }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% for run in semantic_runs %}<p class="small muted"><span class="mono">{{ run.criterion_id }}</span>: {{ run.status }} — {{ run.reason }}</p>{% else %}<p class="small muted">No criteria are available for semantic suggestions.</p>{% endfor %}
+  </section>
+
   <section class="card card--pad" aria-labelledby="g-h">
     <div class="sechead">
       <h2 id="g-h" class="h-md">Requirement → changed code</h2>

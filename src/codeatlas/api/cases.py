@@ -143,7 +143,9 @@ def _title(bundle: EvidenceBundle) -> str | None:
 
 
 def _author(bundle: EvidenceBundle) -> str | None:
-    """The most frequent commit author (the schema holds no PR author)."""
+    """Use recorded PR identity; preserve historical display for legacy bundles."""
+    if "pr_author_login" in bundle.model_fields_set:
+        return bundle.pr_author_login
     names = Counter(c.author_login or c.author_email for c in bundle.commits)
     if not names:
         return None

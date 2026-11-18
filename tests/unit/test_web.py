@@ -124,6 +124,20 @@ def test_legacy_integration_views_expose_limitations(client: TestClient) -> None
     assert all(candidate["accepted"] is None for run in runs for candidate in run["candidates"])
 
 
+def test_links_page_discloses_legacy_graph_and_semantic_limitations(client: TestClient) -> None:
+    response = client.get(f"/cases/{FIXTURE_HASHES[0]}/links")
+    assert response.status_code == 200
+    assert "Static edges do not prove execution." in response.text
+    assert "Legacy rankings lack a recorded gate decision" in response.text
+
+
+def test_new_bundle_does_not_infer_missing_pr_author(tmp_path: Path) -> None:
+    bundle = BUNDLE.model_copy(update={"pr_author_login": None})
+    bundle_hash = _store_bundle(tmp_path, bundle)
+    with _client(tmp_path) as client:
+        assert client.get(f"/api/cases/{bundle_hash}").json()["summary"]["author_login"] is None
+
+
 @pytest.mark.parametrize("bundle_hash", FIXTURE_HASHES)
 def test_case_page_shows_all_nine_cases_and_their_evidence(
     client: TestClient, bundle_hash: str
