@@ -65,6 +65,8 @@ def tampered(tmp_path: Path) -> tuple[Path, str]:
         "/cases/{h}/replay",
         "/api/cases/{h}",
         "/api/cases/{h}/links",
+        "/api/cases/{h}/graph",
+        "/api/cases/{h}/semantic-runs",
         "/api/cases/{h}/replay",
     ],
 )
@@ -109,6 +111,17 @@ def test_api_list_has_spec_fields(client: TestClient) -> None:
             assert name in case
         verdict = load_verdict(FIXTURES / case["bundle_hash"])
         assert case["findings"] == findings(verdict.results).model_dump()
+
+
+def test_legacy_integration_views_expose_limitations(client: TestClient) -> None:
+    bundle_hash = FIXTURE_HASHES[0]
+    graph = client.get(f"/api/cases/{bundle_hash}/graph").json()
+    assert graph["schema_version"] == "graph-view-v1"
+    assert graph["status"] in {"incomplete", "unavailable"}
+    assert "Static edges do not prove execution." in graph["limitations"]
+    runs = client.get(f"/api/cases/{bundle_hash}/semantic-runs").json()
+    assert all(run["status"] == "unavailable" for run in runs)
+    assert all(candidate["accepted"] is None for run in runs for candidate in run["candidates"])
 
 
 @pytest.mark.parametrize("bundle_hash", FIXTURE_HASHES)
