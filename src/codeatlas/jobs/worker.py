@@ -10,14 +10,13 @@ from sqlalchemy import create_engine
 
 from codeatlas.api.settings import WebSettings
 from codeatlas.bundle.store import BundleStore
-from codeatlas.config import DEFAULT_POLICY
 from codeatlas.db import make_session_factory
 from codeatlas.errors import CollectionError
+from codeatlas.jobs.contract import SubmissionContract
 from codeatlas.jobs.service import JobService
 from codeatlas.jobs.sources import job_sources
 from codeatlas.logging import EventLog
-from codeatlas.pipeline import CollectRequest, PullRequestTarget, collect_and_evaluate, now_utc
-from codeatlas.schema import IdentityMap
+from codeatlas.pipeline import CollectRequest, PullRequestTarget, collect_and_evaluate
 
 LOGGER = logging.getLogger("codeatlas.worker")
 
@@ -30,27 +29,30 @@ def run_worker(settings: WebSettings | None = None, *, once: bool = False) -> No
     jobs = JobService(factory, lease_seconds=settings.job_lease_seconds)
     try:
         while True:
-            job = jobs.claim(settings.worker_id)
+            # A fresh token per claim fences an earlier execution even when two
+            # processes share the same configured worker name.
+            lease_token = uuid.uuid4().hex
+            job = jobs.claim(lease_token)
             if job is None:
                 if once:
                     return
                 time.sleep(1)
                 continue
-            _execute(job, settings, factory, jobs)
+            _execute(job, settings, factory, jobs, lease_token)
             if once:
                 return
     finally:
         engine.dispose()
 
 
-def _execute(job, settings: WebSettings, factory, jobs: JobService) -> None:
+def _execute(job, settings: WebSettings, factory, jobs: JobService, lease_token: str) -> None:
     stop_heartbeat = threading.Event()
 
     def heartbeat() -> None:
         interval = max(1, settings.job_lease_seconds // 3)
         while not stop_heartbeat.wait(interval):
             try:
-                if not jobs.heartbeat(job.id, settings.worker_id):
+                if not jobs.heartbeat(job.id, lease_token):
                     LOGGER.warning("worker lease lost for evaluation %s", job.id)
                     return
             except Exception:
@@ -60,21 +62,28 @@ def _execute(job, settings: WebSettings, factory, jobs: JobService) -> None:
     heartbeat_thread.start()
 
     def persist_stage(stage: str, status: str) -> None:
-        jobs.stage(job.id, stage, status, worker_id=settings.worker_id)
+        jobs.stage(job.id, stage, status, worker_id=lease_token)
 
     log = EventLog(uuid.uuid4().hex, stream=io.StringIO(), stage_callback=persist_stage)
     try:
-        with job_sources(job, settings, factory) as (jira, sources):
+        if not job.submission_contract:
+            raise ValueError("legacy job has no frozen submission contract")
+        contract = SubmissionContract.model_validate_json(job.submission_contract)
+        with job_sources(job, settings, factory, contract) as (jira, sources):
             request = CollectRequest(
                 change=None,
                 change_label=f"pr:{job.repository}#{job.pr_number}",
-                policy=DEFAULT_POLICY,
-                identity_map=IdentityMap(people=[]),
+                policy=contract.policy,
+                identity_map=contract.identity_map,
                 run_id=log.run_id,
-                collected_at=now_utc(),
-                notes=[f"explicit source mode: {settings.source_mode}"],
+                collected_at=contract.cutoff,
+                notes=[
+                    f"explicit source mode: {contract.source_mode}",
+                    "Submission cutoff is frozen; live source state may have changed "
+                    "before collection.",
+                ],
                 target=PullRequestTarget(repo=job.repository, number=job.pr_number),
-                bm25_only=settings.source_mode == "fixtures",
+                bm25_only=contract.source_mode == "fixtures",
             )
             bundle_hash, verdict = collect_and_evaluate(
                 request,
@@ -88,12 +97,12 @@ def _execute(job, settings: WebSettings, factory, jobs: JobService) -> None:
             bundle_hash,
             verdict.value,
             str(BundleStore(settings.bundle_dir).folder(bundle_hash)),
-            settings.worker_id,
+            lease_token,
         )
     except Exception as error:
         code = _failure_code(error)
         # Persist only a safe classification; provider payloads and stack traces stay private.
-        jobs.fail(job.id, code, "Evaluation failed", settings.worker_id)
+        jobs.fail(job.id, code, "Evaluation failed", lease_token)
         LOGGER.warning("evaluation %s failed (%s, %s)", job.id, code, type(error).__name__)
     finally:
         stop_heartbeat.set()

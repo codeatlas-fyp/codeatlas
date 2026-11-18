@@ -27,7 +27,7 @@ CASE_NAMES: dict[str, str] = {
     "C6": "Code linked to the current requirement version",
     "C7": "Changed behaviour has test evidence",
     "C8": "Priority changed only by someone with authority",
-    "C9": "Every changed function is explained by the requirement",
+    "C9": "Advisory: changed functions without a suggested requirement link",
 }
 
 VERDICT_RULES = (

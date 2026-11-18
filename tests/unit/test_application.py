@@ -1,5 +1,6 @@
 """Single-user application persistence, credential handling, and fixture end-to-end flow."""
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -14,13 +15,40 @@ from sqlalchemy.orm import sessionmaker
 
 from codeatlas.api.app import create_app
 from codeatlas.api.settings import WebSettings
+from codeatlas.bundle.canonical import canonical_bytes
 from codeatlas.db import Base
 from codeatlas.db_models import Connection, EvaluationJob, EvaluationStageEvent, ProjectConfig
 from codeatlas.integrations.credentials import CredentialVault
-from codeatlas.jobs.service import JobService
+from codeatlas.jobs import worker as worker_module
+from codeatlas.jobs.service import JobService, SubmissionConflict
 from codeatlas.jobs.worker import run_worker
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
+
+
+def test_worker_uses_fresh_lease_token_for_each_execution(tmp_path, monkeypatch):
+    tokens = []
+
+    class FakeJobs:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def claim(self, token):
+            tokens.append(token)
+            return object()
+
+    executions = []
+    monkeypatch.setattr(worker_module, "JobService", FakeJobs)
+    monkeypatch.setattr(
+        worker_module,
+        "_execute",
+        lambda job, settings, factory, jobs, token: executions.append(token),
+    )
+    settings = _settings(tmp_path)
+    run_worker(settings, once=True)
+    run_worker(settings, once=True)
+    assert len(set(tokens)) == 2
+    assert executions == tokens
 
 
 def _settings(tmp_path, *, mode="fixtures", database_url=None):
@@ -106,7 +134,9 @@ def test_invalid_live_github_token_returns_safe_validation_error(tmp_path) -> No
     assert "token should not be returned" not in response.text
 
 
-def test_fixture_dashboard_evaluation_persists_history_bundle_and_replay(tmp_path) -> None:
+def test_fixture_dashboard_evaluation_persists_history_bundle_and_replay(
+    tmp_path, monkeypatch
+) -> None:
     settings = _settings(tmp_path)
     app = _app(tmp_path, database_url=settings.database_url)
     with TestClient(app) as client:
@@ -142,6 +172,19 @@ def test_fixture_dashboard_evaluation_persists_history_bundle_and_replay(tmp_pat
         assert duplicate.json()["id"] == job_id
         assert duplicate.json()["reused"] is True
 
+    from codeatlas.jobs import service as service_module
+    from codeatlas.jobs.contract import SubmissionContract
+
+    with app.state.session_factory() as session:
+        submitted = session.get(EvaluationJob, job_id)
+        contract = SubmissionContract.model_validate_json(submitted.submission_contract)
+
+    original_policy = service_module.DEFAULT_POLICY.model_dump(mode="json")
+    monkeypatch.setattr(
+        service_module,
+        "DEFAULT_POLICY",
+        service_module.DEFAULT_POLICY.model_copy(update={"workitem_key_pattern": "CHANGED"}),
+    )
     run_worker(settings, once=True)
 
     with TestClient(app) as client:
@@ -153,7 +196,11 @@ def test_fixture_dashboard_evaluation_persists_history_bundle_and_replay(tmp_pat
         case = client.get(f"/api/evaluations/{job_id}/case")
         assert case.status_code == 200
         data = case.json()
+        assert datetime.fromisoformat(data["bundle"]["collected_at"].replace("Z", "+00:00")) == (
+            contract.cutoff
+        )
         assert data["bundle"]["change"]["pr_number"] == 1
+        assert canonical_bytes(data["bundle"]["policy"]) == canonical_bytes(original_policy)
         assert data["verdict"]["results"]
         assert client.get(data["replay_url"]).json()["match"] is True
         assert client.get("/api/evaluations").json()[0]["id"] == job_id
@@ -204,6 +251,12 @@ def test_job_claim_uses_skip_locked_and_recovers_expired_lease(tmp_path) -> None
 
     statement = select(EvaluationJob).with_for_update(skip_locked=True)
     assert "FOR UPDATE SKIP LOCKED" in str(statement.compile(dialect=postgresql.dialect()))
+    jobs = JobService(factory)
+    assert not jobs.heartbeat(job_id, "dead-worker")
+    jobs.stage(job_id, "semantic", "completed", worker_id="dead-worker")
+    with pytest.raises(RuntimeError, match="no longer owned"):
+        jobs.complete(job_id, "a" * 64, "PASS", "bundles", "dead-worker")
+    assert jobs.get(job_id)["stage"] == "code"
     claimed = JobService(factory).claim("worker-new")
     assert claimed is not None
     assert claimed.id == job_id
@@ -214,4 +267,157 @@ def test_job_claim_uses_skip_locked_and_recovers_expired_lease(tmp_path) -> None
             select(EvaluationStageEvent).where(EvaluationStageEvent.job_id == job_id)
         ).all()
     assert any(event.status == "recovered" for event in events)
+    jobs = JobService(factory)
+    assert not jobs.heartbeat(job_id, "dead-worker")
+    jobs.stage(job_id, "semantic", "completed", worker_id="dead-worker")
+    jobs.fail(job_id, "evaluation_failed", "safe", "dead-worker")
+    with pytest.raises(RuntimeError, match="no longer owned"):
+        jobs.complete(job_id, "a" * 64, "PASS", "bundles", "dead-worker")
+    assert jobs.get(job_id)["stage"] == "resolve_change"
+    assert jobs.get(job_id)["status"] == "running"
+    assert jobs.heartbeat(job_id, "worker-new")
+    engine.dispose()
+
+
+def _configured_project(app):
+    with TestClient(app) as client:
+        response = client.put(
+            "/api/project-config",
+            json={
+                "jira_project": "SBX",
+                "github_repository": "codeatlas-fyp/codeatlas-sandbox",
+            },
+        )
+        assert response.status_code == 200
+    with app.state.session_factory() as session:
+        return session.scalar(select(ProjectConfig))
+
+
+@pytest.mark.parametrize("changed_field", ["configuration", "encrypted_credential"])
+def test_changed_connector_configuration_fails_before_live_collection(tmp_path, changed_field):
+    from codeatlas.jobs.contract import SubmissionContract
+    from codeatlas.jobs.sources import job_sources
+
+    app = _app(tmp_path)
+    project = _configured_project(app)
+    job, _ = app.state.jobs.submit(project, 1, source_mode="live")
+    contract = SubmissionContract.model_validate_json(job.submission_contract)
+    with app.state.session_factory.begin() as session:
+        connection = session.get(Connection, project.jira_connection_id)
+        setattr(connection, changed_field, "changed")
+    with pytest.raises(RuntimeError, match="changed since submission"):
+        with job_sources(job, app.state.settings, app.state.session_factory, contract):
+            pytest.fail("changed configuration must not be used")
+
+
+def test_idempotency_key_rejects_different_pr_in_api(tmp_path):
+    app = _app(tmp_path)
+    _configured_project(app)
+    with TestClient(app) as client:
+        first = client.post(
+            "/api/evaluations",
+            json={"pull_request_number": 1},
+            headers={"Idempotency-Key": "same-key"},
+        )
+        assert first.status_code == 202
+        second = client.post(
+            "/api/evaluations",
+            json={"pull_request_number": 2},
+            headers={"Idempotency-Key": "same-key"},
+        )
+        assert second.status_code == 409
+        assert "idempotency_conflict" in second.text
+        assert len(client.get("/api/evaluations").json()) == 1
+
+
+@pytest.mark.parametrize(
+    "changed",
+    [
+        {"pr_number": 2},
+        {"base_sha": "new-base"},
+        {"head_sha": "new-head"},
+        {"actor_scope": "another-user"},
+        {"source_mode": "fixtures"},
+    ],
+)
+def test_idempotency_compares_full_request(tmp_path, changed):
+    app = _app(tmp_path)
+    project = _configured_project(app)
+    jobs = app.state.jobs
+    original = dict(pr_number=1, base_sha="base", head_sha="head")
+    job, created = jobs.submit(project, idempotency_key="key", **original)
+    assert created
+    repeated, created = jobs.submit(project, idempotency_key="key", **original)
+    assert repeated.id == job.id and not created
+    with pytest.raises(SubmissionConflict):
+        jobs.submit(project, idempotency_key="key", **(original | changed))
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("github_repository", "other/repo"),
+        ("jira_project", "OTHER"),
+        ("github_connection_id", "other-connection"),
+        ("id", "other-project"),
+    ],
+)
+def test_idempotency_rejects_changed_project_scope(tmp_path, field, value):
+    app = _app(tmp_path)
+    project = _configured_project(app)
+    app.state.jobs.submit(project, 1, "key")
+    setattr(project, field, value)
+    with pytest.raises(SubmissionConflict):
+        app.state.jobs.submit(project, 1, "key")
+
+
+def test_concurrent_submissions_and_terminal_retry_preserve_identity(tmp_path):
+    app = _app(tmp_path)
+    project = _configured_project(app)
+    jobs = app.state.jobs
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(lambda _: jobs.submit(project, 1, "retry"), range(8)))
+    assert len({job.id for job, _ in results}) == 1
+    assert sum(created for _, created in results) == 1
+    claimed = jobs.claim("worker")
+    jobs.fail(claimed.id, "evaluation_failed", "safe", "worker")
+    repeated, created = jobs.submit(project, 1, "retry")
+    assert repeated.id == claimed.id and not created
+    assert repeated.status == "failed"
+
+
+def test_active_request_does_not_silently_discard_a_new_key(tmp_path):
+    app = _app(tmp_path)
+    project = _configured_project(app)
+    app.state.jobs.submit(project, 1, "first")
+    with pytest.raises(SubmissionConflict, match="already active"):
+        app.state.jobs.submit(project, 1, "second")
+    same, created = app.state.jobs.submit(project, 1)
+    assert not created and same.idempotency_key == "first"
+
+
+def test_request_fingerprint_migration_preserves_legacy_rows(tmp_path, monkeypatch):
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy import inspect, text
+
+    url = f"sqlite:///{(tmp_path / 'migration.db').as_posix()}"
+    monkeypatch.setenv("CODEATLAS_DATABASE_URL", url)
+    config = Config("alembic.ini")
+    command.upgrade(config, "0001_application_state")
+    engine = create_engine(url)
+    with engine.begin() as connection:
+        connection.execute(
+            text("""INSERT INTO evaluation_jobs
+            (id, project_id, repository, pr_number, status, stage, attempt, created_at)
+            VALUES ('legacy', 'project', 'owner/repo', 1, 'queued', 'queued', 0,
+                    '2026-11-17 00:00:00')""")
+        )
+    command.upgrade(config, "head")
+    assert "request_fingerprint" in {
+        c["name"] for c in inspect(engine).get_columns("evaluation_jobs")
+    }
+    with engine.connect() as connection:
+        row = connection.execute(text("SELECT id, request_fingerprint FROM evaluation_jobs")).one()
+        assert tuple(row) == ("legacy", None)
     engine.dispose()

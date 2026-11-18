@@ -1,18 +1,25 @@
 """Transactional job creation, claiming, progress, recovery, and result indexing."""
 
 from datetime import UTC, datetime, timedelta
+from typing import Literal
 from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from codeatlas.bundle.canonical import canonical_bytes
+from codeatlas.bundle.hashing import sha256_hex
+from codeatlas.config import DEFAULT_POLICY
 from codeatlas.db_models import (
+    Connection,
     EvaluationBundle,
     EvaluationJob,
     EvaluationStageEvent,
     ProjectConfig,
 )
+from codeatlas.jobs.contract import SubmissionContract, connection_hash
+from codeatlas.schema import IdentityMap
 
 STAGES = (
     "queued",
@@ -31,6 +38,10 @@ STAGES = (
 )
 
 
+class SubmissionConflict(ValueError):
+    """The supplied key cannot safely identify this request."""
+
+
 class JobService:
     def __init__(self, factory: sessionmaker[Session], *, lease_seconds: int = 120):
         self.factory = factory
@@ -43,20 +54,83 @@ class JobService:
         idempotency_key: str | None = None,
         base_sha: str | None = None,
         head_sha: str | None = None,
+        *,
+        source_mode: str = "live",
+        actor_scope: str = "single-user",
     ) -> tuple[EvaluationJob, bool]:
-        active_key = f"{project.id}:{project.github_repository}:{pr_number}"
+        mode: Literal["live", "fixtures"]
+        if source_mode == "live":
+            mode = "live"
+        elif source_mode == "fixtures":
+            mode = "fixtures"
+        else:
+            raise ValueError("unsupported source mode")
+        with self.factory() as session:
+            jira = session.get(Connection, project.jira_connection_id)
+            github = session.get(Connection, project.github_connection_id)
+            if (
+                jira is None
+                or jira.provider != "jira"
+                or github is None
+                or github.provider != "github"
+            ):
+                if idempotency_key and session.scalar(
+                    select(EvaluationJob.id).where(EvaluationJob.idempotency_key == idempotency_key)
+                ):
+                    raise SubmissionConflict("Idempotency key belongs to a different request.")
+                raise ValueError("configured source connections are missing")
+            contract = SubmissionContract(
+                source_mode=mode,
+                jira_connection_id=jira.id,
+                github_connection_id=github.id,
+                jira_connection_hash=connection_hash(jira),
+                github_connection_hash=connection_hash(github),
+                jira_project=project.jira_project,
+                policy=DEFAULT_POLICY,
+                policy_source="built-in default at submission",
+                identity_map=IdentityMap(people=[]),
+                identity_map_source="empty default at submission",
+                cutoff=datetime.now(UTC).replace(microsecond=0),
+            )
+        fingerprint = sha256_hex(
+            canonical_bytes(
+                {
+                    "version": 1,
+                    "project_id": project.id,
+                    "jira_project": project.jira_project,
+                    "jira_connection_id": project.jira_connection_id,
+                    "github_connection_id": project.github_connection_id,
+                    "repository": project.github_repository,
+                    "pr_number": pr_number,
+                    "base_sha": base_sha,
+                    "head_sha": head_sha,
+                    "source_mode": source_mode,
+                    "actor_scope": actor_scope,
+                    "contract": contract.model_dump(mode="json", exclude={"cutoff"}),
+                }
+            )
+        )
+        active_key = f"request-v1:{fingerprint}"
+
+        def reuse(existing: EvaluationJob) -> tuple[EvaluationJob, bool]:
+            if existing.request_fingerprint != fingerprint:
+                raise SubmissionConflict("Idempotency key belongs to a different request.")
+            if idempotency_key and existing.idempotency_key != idempotency_key:
+                raise SubmissionConflict("An identical evaluation is already active.")
+            return existing, False
+
         with self.factory() as session:
             if idempotency_key:
                 existing = session.scalar(
                     select(EvaluationJob).where(EvaluationJob.idempotency_key == idempotency_key)
                 )
                 if existing is not None:
-                    return existing, False
+                    return reuse(existing)
             active = session.scalar(
                 select(EvaluationJob).where(EvaluationJob.active_key == active_key)
             )
             if active is not None:
-                return active, False
+                return reuse(active)
             job = EvaluationJob(
                 id=str(uuid4()),
                 project_id=project.id,
@@ -66,6 +140,8 @@ class JobService:
                 head_sha=head_sha,
                 active_key=active_key,
                 idempotency_key=idempotency_key,
+                request_fingerprint=fingerprint,
+                submission_contract=contract.model_dump_json(),
                 status="queued",
                 stage="queued",
                 attempt=0,
@@ -83,18 +159,22 @@ class JobService:
                 session.commit()
             except IntegrityError:
                 session.rollback()
-                existing = session.scalar(
-                    select(EvaluationJob).where(EvaluationJob.active_key == active_key)
-                )
-                if existing is None and idempotency_key:
-                    existing = session.scalar(
+                existing = (
+                    session.scalar(
                         select(EvaluationJob).where(
                             EvaluationJob.idempotency_key == idempotency_key
                         )
                     )
+                    if idempotency_key
+                    else None
+                )
+                if existing is None:
+                    existing = session.scalar(
+                        select(EvaluationJob).where(EvaluationJob.active_key == active_key)
+                    )
                 if existing is None:
                     raise
-                return existing, False
+                return reuse(existing)
             session.refresh(job)
             return job, True
 
@@ -102,10 +182,12 @@ class JobService:
         now = datetime.now(UTC)
         with self.factory() as session, session.begin():
             expired = session.scalars(
-                select(EvaluationJob).where(
+                select(EvaluationJob)
+                .where(
                     EvaluationJob.status == "running",
                     EvaluationJob.lease_expires_at < now,
                 )
+                .with_for_update(skip_locked=True)
             ).all()
             for old in expired:
                 if old.attempt >= max_attempts:
@@ -150,8 +232,15 @@ class JobService:
     def heartbeat(self, job_id: str, worker_id: str) -> bool:
         now = datetime.now(UTC)
         with self.factory() as session, session.begin():
-            job = session.scalar(select(EvaluationJob).where(EvaluationJob.id == job_id))
-            if job is None or job.status != "running" or job.lease_owner != worker_id:
+            job = session.scalar(
+                select(EvaluationJob).where(EvaluationJob.id == job_id).with_for_update()
+            )
+            if (
+                job is None
+                or job.status != "running"
+                or job.lease_owner != worker_id
+                or not _lease_valid(job)
+            ):
                 return False
             job.heartbeat_at = now
             job.lease_expires_at = now + timedelta(seconds=self.lease_seconds)
@@ -171,11 +260,15 @@ class JobService:
             status if status in {"started", "completed", "failed", "recovered"} else "completed"
         )
         with self.factory() as session, session.begin():
-            job = session.scalar(select(EvaluationJob).where(EvaluationJob.id == job_id))
+            job = session.scalar(
+                select(EvaluationJob).where(EvaluationJob.id == job_id).with_for_update()
+            )
             if (
                 job is None
                 or job.status != "running"
-                or (worker_id and job.lease_owner != worker_id)
+                or not worker_id
+                or job.lease_owner != worker_id
+                or not _lease_valid(job)
             ):
                 return
             job.stage = stage
@@ -194,7 +287,12 @@ class JobService:
             job = session.scalar(
                 select(EvaluationJob).where(EvaluationJob.id == job_id).with_for_update()
             )
-            if job is None or job.status != "running" or job.lease_owner != worker_id:
+            if (
+                job is None
+                or job.status != "running"
+                or job.lease_owner != worker_id
+                or not _lease_valid(job)
+            ):
                 raise RuntimeError("evaluation job is no longer owned by this worker")
             session.add(
                 EvaluationBundle(
@@ -211,11 +309,15 @@ class JobService:
     def fail(self, job_id: str, code: str, message: str, worker_id: str | None = None) -> None:
         safe_message = _safe_failure_message(code)
         with self.factory() as session, session.begin():
-            job = session.scalar(select(EvaluationJob).where(EvaluationJob.id == job_id))
+            job = session.scalar(
+                select(EvaluationJob).where(EvaluationJob.id == job_id).with_for_update()
+            )
             if (
                 job is None
                 or job.status != "running"
-                or (worker_id and job.lease_owner != worker_id)
+                or not worker_id
+                or job.lease_owner != worker_id
+                or not _lease_valid(job)
             ):
                 return
             self._terminal(session, job, "failed", code[:64], safe_message)
@@ -342,3 +444,12 @@ def _job_public(
         "bundle_hash": bundle.bundle_hash if bundle else None,
         "verdict": bundle.verdict if bundle else None,
     }
+
+
+def _lease_valid(job: EvaluationJob) -> bool:
+    expiry = job.lease_expires_at
+    if expiry is None:
+        return False
+    if expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=UTC)
+    return expiry > datetime.now(UTC)

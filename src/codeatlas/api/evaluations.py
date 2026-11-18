@@ -13,7 +13,7 @@ from codeatlas.api.settings import WebSettings
 from codeatlas.collect.github.client import GitHubClient, GitHubClientConfig
 from codeatlas.db_models import Connection, EvaluationBundle, EvaluationJob, ProjectConfig
 from codeatlas.integrations.fixtures import fixture_pr
-from codeatlas.jobs.service import JobService
+from codeatlas.jobs.service import JobService, SubmissionConflict
 
 router = APIRouter(prefix="/api")
 _SHA = re.compile(r"[0-9a-fA-F]{40,64}\Z")
@@ -124,7 +124,10 @@ def submit_evaluation(
     base_sha = base.get("sha") if isinstance(base.get("sha"), str) else None
     head_sha = head.get("sha") if isinstance(head.get("sha"), str) else None
     if not base_sha or not head_sha or not _SHA.fullmatch(base_sha) or not _SHA.fullmatch(head_sha):
-        if settings.source_mode != "fixtures":
+        if settings.source_mode == "fixtures":
+            # Recorded fixture placeholders are not Git object IDs.
+            base_sha = head_sha = None
+        else:
             raise HTTPException(
                 502,
                 detail={
@@ -142,13 +145,20 @@ def submit_evaluation(
         )
 
     jobs: JobService = request.app.state.jobs
-    job, created = jobs.submit(
-        project,
-        body.pull_request_number,
-        idempotency_key.strip() if idempotency_key else None,
-        base_sha,
-        head_sha,
-    )
+    try:
+        job, created = jobs.submit(
+            project,
+            body.pull_request_number,
+            idempotency_key.strip() if idempotency_key else None,
+            base_sha,
+            head_sha,
+            source_mode=settings.source_mode,
+            actor_scope=settings.web_user or "local-single-user",
+        )
+    except SubmissionConflict as error:
+        raise HTTPException(
+            409, detail={"code": "idempotency_conflict", "message": str(error)}
+        ) from error
     response.headers["Location"] = f"/api/evaluations/{job.id}"
     return EvaluationAccepted(
         id=job.id,

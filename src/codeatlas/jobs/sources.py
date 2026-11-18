@@ -14,6 +14,7 @@ from codeatlas.errors import CollectionError
 from codeatlas.integrations.connections import ConnectionService
 from codeatlas.integrations.fixtures import fixture_sources
 from codeatlas.integrations.repositories import RepositoryManager
+from codeatlas.jobs.contract import SubmissionContract, connection_hash
 from codeatlas.pipeline import ChangeSources
 
 
@@ -59,21 +60,32 @@ class PinnedGitHubSource:
 
 @contextmanager
 def job_sources(
-    job: EvaluationJob, settings: WebSettings, factory
+    job: EvaluationJob, settings: WebSettings, factory, contract: SubmissionContract
 ) -> Iterator[tuple[object, ChangeSources]]:
-    if settings.source_mode == "fixtures":
+    if contract.source_mode == "fixtures":
         jira, sources = fixture_sources(settings, job.pr_number)
         yield jira, sources
         return
 
     with factory() as session:
         project = session.scalar(select(ProjectConfig).where(ProjectConfig.id == job.project_id))
-        jira_connection = session.scalar(select(Connection).where(Connection.provider == "jira"))
+        jira_connection = session.scalar(
+            select(Connection).where(
+                Connection.id == contract.jira_connection_id, Connection.provider == "jira"
+            )
+        )
         github_connection = session.scalar(
-            select(Connection).where(Connection.provider == "github")
+            select(Connection).where(
+                Connection.id == contract.github_connection_id, Connection.provider == "github"
+            )
         )
         if project is None or jira_connection is None or github_connection is None:
             raise RuntimeError("configured source connections are missing")
+        if (
+            connection_hash(jira_connection) != contract.jira_connection_hash
+            or connection_hash(github_connection) != contract.github_connection_hash
+        ):
+            raise RuntimeError("source connection changed since submission")
         jira_configuration = json.loads(jira_connection.configuration)
         jira_credential = (
             ConnectionService(settings).vault().decrypt(jira_connection.encrypted_credential)
@@ -106,11 +118,6 @@ def job_sources(
         git = RepositoryManager(settings).prepare(
             repository, job.pr_number, base_ref, base_sha, head_sha, github_credential
         )
-        if job.base_sha is None or job.head_sha is None:
-            with factory() as session, session.begin():
-                stored = session.get(EvaluationJob, job.id)
-                if stored:
-                    stored.base_sha, stored.head_sha = base_sha, head_sha
         pinned = PinnedGitHubSource(github, repository, job.pr_number, base_sha, head_sha)
         yield jira, ChangeSources(github=pinned, git=git)
     finally:

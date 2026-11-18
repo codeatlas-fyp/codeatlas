@@ -61,6 +61,8 @@ class EvaluationJob(Base):
     stage: Mapped[str] = mapped_column(String(40), default="queued", nullable=False)
     active_key: Mapped[str | None] = mapped_column(String(400), unique=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(200))
+    request_fingerprint: Mapped[str | None] = mapped_column(String(64))
+    submission_contract: Mapped[str | None] = mapped_column(Text)
     attempt: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     lease_owner: Mapped[str | None] = mapped_column(String(128))
     lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
