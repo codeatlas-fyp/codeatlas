@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
 from codeatlas.api.cases import CaseStore
+from codeatlas.api.comparison import compare_cases
 from codeatlas.api.connections import ServiceDep, SessionDep
 from codeatlas.api.settings import WebSettings
 from codeatlas.collect.github.client import GitHubClient, GitHubClientConfig
@@ -173,6 +174,24 @@ def submit_evaluation(
 @router.get("/evaluations")
 def evaluation_history(request: Request) -> list[dict[str, object]]:
     return request.app.state.jobs.history()
+
+
+@router.get("/evaluations/compare")
+def compare_evaluations(before: str, after: str, request: Request) -> dict[str, object]:
+    store = CaseStore(request.app.state.settings.bundle_dir)
+    cases = []
+    with request.app.state.session_factory() as session:
+        for evaluation_id in (before, after):
+            job = session.get(EvaluationJob, evaluation_id)
+            if job is None:
+                raise HTTPException(404, detail={"code": "evaluation_not_found"})
+            bundle = session.scalar(
+                select(EvaluationBundle).where(EvaluationBundle.evaluation_id == evaluation_id)
+            )
+            if job.status != "succeeded" or bundle is None:
+                raise HTTPException(409, detail={"code": "evaluation_incomplete"})
+            cases.append(store.get(bundle.bundle_hash))
+    return compare_cases(cases[0], cases[1], before, after)
 
 
 @router.get("/evaluations/{evaluation_id}")

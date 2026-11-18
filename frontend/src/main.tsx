@@ -7,12 +7,18 @@ type Setup = { project: Project | null; source_mode: string };
 type JiraProject = { key: string; name: string };
 type Repository = { full_name: string };
 type PullRequest = { number: number; title: string; author: string };
-type Job = { id: string; repository: string; pull_request_number: number; status: string; stage: string; verdict: string | null; error: string | null; events: { id: number; message: string; at: string }[] };
-type Check = { case: string; outcome: string; message: string; evidence_ids: string[] };
+type Job = { id: string; repository: string; pull_request_number: number; status: string; stage: string; created_at: string; verdict: string | null; error: string | null; events: { id: number; message: string; at: string }[] };
+type Check = { case: string; outcome: string; severity: string; message: string; evidence_ids: string[] };
 type Result = { bundle_hash: string; verdict: { value: string; results: Check[] }; bundle: { policy_source: string | null }; collection_notes: string[] };
 type Graph = { status: string; limitations: string[]; nodes: unknown[]; edges: { id: string; src: string; dst: string; kind: string; confident: boolean | null }[] };
 type Semantic = { criterion_id: string; status: string; reason: string; candidates: { entity_id: string; rank: number; accepted: boolean | null }[] };
 type Replay = { match: boolean; refused: boolean; message: string; limitations: string[] };
+type ComparisonSide = { evaluation_id: string; repo: string; pr_number: number; verdict: string; policy_source: string | null; policy_hash: string; base_sha: string; head_sha: string; cutoff: string; ruleset_version: string; graph: { entities: number; edges: number }; semantic: { criteria: number; candidates: number } };
+type Comparison = { before: ComparisonSide; after: ComparisonSide; directly_comparable: boolean; limitations: string[]; graph_note: string; semantic_note: string; findings: { case: string; change: string; before: Check | null; after: Check | null }[] };
+
+export function findingLabel(change: string): string {
+  return change.replaceAll("_", " ");
+}
 
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(path, { ...options, headers: { "Content-Type": "application/json", ...options?.headers } });
@@ -43,6 +49,10 @@ export function App() {
   const [replay, setReplay] = useState<Replay | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [before, setBefore] = useState("");
+  const [after, setAfter] = useState("");
+  const [comparison, setComparison] = useState<Comparison | null>(null);
+  const [comparing, setComparing] = useState(false);
 
   const loadHistory = useCallback(async () => setJobs(await api<Job[]>("/api/evaluations")), []);
   useEffect(() => {
@@ -101,7 +111,14 @@ export function App() {
     catch (e) { setError(e instanceof Error ? e.message : "Could not submit evaluation."); }
     finally { setBusy(false); }
   }
+  async function compare() {
+    setComparing(true); setComparison(null); setError("");
+    try { setComparison(await api<Comparison>(`/api/evaluations/compare?before=${encodeURIComponent(before)}&after=${encodeURIComponent(after)}`)); }
+    catch (e) { setError(e instanceof Error ? e.message : "Could not compare evaluations."); }
+    finally { setComparing(false); }
+  }
   const active = jobs.find((job) => job.id === selected);
+  const completed = jobs.filter((job) => job.status === "succeeded");
   return <main className="app">
     <header><div><p className="eyebrow">CODEATLAS / WORKSPACE</p><h1>Evaluations</h1><p>Review changes against frozen evidence and the effective policy.</p></div><a href="/setup">Connections and classic view ↗</a></header>
     {error && <p className="notice error" role="alert">{error}</p>}
@@ -113,6 +130,15 @@ export function App() {
     </section>
     <div className="columns"><section className="card"><div className="section-head"><h2>History</h2><button className="secondary" onClick={() => void loadHistory().catch((e: Error) => setError(e.message))}>Refresh</button></div>{jobs.length === 0 ? <p>No evaluations yet.</p> : <ul className="history">{jobs.map((job) => <li key={job.id}><button className="history-button" onClick={() => setSelected(job.id)}><strong>{job.repository} · #{job.pull_request_number}</strong><span>{job.status} · {job.verdict || job.stage}</span></button></li>)}</ul>}</section>
       <section className="card" aria-live="polite"><h2>Evaluation detail</h2>{!selected ? <p>Select an evaluation to inspect its progress and evidence.</p> : <><p><strong>{active?.status || "Loading"}</strong> · {active?.stage}</p>{active?.error && <p className="error">{active.error}</p>}{!!active?.events?.length && <details><summary>Stage history ({active.events.length})</summary><ol>{active.events.map((event) => <li key={event.id}>{event.message} <small>{event.at}</small></li>)}</ol></details>}</>}</section></div>
+    <section className="card"><h2>Compare evaluations</h2><p>Choose an earlier and a later completed evaluation. Missing evidence is not treated as a resolution.</p>
+      {completed.length < 2 ? <p>At least two completed evaluations are needed.</p> : <div className="form-grid">
+        <label>Before<select value={before} onChange={(e) => { setBefore(e.target.value); setComparison(null); }}><option value="">Select evaluation</option>{completed.map((job) => <option key={job.id} value={job.id}>{job.repository} · #{job.pull_request_number} · {job.verdict} · {job.created_at} · {job.id.slice(0, 8)}</option>)}</select></label>
+        <label>After<select value={after} onChange={(e) => { setAfter(e.target.value); setComparison(null); }}><option value="">Select evaluation</option>{completed.map((job) => <option key={job.id} value={job.id}>{job.repository} · #{job.pull_request_number} · {job.verdict} · {job.created_at} · {job.id.slice(0, 8)}</option>)}</select></label>
+        <button disabled={!before || !after || before === after || comparing} onClick={() => void compare()}>{comparing ? "Comparing…" : "Compare"}</button></div>}
+      {comparison && <div aria-live="polite"><p className="notice">{comparison.directly_comparable ? "Matching recorded context." : "Not directly equivalent: " + comparison.limitations.join(" ")}</p>
+        <div className="columns">{[comparison.before, comparison.after].map((side, index) => <div key={index}><h3>{index ? "After" : "Before"}: {side.verdict}</h3><p>{side.repo} · PR #{side.pr_number}</p><p>Policy: {side.policy_source || "source not recorded"} · {side.policy_hash.slice(0, 12)}</p><p>Base {side.base_sha.slice(0, 12)} · head {side.head_sha.slice(0, 12)}</p><p>Cutoff {side.cutoff} · {side.ruleset_version}</p><p>Graph: {side.graph.entities} recorded entities, {side.graph.edges} edges. Semantic: {side.semantic.criteria} criteria, {side.semantic.candidates} candidates.</p><button className="secondary" onClick={() => setSelected(side.evaluation_id)}>Open {index ? "after" : "before"} evaluation</button></div>)}</div>
+        <h3>Findings</h3><ul className="checks">{comparison.findings.map((finding) => <li key={finding.case}><strong>{finding.case} · {findingLabel(finding.change)}</strong><p>Before: {finding.before ? `${finding.before.outcome} · ${finding.before.severity} (${finding.before.message})` : "not recorded"}</p><p>After: {finding.after ? `${finding.after.outcome} · ${finding.after.severity} (${finding.after.message})` : "not recorded"}</p></li>)}</ul><p>{comparison.graph_note}</p><p>{comparison.semantic_note}</p></div>}
+    </section>
     {result && <section className="card"><div className="section-head"><div><p className="eyebrow">FROZEN BUNDLE</p><h2>Verdict: {result.verdict.value}</h2></div><a href={`/cases/${result.bundle_hash}`}>Open detailed evidence ↗</a></div><p>Policy source: {result.bundle.policy_source || "Not recorded"}</p><p>Replay: {replay ? (replay.refused ? "Refused" : replay.match ? "Match" : "Mismatch") : "Not loaded"}</p>{replay?.limitations.map((note) => <p key={note}>{note}</p>)}
       <ul className="checks">{result.verdict.results.map((check) => <li key={check.case}><strong>{check.case} · {check.outcome}</strong><p>{check.message}</p><small>{check.evidence_ids.join(", ") || "No evidence references"}</small></li>)}</ul>
       {result.collection_notes.map((note) => <p key={note} className="notice">{note}</p>)}

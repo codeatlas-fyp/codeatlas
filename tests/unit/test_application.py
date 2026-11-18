@@ -261,6 +261,37 @@ def test_fixture_dashboard_evaluation_persists_history_bundle_and_replay(
         assert history[0]["status"] == "succeeded"
 
 
+def test_compare_two_completed_fixture_evaluations(tmp_path) -> None:
+    settings = _settings(tmp_path)
+    app = _app(tmp_path, database_url=settings.database_url)
+    _configured_project(app)
+    ids = []
+    for number in (1, 2):
+        with TestClient(app) as client:
+            response = client.post("/api/evaluations", json={"pull_request_number": number})
+            assert response.status_code == 202
+            ids.append(response.json()["id"])
+        run_worker(settings, once=True)
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/evaluations/compare", params={"before": ids[0], "after": ids[1]}
+        )
+        assert response.status_code == 200
+        result = response.json()
+        assert result["before"]["evaluation_id"] == ids[0]
+        assert result["after"]["evaluation_id"] == ids[1]
+        assert result["directly_comparable"] is False
+        assert "Different repository or pull request." in result["limitations"]
+        assert "cannot be compared" in result["semantic_note"]
+        assert any(finding["case"] == "C5" for finding in result["findings"])
+        assert (
+            client.get(
+                "/api/evaluations/compare", params={"before": ids[0], "after": "missing"}
+            ).status_code
+            == 404
+        )
+
+
 def test_job_claim_uses_skip_locked_and_recovers_expired_lease(tmp_path) -> None:
     engine = create_engine(f"sqlite:///{(tmp_path / 'jobs.db').as_posix()}")
     Base.metadata.create_all(engine)
