@@ -190,3 +190,149 @@ def test_mini_sandbox_fixture_has_cross_file_edges() -> None:
     edges = build_call_graph(entities=entities, file_sources=sources)
     ids = {e.entity_id for e in entities}
     assert all(e.src in ids and e.dst in ids for e in edges)
+
+
+# ---- local scope (handover gaps G1 to G3) ---------------------------------
+
+
+def test_parameter_shadows_global_function_gives_no_edge() -> None:
+    edges = _graph({"m.py": "def target():\n    pass\n\ndef caller(target):\n    target()\n"})
+    assert edges == set()
+
+
+def test_star_and_keyword_parameters_shadow_globals() -> None:
+    edges = _graph(
+        {
+            "m.py": (
+                "def a():\n    pass\n\ndef b():\n    pass\n\ndef c():\n    pass\n\n"
+                "def caller(x, *a, k: int = 1, b=2, **c):\n    a()\n    b()\n    c()\n"
+            )
+        }
+    )
+    assert edges == set()
+
+
+def test_local_assignment_shadows_global_function() -> None:
+    edges = _graph(
+        {"m.py": "def target():\n    pass\n\ndef local():\n    target = print\n    target()\n"}
+    )
+    assert edges == set()
+
+
+def test_loop_with_except_and_walrus_targets_shadow_globals() -> None:
+    edges = _graph(
+        {
+            "m.py": (
+                "def a():\n    pass\n\ndef b():\n    pass\n\ndef c():\n    pass\n\n"
+                "def d():\n    pass\n\n"
+                "def f(items):\n"
+                "    for a in items:\n        a()\n"
+                "    with open('x') as b:\n        b()\n"
+                "    try:\n        pass\n    except Exception as c:\n        c()\n"
+                "    if (d := items):\n        d()\n"
+            )
+        }
+    )
+    assert edges == set()
+
+
+def test_assignment_in_tuple_target_shadows_global() -> None:
+    edges = _graph(
+        {
+            "m.py": (
+                "def target():\n    pass\n\n"
+                "def f():\n    x, (y, target) = 1, (2, 3)\n    target()\n"
+            )
+        }
+    )
+    assert edges == set()
+
+
+def test_global_statement_keeps_module_binding() -> None:
+    edges = _graph(
+        {"m.py": "def target():\n    pass\n\ndef f():\n    global target\n    target()\n"}
+    )
+    assert edges == {("m.f", "m.target", True)}
+
+
+def test_attribute_assignment_does_not_shadow() -> None:
+    edges = _graph(
+        {"m.py": "def target():\n    pass\n\ndef f(obj):\n    obj.target = 1\n    target()\n"}
+    )
+    assert edges == {("m.f", "m.target", True)}
+
+
+def test_nested_function_name_shadows_global() -> None:
+    edges = _graph(
+        {
+            "m.py": (
+                "def helper():\n    pass\n\n"
+                "def outer():\n    def helper():\n        pass\n    helper()\n"
+            )
+        }
+    )
+    assert edges == set()
+
+
+def test_closure_sees_enclosing_parameter() -> None:
+    edges = _graph(
+        {
+            "m.py": (
+                "def target():\n    pass\n\n"
+                "def outer(target):\n    def inner():\n        target()\n    inner()\n"
+            )
+        }
+    )
+    assert edges == set()
+
+
+def test_function_local_import_does_not_leak_to_other_functions() -> None:
+    edges = _graph(
+        {
+            "pkg/b.py": "def helper():\n    pass\n",
+            "pkg/a.py": (
+                "def f():\n    from pkg.b import helper\n    helper()\n\ndef g():\n    helper()\n"
+            ),
+        }
+    )
+    assert edges == {("pkg.a.f", "pkg.b.helper", True)}
+
+
+def test_function_local_import_resolves_inside_nested_function() -> None:
+    edges = _graph(
+        {
+            "pkg/b.py": "def helper():\n    pass\n",
+            "pkg/a.py": (
+                "def f():\n    import pkg.b as bee\n"
+                "    def inner():\n        bee.helper()\n    inner()\n"
+            ),
+        }
+    )
+    assert edges == {("pkg.a.f", "pkg.b.helper", True)}
+
+
+def test_local_import_shadows_module_level_name() -> None:
+    edges = _graph(
+        {
+            "pkg/b.py": "def helper():\n    pass\n",
+            "pkg/c.py": "def helper():\n    pass\n",
+            "pkg/a.py": (
+                "from pkg.c import helper\n\n"
+                "def f():\n    from pkg.b import helper\n    helper()\n\n"
+                "def g():\n    helper()\n"
+            ),
+        }
+    )
+    assert edges == {("pkg.a.f", "pkg.b.helper", True), ("pkg.a.g", "pkg.c.helper", True)}
+
+
+def test_parameter_receiver_still_uses_unique_method_guess() -> None:
+    edges = _graph(
+        {
+            "m.py": (
+                "class Repo:\n    def persist(self):\n        pass\n\n"
+                "def save_all(repo):\n    repo.persist()\n"
+            )
+        }
+    )
+    assert edges == {("m.save_all", "m.Repo.persist", False)}
