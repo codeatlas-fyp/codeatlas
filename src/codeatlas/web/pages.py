@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
@@ -50,6 +50,14 @@ VERDICT_FILTERS = ("ALL", "FAIL", "REVIEW", "UNKNOWN", "PASS")
 
 
 SIDEBAR_RECENT = 6
+
+
+@router.get("/app", include_in_schema=False)
+def react_application() -> Response:
+    index = STATIC_DIR / "application" / "index.html"
+    if not index.is_file():
+        return HTMLResponse("The application build is not available. Use /setup.", status_code=503)
+    return FileResponse(index, media_type="text/html")
 
 
 def _page(request: Request, name: str, status_code: int = 200, **context: Any) -> HTMLResponse:

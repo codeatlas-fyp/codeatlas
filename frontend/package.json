@@ -1,0 +1,13 @@
+{
+  "name": "codeatlas-application",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "build:local": "tsc --noEmit && vite build --outDir ../src/codeatlas/web/static/application --emptyOutDir",
+    "test": "vite build --ssr src/main.tsx --outDir .test-build && node --test test/*.test.mjs"
+  },
+  "dependencies": {"react": "19.2.3", "react-dom": "19.2.3"},
+  "devDependencies": {"@types/react": "19.2.18", "@types/react-dom": "19.2.5", "typescript": "5.9.3", "vite": "8.2.2"}
+}

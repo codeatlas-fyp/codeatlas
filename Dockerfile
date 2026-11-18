@@ -1,4 +1,12 @@
-# CodeAtlas API, worker, and server-rendered web application image.
+# Build the application separately so the runtime contains no Node toolchain.
+FROM node:24-alpine AS application-build
+WORKDIR /frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY frontend/ ./
+RUN npm run build
+
+# CodeAtlas API, worker, and web application image.
 # Built and pushed by .github/workflows/cd.yml; built and smoke-tested on every PR by ci.yml.
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
@@ -17,6 +25,7 @@ COPY scripts/docker_excludes.py ./scripts/
 RUN uv sync --locked --no-dev --no-install-project $(python scripts/docker_excludes.py uv.lock)
 
 COPY src ./src
+COPY --from=application-build /frontend/dist ./src/codeatlas/web/static/application
 COPY migrations ./migrations
 COPY alembic.ini ./
 COPY tests/fixtures ./tests/fixtures

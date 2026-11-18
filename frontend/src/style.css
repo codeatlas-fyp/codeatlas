@@ -1,0 +1,31 @@
+:root { font-family: "IBM Plex Sans", system-ui, sans-serif; color: #17233a; background: #f4f6fa; line-height: 1.5; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+.app { max-width: 1180px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+header, .section-head { display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
+header { margin-bottom: 2rem; }
+h1, h2, h3, p { margin: 0 0 .6rem; }
+h1 { font-size: 2rem; letter-spacing: -.03em; }
+h2 { font-size: 1.15rem; }
+h3 { font-size: 1rem; margin-top: 1.5rem; }
+p, small { color: #56657a; }
+a { color: #3156b8; }
+.eyebrow { color: #526aab; font-size: .72rem; font-weight: 700; letter-spacing: .12em; }
+.card { background: #fff; border: 1px solid #dce3ed; border-radius: 10px; padding: 1.35rem; margin-bottom: 1rem; box-shadow: 0 3px 15px #17233a08; }
+.columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-grid { display: flex; gap: .8rem; align-items: end; margin-top: 1rem; }
+label { display: grid; gap: .35rem; flex: 1; font-size: .88rem; font-weight: 600; }
+select, button { font: inherit; border-radius: 6px; padding: .6rem .8rem; }
+select { width: 100%; border: 1px solid #c8d2e1; background: white; color: #17233a; }
+button { border: 1px solid #3156b8; background: #3156b8; color: white; cursor: pointer; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.secondary { background: white; color: #3156b8; }
+.tag { border: 1px solid #cbd7ef; background: #edf2fc; border-radius: 1rem; padding: .2rem .6rem; font-size: .75rem; white-space: nowrap; }
+.history, .checks { list-style: none; padding: 0; margin: 0; }
+.history li, .checks li { border-top: 1px solid #edf0f4; padding: .75rem 0; }
+.history-button { display: flex; justify-content: space-between; gap: 1rem; width: 100%; text-align: left; color: inherit; background: transparent; border: 0; padding: .3rem; }
+.history-button span { color: #56657a; }
+.notice { background: #f2f5fc; padding: .75rem; border-radius: 6px; }
+.error { color: #a32424; }
+li small { display: block; }
+@media (max-width: 700px) { .app { padding: 1.25rem .8rem 3rem; } header, .form-grid { flex-direction: column; align-items: stretch; } .columns { grid-template-columns: 1fr; } }

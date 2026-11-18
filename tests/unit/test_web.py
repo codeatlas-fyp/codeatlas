@@ -138,6 +138,22 @@ def test_new_bundle_does_not_infer_missing_pr_author(tmp_path: Path) -> None:
         assert client.get(f"/api/cases/{bundle_hash}").json()["summary"]["author_login"] is None
 
 
+def test_react_application_reports_missing_build_and_serves_built_index(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from codeatlas.web import pages
+
+    monkeypatch.setattr(pages, "STATIC_DIR", tmp_path)
+    with _client(tmp_path) as client:
+        assert client.get("/app").status_code == 503
+        app_dir = tmp_path / "application"
+        app_dir.mkdir()
+        (app_dir / "index.html").write_text("<!doctype html><title>Built application</title>")
+        response = client.get("/app")
+        assert response.status_code == 200
+        assert "Built application" in response.text
+
+
 @pytest.mark.parametrize("bundle_hash", FIXTURE_HASHES)
 def test_case_page_shows_all_nine_cases_and_their_evidence(
     client: TestClient, bundle_hash: str

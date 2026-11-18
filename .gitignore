@@ -19,6 +19,9 @@ coverage.xml
 htmlcov/
 .idea/
 .DS_Store
+node_modules/
+.test-build/
+/src/codeatlas/web/static/application/
 
 # CodeAtlas output and raw data (spec section 8)
 /bundles/

@@ -21,6 +21,7 @@
 
   <nav class="side__nav" aria-label="Main">
     <p class="side__h">Workspace</p>
+    <a class="side__a" href="/app"><span>Application</span></a>
     <a class="side__a{% if nav_active|default('') == 'setup' %} is-active{% endif %}" href="/setup"{% if nav_active|default('') == 'setup' %} aria-current="page"{% endif %}>
       <span>Connect and evaluate</span>
     </a>
