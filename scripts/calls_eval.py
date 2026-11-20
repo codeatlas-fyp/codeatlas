@@ -3,13 +3,14 @@
 Usage (run from the codeatlas folder; ROOT is a checkout of the repository being measured):
 
     uv run python scripts/calls_eval.py sample --root ROOT --include pkg --repo owner/name \
-        --revision SHA --n 40 --seed 2026 --out sheet.csv
+        --revision SHA --per-stratum 10 --seed 2026 --out sheet.csv
     uv run python scripts/calls_eval.py agree --first a.csv --second b.csv
     uv run python scripts/calls_eval.py score --root ROOT --include pkg --labels settled.csv \
-        --out report.md
+        --strata sheet_strata.csv --out report.md
 
-`sample` writes a blind sheet: the call and its line, never CodeAtlas's answer. `score` reruns
-the resolver on the same source and compares it with the settled labels.
+`sample` writes a blind sheet (the call and its line, never CodeAtlas's answer or the stratum)
+and a separate strata file next to it. `score` reruns the resolver on the same source and
+compares it with the settled labels, per stratum when the strata file is given.
 """
 
 import argparse
@@ -18,8 +19,9 @@ import sys
 from pathlib import Path
 
 import codeatlas.analyze.calls_eval as calls_eval
-from codeatlas.analyze.calls import EXTRACTOR_VERSION, resolve_call_sites
+from codeatlas.analyze.calls import EXTRACTOR_VERSION, call_site_strata, resolve_call_sites
 from codeatlas.analyze.code import extract_entities
+from codeatlas.schema import CodeEntity
 
 
 def load_sources(root: Path, include: list[str]) -> dict[str, bytes]:
@@ -44,20 +46,44 @@ def read_csv(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(handle))
 
 
+def entities_of(sources: dict[str, bytes]) -> list[CodeEntity]:
+    return [
+        e for path, src in sources.items() for e in extract_entities(file_path=path, source=src)
+    ]
+
+
+def write_csv(path: Path, columns: tuple[str, ...], rows: list[dict[str, str]]) -> None:
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=columns)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def strata_path(sheet: Path) -> Path:
+    return sheet.with_name(sheet.stem + "_strata.csv")
+
+
 def cmd_sample(args: argparse.Namespace) -> int:
     sources = load_sources(Path(args.root), args.include)
     sites = calls_eval.find_call_sites(sources)
-    chosen = calls_eval.sample_sites(sites, args.n, args.seed)
-    rows = calls_eval.sheet_rows(chosen, args.repo, args.revision)
-    out = Path(args.out)
-    with out.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=calls_eval.SHEET_COLUMNS)
-        writer.writeheader()
-        writer.writerows(rows)
-    print(
-        f"{len(chosen)} of {len(sites)} call sites in {len(sources)} files "
-        f"(seed {args.seed}) -> {out}"
+    strata = calls_eval.stratify(
+        sites, call_site_strata(entities=entities_of(sources), file_sources=sources)
     )
+    sample = calls_eval.sample_stratified(sites, strata, args.per_stratum, args.seed)
+    out = Path(args.out)
+    rows = calls_eval.sheet_rows(sample.sites, args.repo, args.revision)
+    write_csv(out, calls_eval.SHEET_COLUMNS, rows)
+    write_csv(
+        strata_path(out),
+        calls_eval.STRATA_COLUMNS,
+        [{"site_id": s.site_id, "stratum": strata[s.site_id]} for s in sample.sites],
+    )
+    print(f"{len(sample.sites)} of {len(sites)} call sites, {len(sources)} files, seed {args.seed}")
+    for stratum, available in sample.available.items():
+        print(f"  {stratum}: {sample.taken[stratum]} of {available}")
+    for stratum, missing in sample.shortfall(args.per_stratum).items():
+        print(f"  SHORTFALL {stratum}: {missing} fewer than {args.per_stratum}")
+    print(f"sheet -> {out}; strata (keep away from annotators) -> {strata_path(out)}")
     return 0
 
 
@@ -78,14 +104,15 @@ def cmd_score(args: argparse.Namespace) -> int:
     root = Path(args.root)
     sources = load_sources(root, args.include)
     labels = calls_eval.parse_labels(read_csv(Path(args.labels)))
-    entities = [
-        e for path, src in sources.items() for e in extract_entities(file_path=path, source=src)
-    ]
-    sites = resolve_call_sites(entities=entities, file_sources=sources)
+    sites = resolve_call_sites(entities=entities_of(sources), file_sources=sources)
+    strata = None
+    if args.strata:
+        strata = {r["site_id"]: r["stratum"] for r in read_csv(Path(args.strata))}
     report = calls_eval.score(
         calls_eval.predictions_by_site(sites),
         labels,
         (s.site_id for s in calls_eval.find_call_sites(sources)),
+        strata,
     )
     text = calls_eval.render_report(
         report,
@@ -113,7 +140,7 @@ def main(argv: list[str]) -> int:
     sample.add_argument("--include", action="append", default=[])
     sample.add_argument("--repo", required=True)
     sample.add_argument("--revision", required=True)
-    sample.add_argument("--n", type=int, default=40)
+    sample.add_argument("--per-stratum", type=int, default=10)
     sample.add_argument("--seed", type=int, default=2026)
     sample.add_argument("--out", required=True)
     sample.set_defaults(run=cmd_sample)
@@ -127,6 +154,7 @@ def main(argv: list[str]) -> int:
     score.add_argument("--root", required=True)
     score.add_argument("--include", action="append", default=[])
     score.add_argument("--labels", required=True)
+    score.add_argument("--strata")
     score.add_argument("--out")
     score.set_defaults(run=cmd_score)
 
