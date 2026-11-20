@@ -30,6 +30,7 @@ type = forbidden
 source_modules =
     codeatlas.api
     codeatlas.web
+    codeatlas.graph
 forbidden_modules =
     codeatlas.collect
 
@@ -43,6 +44,7 @@ source_modules =
     codeatlas.evaluate
     codeatlas.api
     codeatlas.web
+    codeatlas.graph
 forbidden_modules =
     httpx
     githubkit
