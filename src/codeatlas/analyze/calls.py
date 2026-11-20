@@ -62,6 +62,7 @@ Pure: no file I/O, deterministic output order (sorted by src, dst).
 
 from __future__ import annotations
 
+import builtins
 from dataclasses import dataclass, field, replace
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
@@ -168,34 +169,14 @@ def resolve_call_sites(
     Calls with no dotted callee (`x[0]()`, `f()()`, `super().m()`) are not recorded. Recursion
     (callee == caller) gets `callee=None`, since `build_call_graph` drops it.
     """
-    try:
-        parser = _parser()
-    except ImportError:
+    collected = _collect(entities, file_sources)
+    if collected is None:
         return []  # no tree-sitter: no call graph, never a crash
-
-    known = {e.entity_id: e for e in entities}
-    module_of_file = {e.file: e.entity_id for e in entities if e.kind == "module"}
+    known, modules, module_of_file, calls = collected
     methods_by_name: dict[str, list[str]] = {}
     for e in entities:
         if e.kind == "method":
             methods_by_name.setdefault(e.entity_id.rsplit(".", 1)[-1], []).append(e.entity_id)
-
-    modules: dict[str, _Module] = {}
-    calls: list[_Call] = []
-    for path in sorted(file_sources):
-        module_name = module_of_file.get(path)
-        if module_name is None or not path.endswith(".py"):
-            continue
-        tree = parser.parse(file_sources[path])
-        if tree.root_node is None:
-            continue
-        mod = _Module(name=module_name, is_package=PurePosixPath(path).name == "__init__.py")
-        source = file_sources[path]
-        _collect_bindings(tree.root_node, source, mod)
-        modules[module_name] = mod
-        found: list[_Call] = []
-        _collect_calls(tree.root_node, source, mod, known, module_name, None, _MODULE_SCOPE, found)
-        calls += [replace(call, file=path) for call in found]
 
     resolver = _Resolver(known=known, modules=modules, module_of_file=module_of_file)
     sites: list[CallSite] = []
@@ -218,6 +199,94 @@ def resolve_call_sites(
             )
         )
     return sorted(sites, key=lambda s: (s.file, s.line, s.column, s.caller, s.call_text))
+
+
+STRATA = ("local", "cross_file", "ambiguous_dynamic", "external")
+
+
+def call_site_strata(
+    *,
+    entities: list[CodeEntity],
+    file_sources: dict[str, bytes],
+) -> dict[tuple[str, int, int], str]:
+    """A sampling stratum per recorded call site, from name bindings only, never from resolution.
+
+    - `local`: `self.m()`/`cls.m()` calls, and names bound to a def, class or import in the same
+      module;
+    - `cross_file`: names bound to another repository module;
+    - `external`: names bound to a module outside the repository, and builtins;
+    - `ambiguous_dynamic`: local variables and parameters, names bound more than once, attribute
+      chains on `self`/`cls` (`self.repo.save()`), `super()` calls, and unbound receivers.
+
+    Call sites the resolver never records (`x[0]()`, `super().m()`) are not in the result; the
+    evaluation puts them in `ambiguous_dynamic`. Keyed by (file, line, column).
+    """
+    collected = _collect(entities, file_sources)
+    if collected is None:
+        return {}
+    _known, modules, module_of_file, calls = collected
+    repo_modules = set(modules) | {e.entity_id for e in entities if e.kind == "module"}
+    builtin_names = set(dir(builtins))
+    out: dict[tuple[str, int, int], str] = {}
+    for call in calls:
+        mod = modules[module_of_file[call.file]]
+        out[(call.file, call.line, call.column)] = _stratum(call, mod, repo_modules, builtin_names)
+    return out
+
+
+def _stratum(call: _Call, mod: _Module, repo_modules: set[str], builtin_names: set[str]) -> str:
+    head, _, rest = call.expr.partition(".")
+    if head in ("self", "cls") and call.enclosing_class and rest:
+        return "local" if "." not in rest else "ambiguous_dynamic"  # self.repo.save()
+    if head == "super":
+        return "ambiguous_dynamic"
+    local_import = dict(call.scope.imports).get(head)
+    if local_import is not None:
+        return _target_stratum(_join(local_import, rest), mod.name, repo_modules)
+    if head in call.scope.names or head in mod.uncertain or head in mod.ambiguous:
+        return "ambiguous_dynamic"
+    target = mod.names.get(head)
+    if target is not None:
+        return _target_stratum(_join(target, rest), mod.name, repo_modules)
+    return "external" if head in builtin_names else "ambiguous_dynamic"
+
+
+def _target_stratum(target: str, module: str, repo_modules: set[str]) -> str:
+    parts = target.split(".")
+    for end in range(len(parts), 0, -1):
+        prefix = ".".join(parts[:end])
+        if prefix in repo_modules:
+            return "local" if prefix == module else "cross_file"
+    return "external"
+
+
+def _collect(
+    entities: list[CodeEntity], file_sources: dict[str, bytes]
+) -> tuple[dict[str, CodeEntity], dict[str, _Module], dict[str, str], list[_Call]] | None:
+    """Parse every module file once: bindings per module and every recorded call."""
+    try:
+        parser = _parser()
+    except ImportError:
+        return None
+    known = {e.entity_id: e for e in entities}
+    module_of_file = {e.file: e.entity_id for e in entities if e.kind == "module"}
+    modules: dict[str, _Module] = {}
+    calls: list[_Call] = []
+    for path in sorted(file_sources):
+        module_name = module_of_file.get(path)
+        if module_name is None or not path.endswith(".py"):
+            continue
+        tree = parser.parse(file_sources[path])
+        if tree.root_node is None:
+            continue
+        mod = _Module(name=module_name, is_package=PurePosixPath(path).name == "__init__.py")
+        source = file_sources[path]
+        _collect_bindings(tree.root_node, source, mod)
+        modules[module_name] = mod
+        found: list[_Call] = []
+        _collect_calls(tree.root_node, source, mod, known, module_name, None, _MODULE_SCOPE, found)
+        calls += [replace(call, file=path) for call in found]
+    return known, modules, module_of_file, calls
 
 
 # ---- bindings ------------------------------------------------------------
