@@ -91,6 +91,10 @@ def _plain(value: Any) -> Any:
             fields = {name: field for name, field in fields.items() if name != "pr_author_login"}
         if isinstance(value, EvidenceBundle) and value.policy_source is None:
             fields = {name: field for name, field in fields.items() if name != "policy_source"}
+        if isinstance(value, EvidenceBundle) and value.identity_map_source is None:
+            fields = {
+                name: field for name, field in fields.items() if name != "identity_map_source"
+            }
         return {name: _plain(getattr(value, name)) for name in fields}
     if value is None or isinstance(value, bool | int | str):
         return value

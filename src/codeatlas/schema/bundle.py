@@ -61,6 +61,7 @@ class EvidenceBundle(Model):
     policy: Policy  # copied in so replay never reads live files
     effective_policy_hash: str | None = None
     policy_source: str | None = None
+    identity_map_source: str | None = None
     identity_map: IdentityMap
     work_items: list[WorkItemRef]
     change_events: list[ChangeEvent]

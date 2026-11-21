@@ -132,6 +132,7 @@ class CollectRequest:
     bm25_only: bool = False  # skip the embedding model (offline runs and tests)
     policy_source: str | None = None
     require_unchanged_jira: bool = False
+    identity_map_source: str | None = None
 
 
 def evaluate_bundle(
@@ -778,6 +779,7 @@ def collect_bundle(
             effective_policy_hash=effective_policy_hash(request.policy),
             policy_source=request.policy_source,
             identity_map=request.identity_map,
+            identity_map_source=request.identity_map_source,
             work_items=change.work_items,
             change_events=events,
             versions=versions,

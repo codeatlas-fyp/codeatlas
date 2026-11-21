@@ -22,6 +22,7 @@ class WebSettings(BaseSettings):
     commit: str = "unknown"
     database_url: str = "postgresql+psycopg://codeatlas:codeatlas@localhost:5432/codeatlas"
     credential_key: SecretStr | None = None
+    evaluation_profiles_path: Path | None = None
     production: bool = False
     repo_cache_dir: Path = Path("repo-cache")
     repo_max_bytes: int = 2_000_000_000

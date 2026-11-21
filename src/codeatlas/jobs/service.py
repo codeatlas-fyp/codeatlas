@@ -1,6 +1,8 @@
 """Transactional job creation, claiming, progress, recovery, and result indexing."""
 
+import json
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
@@ -19,7 +21,7 @@ from codeatlas.db_models import (
     ProjectConfig,
 )
 from codeatlas.jobs.contract import SubmissionContract, connection_hash
-from codeatlas.schema import IdentityMap
+from codeatlas.schema import IdentityMap, Policy
 
 STAGES = (
     "queued",
@@ -43,9 +45,33 @@ class SubmissionConflict(ValueError):
 
 
 class JobService:
-    def __init__(self, factory: sessionmaker[Session], *, lease_seconds: int = 120):
+    def __init__(
+        self,
+        factory: sessionmaker[Session],
+        *,
+        lease_seconds: int = 120,
+        profiles_path: Path | None = None,
+    ):
         self.factory = factory
         self.lease_seconds = lease_seconds
+        self.profiles_path = profiles_path
+
+    def _profile(self, profile_id: str | None) -> tuple[Policy, IdentityMap, str]:
+        if profile_id is None:
+            return DEFAULT_POLICY, IdentityMap(people=[]), "built-in default at submission"
+        if self.profiles_path is None:
+            raise ValueError("Evaluation profiles are not configured.")
+        try:
+            content = self.profiles_path.read_bytes()
+            profiles = json.loads(content)["profiles"]
+            profile = profiles[profile_id]
+            policy = Policy.model_validate(profile["policy"])
+            identity = IdentityMap.model_validate(profile["identity_map"])
+        except (OSError, ValueError, TypeError, KeyError) as error:
+            raise ValueError(
+                "The requested evaluation profile is unavailable or invalid."
+            ) from error
+        return policy, identity, f"server profile {profile_id}; sha256:{sha256_hex(content)}"
 
     def submit(
         self,
@@ -57,6 +83,7 @@ class JobService:
         *,
         source_mode: str = "live",
         actor_scope: str = "single-user",
+        profile_id: str | None = None,
     ) -> tuple[EvaluationJob, bool]:
         mode: Literal["live", "fixtures"]
         if source_mode == "live":
@@ -65,6 +92,7 @@ class JobService:
             mode = "fixtures"
         else:
             raise ValueError("unsupported source mode")
+        policy, identity_map, provenance = self._profile(profile_id)
         with self.factory() as session:
             jira = session.get(Connection, project.jira_connection_id)
             github = session.get(Connection, project.github_connection_id)
@@ -86,10 +114,10 @@ class JobService:
                 jira_connection_hash=connection_hash(jira),
                 github_connection_hash=connection_hash(github),
                 jira_project=project.jira_project,
-                policy=DEFAULT_POLICY,
-                policy_source="built-in default at submission",
-                identity_map=IdentityMap(people=[]),
-                identity_map_source="empty default at submission",
+                policy=policy,
+                policy_source=provenance,
+                identity_map=identity_map,
+                identity_map_source=(provenance if profile_id else "empty default at submission"),
                 cutoff=datetime.now(UTC).replace(microsecond=0),
             )
         fingerprint = sha256_hex(

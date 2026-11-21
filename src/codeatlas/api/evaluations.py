@@ -24,6 +24,7 @@ _SHA = re.compile(r"[0-9a-fA-F]{40,64}\Z")
 class EvaluationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     pull_request_number: int = Field(gt=0, le=2_147_483_647)
+    profile_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,64}$")
 
 
 class EvaluationAccepted(BaseModel):
@@ -156,10 +157,15 @@ def submit_evaluation(
             head_sha,
             source_mode=settings.source_mode,
             actor_scope=settings.web_user or "local-single-user",
+            profile_id=body.profile_id,
         )
     except SubmissionConflict as error:
         raise HTTPException(
             409, detail={"code": "idempotency_conflict", "message": str(error)}
+        ) from error
+    except ValueError as error:
+        raise HTTPException(
+            422, detail={"code": "invalid_evaluation_profile", "message": str(error)}
         ) from error
     response.headers["Location"] = f"/api/evaluations/{job.id}"
     return EvaluationAccepted(
