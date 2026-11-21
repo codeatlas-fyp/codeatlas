@@ -65,3 +65,13 @@ def test_fixture_worker_freezes_calls_edges(tmp_path, monkeypatch) -> None:
             and "loans.local_helper@" in edge["dst"]
             for edge in graph.json()["edges"]
         )
+        assert bundle["semantic_run"]["schema_id"] == "semantic-run-v1"
+        semantic = client.get(f"/api/cases/{response.json()['bundle_hash']}/semantic-runs")
+        assert semantic.status_code == 200
+        assert semantic.json()
+        assert all(run["status"] in {"fallback", "abstained"} for run in semantic.json())
+        assert all(
+            any(ranker["name"] == "bm25" and ranker["state"] == "ok" for ranker in run["rankers"])
+            for run in semantic.json()
+        )
+        assert client.get(response.json()["replay_url"]).json()["match"] is True

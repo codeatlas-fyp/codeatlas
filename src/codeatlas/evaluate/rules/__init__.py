@@ -15,11 +15,11 @@ from codeatlas.evaluate.rules.c5_owner_did_not_approve import (
 from codeatlas.evaluate.rules.c6_superseded_version import SupersededVersion
 from codeatlas.evaluate.rules.c7_test_evidence import TestEvidenceStub
 from codeatlas.evaluate.rules.c8_priority_authority import PriorityWithoutAuthority
-from codeatlas.evaluate.rules.c9_unexplained_change import C9UnexplainedChange
+from codeatlas.evaluate.rules.c9_unexplained_change import C9SemanticRun, C9UnexplainedChange
 
 
 def default_rules(
-    *, legacy_c5: bool = False, complete_file_inventory: bool = False
+    *, legacy_c5: bool = False, complete_file_inventory: bool = False, semantic_run: bool = False
 ) -> tuple[Rule, ...]:
     """The rules every evaluation runs, in no particular order (order never matters)."""
     return (
@@ -33,7 +33,7 @@ def default_rules(
         C5Legacy()
         if legacy_c5
         else (C5CompleteFileInventory() if complete_file_inventory else C5OwnerDidNotApprove()),
-        C9UnexplainedChange(),
+        C9SemanticRun() if semantic_run else C9UnexplainedChange(),
     )
 
 

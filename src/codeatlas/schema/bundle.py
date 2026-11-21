@@ -23,6 +23,7 @@ from codeatlas.schema.evidence import (
     ResolvedPerson,
     Review,
     SemanticCandidate,
+    SemanticRunSummary,
     WorkItemRef,
 )
 from codeatlas.schema.policy import IdentityMap, Policy
@@ -77,3 +78,4 @@ class EvidenceBundle(Model):
     candidates: list[SemanticCandidate]
     collection_notes: list[str]  # e.g. "work item SBX-99 not found"
     changed_files: list[ChangedFile] | None = None
+    semantic_run: SemanticRunSummary | None = None

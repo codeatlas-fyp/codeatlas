@@ -26,7 +26,7 @@ from codeatlas.analyze import code as code_analysis
 from codeatlas.analyze import criteria as criteria_analysis
 from codeatlas.analyze import governance as governance_analysis
 from codeatlas.analyze import keys as keys_analysis
-from codeatlas.analyze import semantic as semantic_analysis
+from codeatlas.analyze import semantic_run as semantic_run_analysis
 from codeatlas.analyze.lifecycle import JiraHistory, LifecycleContext, TextForms, reconstruct
 from codeatlas.bundle.hashing import effective_policy_hash, sha256_hex, verdict_hash
 from codeatlas.bundle.store import BundleStore, load_bundle
@@ -63,6 +63,7 @@ from codeatlas.schema import (
     ResolvedPerson,
     Review,
     SemanticCandidate,
+    SemanticRunSummary,
     TraceLink,
     Verdict,
     WorkItemRef,
@@ -149,6 +150,7 @@ def evaluate_bundle(
         default_rules(
             legacy_c5="pr_author_login" not in bundle.model_fields_set,
             complete_file_inventory="changed_files" in bundle.model_fields_set,
+            semantic_run=bundle.semantic_run is not None,
         )
         if rules is None
         else rules
@@ -491,7 +493,7 @@ def _split_by_entity(span: tuple[int, int], entities: list[CodeEntity]) -> list[
 
 def _code(
     change: ChangeRef, hunks: list[DiffHunk], commits: list[Commit], git: GitSource, at: datetime
-) -> tuple[list[CodeEntity], list[ChangedEntity], list[CodeEdge]]:
+) -> tuple[list[CodeEntity], list[ChangedEntity], list[CodeEdge], dict[str, bytes]]:
     """Entities of every Python file at head, the entity each hunk falls in, and imports.
 
     The whole repository is parsed (not just the changed files) so that semantic ranking picks
@@ -508,9 +510,12 @@ def _code(
     entities: list[CodeEntity] = []
     changed: list[ChangedEntity] = []
     sources: dict[str, bytes] = {}
+    deleted_files: set[str] = set()
     for path in sorted(by_file):
         file_hunks = by_file[path]
         deleted = all(h.change_type == "deleted" for h in file_hunks)
+        if deleted:
+            deleted_files.add(path)
         sha = change.merge_base_sha if deleted else change.head_sha
         source = git.file_bytes(sha, path)
         if source is None:
@@ -550,7 +555,8 @@ def _code(
             "calls", status=None, retryable=False, detail="CALLS parser is unavailable"
         ) from error
     edges += calls_analysis.build_call_graph(entities=entities, file_sources=sources)
-    return entities, changed, edges
+    head_sources = {path: text for path, text in sources.items() if path not in deleted_files}
+    return entities, changed, edges, head_sources
 
 
 def _latest_versions(versions: list[RequirementVersion]) -> list[RequirementVersion]:
@@ -703,6 +709,8 @@ def collect_bundle(
     criteria: list[Criterion] = []
     candidates: list[SemanticCandidate] = []
     model_ids: list[str] = []
+    model_file_hashes: dict[str, str] = {}
+    semantic_run: SemanticRunSummary | None = None
     changed_files: list[ChangedFile] | None = None
     people: list[ResolvedPerson] = []
 
@@ -714,7 +722,7 @@ def collect_bundle(
             "code": code_analysis.EXTRACTOR_VERSION,
             "calls": calls_analysis.EXTRACTOR_VERSION,
             "criteria": criteria_analysis.EXTRACTOR_VERSION,
-            "semantic": semantic_analysis.EXTRACTOR_VERSION,
+            "semantic": semantic_run_analysis.EXTRACTOR_VERSION,
         }
         with log.stage("diff"):
             file_deltas = sources.git.diff_files(change.ref.merge_base_sha, change.ref.head_sha)
@@ -728,22 +736,31 @@ def collect_bundle(
             )
             notes += governance_notes
         with log.stage("code"):
-            entities, changed, edges = _code(change.ref, hunks, change.commits, sources.git, at)
+            entities, changed, edges, head_sources = _code(
+                change.ref, hunks, change.commits, sources.git, at
+            )
         with log.stage("criteria"):
             criteria = _criteria(versions)
             if keys and not criteria:
                 notes.append("no acceptance criteria found in the linked requirements")
         with log.stage("semantic"):
-            ranked = semantic_analysis.rank_candidates(
+            run = semantic_run_analysis.run_semantic(
                 criteria=criteria,
                 entities=entities,
+                file_sources=head_sources,
+                pinned_sha=change.ref.head_sha,
                 top_k=request.policy.semantic.top_k,
-                model_name=request.embedding_model or semantic_analysis.DEFAULT_MODEL,
                 bm25_only=request.bm25_only,
             )
-            candidates = ranked.candidates
-            if candidates:
-                model_ids = [ranked.model_id]
+            candidates = run.candidates
+            model_ids = run.model_ids
+            model_file_hashes = run.model_file_hashes
+            semantic_run = run.summary if criteria else None
+            notes += [
+                f"semantic ranker {ranker.name} {ranker.state}: {ranker.reason}"
+                for ranker in run.summary.rankers
+                if ranker.state != "ok"
+            ]
         people = _people(change.commits, change.reviews, request.identity_map)
 
     with log.stage("freeze"):
@@ -756,7 +773,7 @@ def collect_bundle(
             run_id=request.run_id,
             extractor_versions=extractor_versions,
             model_ids=model_ids,
-            model_file_hashes={},
+            model_file_hashes=model_file_hashes,
             policy=request.policy,
             effective_policy_hash=effective_policy_hash(request.policy),
             policy_source=request.policy_source,
@@ -777,6 +794,7 @@ def collect_bundle(
             candidates=candidates,
             collection_notes=sorted(set(notes)),
             changed_files=changed_files,
+            semantic_run=semantic_run,
         )
 
 

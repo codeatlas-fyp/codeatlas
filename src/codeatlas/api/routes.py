@@ -1,6 +1,6 @@
 """Read-only JSON endpoints over the bundle store (spec §7.6). Every route is a GET."""
 
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Request
 
@@ -74,6 +74,64 @@ def get_graph(bundle_hash: str, store: Store) -> GraphView:
 @router.get("/cases/{bundle_hash}/semantic-runs", response_model=list[SemanticRun])
 def get_semantic_runs(bundle_hash: str, store: Store) -> list[SemanticRun]:
     bundle = store.get(bundle_hash).bundle
+    summary = bundle.semantic_run
+    if summary is not None:
+        gates = {gate.criterion_id: gate for gate in summary.gates}
+        entities = {entity.entity_id: entity for entity in bundle.entities}
+        rankers = [ranker.model_dump(mode="json") for ranker in summary.rankers]
+        active = [ranker for ranker in summary.rankers if ranker.state != "unavailable"]
+        only_bm25 = bool(active) and all(ranker.name == "bm25" for ranker in active)
+        results = []
+        for criterion in bundle.criteria:
+            gate = gates.get(criterion.criterion_id)
+            candidates = [
+                candidate
+                for candidate in sorted(bundle.candidates, key=lambda item: item.fused_rank)
+                if candidate.criterion_id == criterion.criterion_id
+            ]
+            statuses: dict[
+                str, Literal["accepted", "review", "abstained", "unavailable", "fallback"]
+            ] = {
+                "accept": "accepted",
+                "review": "fallback" if only_bm25 else "review",
+                "abstain": "abstained",
+                "unavailable": "unavailable",
+            }
+            state = "unavailable" if gate is None else statuses[gate.gate]
+            results.append(
+                SemanticRun(
+                    criterion_id=criterion.criterion_id,
+                    status=state,
+                    reason=gate.reason if gate else "No gate outcome was recorded.",
+                    source_revision=summary.pinned_sha,
+                    candidate_universe_hash=summary.corpus_hash,
+                    model_id=candidates[0].model_id if candidates else None,
+                    representation_version=summary.chunker_version,
+                    gate_profile=summary.calibration_id,
+                    rankers=rankers,
+                    candidates=[
+                        SemanticRunCandidate(
+                            entity_id=candidate.entity_id,
+                            file=entities[candidate.entity_id].file
+                            if candidate.entity_id in entities
+                            else None,
+                            start_line=entities[candidate.entity_id].start_line
+                            if candidate.entity_id in entities
+                            else None,
+                            end_line=entities[candidate.entity_id].end_line
+                            if candidate.entity_id in entities
+                            else None,
+                            revision=summary.pinned_sha,
+                            rank=candidate.fused_rank,
+                            raw_score=candidate.fused_score,
+                            score_kind="rrf_fused_score",
+                            accepted=None,
+                        )
+                        for candidate in candidates
+                    ],
+                )
+            )
+        return results
     return [
         SemanticRun(
             criterion_id=criterion.criterion_id,

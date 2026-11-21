@@ -19,12 +19,14 @@ from codeatlas.schema import (
     CodeEdge,
     CodeEntity,
     Criterion,
+    CriterionGate,
     Evidence,
     EvidenceBundle,
     IdentityEntry,
     LifecycleFacts,
     OwnerRule,
     PriorityChange,
+    RankerRun,
     RequirementVersion,
     ResolvedPerson,
     SemanticCandidate,
@@ -47,6 +49,8 @@ _IDENTIFIERS: dict[type[BaseModel], Callable[[Any], Identifier]] = {
     CodeEdge: lambda m: (m.src, m.dst, m.kind),
     Criterion: lambda m: (m.criterion_id,),
     SemanticCandidate: lambda m: (m.criterion_id, m.fused_rank, m.entity_id),
+    CriterionGate: lambda m: (m.criterion_id,),
+    RankerRun: lambda m: (m.name,),
     TraceLink: lambda m: (m.requirement_key, m.criterion_id or "", m.entity_id),
     CheckResult: lambda m: (m.case,),
     IdentityEntry: lambda m: (m.jira_account_id,),
@@ -71,6 +75,14 @@ def _plain(value: Any) -> Any:
         fields = type(value).model_fields
         if isinstance(value, EvidenceBundle) and "changed_files" not in value.model_fields_set:
             fields = {name: field for name, field in fields.items() if name != "changed_files"}
+        if isinstance(value, EvidenceBundle) and value.semantic_run is None:
+            fields = {name: field for name, field in fields.items() if name != "semantic_run"}
+        if isinstance(value, SemanticCandidate):
+            fields = {
+                name: field
+                for name, field in fields.items()
+                if name not in {"codet5_rank", "gate"} or getattr(value, name) is not None
+            }
         if isinstance(value, EvidenceBundle) and value.effective_policy_hash is None:
             fields = {
                 name: field for name, field in fields.items() if name != "effective_policy_hash"
