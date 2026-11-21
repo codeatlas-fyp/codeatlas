@@ -14,6 +14,7 @@ import typer
 from codeatlas import __version__
 from codeatlas.bundle.replay import replay as replay_bundle
 from codeatlas.bundle.store import BundleStore, bundle_folder, load_bundle, load_verdict
+from codeatlas.collect.frozen import load_frozen_case
 from codeatlas.collect.git.repo import LocalRepo
 from codeatlas.collect.github import FixtureSource, client_from_env
 from codeatlas.collect.jira.client import JiraClient
@@ -137,6 +138,45 @@ def collect(
             source = JiraClient(base_url, email, token, max_retries=settings.jira_max_retries)
         bundle_hash, verdict = collect_and_evaluate(
             request, source, BundleStore(store or settings.bundle_dir), log, sources
+        )
+    except CodeAtlasError as error:
+        raise _fail(log, error) from error
+    _print_verdict(bundle_hash, verdict)
+    raise typer.Exit(EXIT_CODES[verdict.value])
+
+
+@app.command("collect-frozen")
+def collect_frozen(
+    case: Annotated[Path, typer.Option(help="Directory containing the checksummed frozen case.")],
+    repo_path: Annotated[
+        Path, typer.Option(help="Offline local Git repository with pinned commits.")
+    ],
+    store: Annotated[Path, typer.Option(help="Output bundle store.")],
+) -> None:
+    """Evaluate verified historical evidence without live Jira or GitHub calls."""
+    log = EventLog(uuid.uuid4().hex)
+    try:
+        frozen = load_frozen_case(case, repo_path)
+        request = CollectRequest(
+            change=None,
+            change_label=f"frozen:{case.name}",
+            policy=frozen.policy,
+            identity_map=frozen.identity_map,
+            policy_source=frozen.policy_source,
+            identity_map_source=frozen.identity_map_source,
+            run_id=log.run_id,
+            collected_at=frozen.cutoff,
+            notes=["Offline frozen evidence; status and membership depend on recorded sources."],
+            target=PullRequestTarget(repo=frozen.repo, number=frozen.number),
+            bm25_only=True,
+            require_unchanged_jira=True,
+        )
+        bundle_hash, verdict = collect_and_evaluate(
+            request,
+            frozen.jira,
+            BundleStore(store),
+            log,
+            ChangeSources(github=frozen.github, git=frozen.git),
         )
     except CodeAtlasError as error:
         raise _fail(log, error) from error
