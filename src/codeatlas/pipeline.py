@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from codeatlas import __version__
+from codeatlas.analyze import calls as calls_analysis
 from codeatlas.analyze import code as code_analysis
 from codeatlas.analyze import criteria as criteria_analysis
 from codeatlas.analyze import governance as governance_analysis
@@ -542,6 +543,13 @@ def _code(
         entities += code_analysis.extract_entities(file_path=path, source=source)
     entities.sort(key=lambda e: (e.file, e.start_line, e.entity_id))
     edges = code_analysis.build_import_graph(entities=entities, file_sources=sources)
+    try:
+        code_analysis._parser()
+    except ImportError as error:
+        raise CollectionError(
+            "calls", status=None, retryable=False, detail="CALLS parser is unavailable"
+        ) from error
+    edges += calls_analysis.build_call_graph(entities=entities, file_sources=sources)
     return entities, changed, edges
 
 
@@ -704,6 +712,7 @@ def collect_bundle(
             "keys": keys_analysis.EXTRACTOR_VERSION,
             "governance": governance_analysis.EXTRACTOR_VERSION,
             "code": code_analysis.EXTRACTOR_VERSION,
+            "calls": calls_analysis.EXTRACTOR_VERSION,
             "criteria": criteria_analysis.EXTRACTOR_VERSION,
             "semantic": semantic_analysis.EXTRACTOR_VERSION,
         }
