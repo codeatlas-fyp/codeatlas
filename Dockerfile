@@ -18,8 +18,9 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     PYTHONUNBUFFERED=1
 
-# Dependencies first so this layer stays cached across code changes. The excludes script
-# leaves out sentence-transformers/torch/CUDA: the server never computes embeddings.
+# Dependencies first so this layer stays cached across code changes. Dense model
+# dependencies are excluded; the worker reports their unavailability and uses the
+# configured semantic fallback rather than producing dense-model results.
 COPY pyproject.toml uv.lock README.md ./
 COPY scripts/docker_excludes.py ./scripts/
 RUN uv sync --locked --no-dev --no-install-project $(python scripts/docker_excludes.py uv.lock)
@@ -31,11 +32,11 @@ COPY alembic.ini ./
 COPY tests/fixtures ./tests/fixtures
 RUN uv sync --locked --no-dev $(python scripts/docker_excludes.py uv.lock)
 
-# Demo data: real evaluations of the codeatlas-sandbox PRs, produced by `codeatlas collect`
-# (see deploy/bundles/README.md). Other bundles can be mounted over /app/bundles.
-COPY deploy/bundles ./bundles
+# Seed the default store with the bundled sandbox evaluations. A mounted volume
+# can replace this directory; an existing volume must be seeded separately.
+COPY deploy/bundles /data/bundles
 
-# Run as a non-root user that cannot modify the code or the bundles.
+# Run as a non-root user; the data directory remains writable for new bundles.
 RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin codeatlas
 RUN mkdir -p /data/bundles /data/repo-cache && chown -R codeatlas:codeatlas /data
 
