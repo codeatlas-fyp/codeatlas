@@ -1,0 +1,162 @@
+{
+  "edges": [
+    {
+      "confident": true,
+      "dst": "code:library.fees.charge@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence_refs": [
+        "analysis:changed:library/fees.py:4"
+      ],
+      "id": "edge:fabbf96e88b1d622e90f28f2f842e37cb10bc265feaad733abb018e014e54289",
+      "kind": "CHANGES",
+      "resolution_status": "modified",
+      "src": "change:codeatlas-fyp/codeatlas-sandbox#2@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "confident": true,
+      "dst": "code:library.loans.return_book@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence_refs": [
+        "analysis:changed:library/loans.py:12"
+      ],
+      "id": "edge:7f5b2ce5d86cfa0bc7b314a78abd1dd6ba64a32dc7194445abdd70514a80919d",
+      "kind": "CHANGES",
+      "resolution_status": "modified",
+      "src": "change:codeatlas-fyp/codeatlas-sandbox#2@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "confident": true,
+      "dst": "crit:SBX-2:v2:ac1",
+      "evidence_refs": [],
+      "id": "edge:1c77cebdcd63cedf67696a45208896ab9a5de7c6813bbd10d1ba5375b3143234",
+      "kind": "HAS_CRITERION",
+      "resolution_status": "acceptance_criteria",
+      "src": "req:SBX-2"
+    },
+    {
+      "confident": false,
+      "dst": "code:library.fees.charge@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence_refs": [
+        "evidence:semantic_candidate"
+      ],
+      "id": "edge:c691da82d75c2a4e14b8e4488316434515994621549c649fa875b60f2e51aba3",
+      "kind": "TRACE",
+      "resolution_status": "semantic_candidate",
+      "src": "crit:SBX-2:v2:ac1"
+    },
+    {
+      "confident": true,
+      "dst": "code:library.loans.return_book@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence_refs": [
+        "evidence:observed"
+      ],
+      "id": "edge:7ee4950e040cd4658b35e0b657795e01fdcb95434a7f5e19a4267f18761bdde2",
+      "kind": "TRACE",
+      "resolution_status": "observed",
+      "src": "req:SBX-2"
+    },
+    {
+      "confident": true,
+      "dst": "code:library.fees@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence_refs": [],
+      "id": "edge:e45bd982e59e7c1c3e4ffd44e1cd819509e705cc53fab95f1a9a543f4de945c8",
+      "kind": "IMPORTS",
+      "resolution_status": "resolved",
+      "src": "code:library.loans@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "confident": false,
+      "dst": "code:library.loans@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence_refs": [],
+      "id": "edge:a1b394d56528a6a07c82909fc9c886983a2ba519b13079925c45510005824377",
+      "kind": "CALLS",
+      "resolution_status": "uncertain",
+      "src": "code:library.fees.charge@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "confident": true,
+      "dst": "code:library.fees.charge@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence_refs": [],
+      "id": "edge:ed839bf0ecaa46614672c90634dfe29e6ce7755a26db8c7ecda7378a6660a401",
+      "kind": "CALLS",
+      "resolution_status": "resolved",
+      "src": "code:library.loans.return_book@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  ],
+  "limitations": [
+    "Static edges do not prove execution.",
+    "CALLS and IMPORTS edges are never used to create trace links.",
+    "IMPORTS and CALLS edges carry no source span; their provenance is the extractor version recorded in the bundle.",
+    "1 IMPORTS edge(s) to modules outside the repository are not drawn."
+  ],
+  "nodes": [
+    {
+      "end_line": null,
+      "entity_id": null,
+      "file": null,
+      "id": "change:codeatlas-fyp/codeatlas-sandbox#2@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "kind": "change",
+      "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "start_line": null
+    },
+    {
+      "end_line": null,
+      "entity_id": null,
+      "file": null,
+      "id": "req:SBX-2",
+      "kind": "requirement",
+      "revision": null,
+      "start_line": null
+    },
+    {
+      "end_line": null,
+      "entity_id": null,
+      "file": null,
+      "id": "crit:SBX-2:v2:ac1",
+      "kind": "criterion",
+      "revision": null,
+      "start_line": null
+    },
+    {
+      "end_line": 40,
+      "entity_id": "library.fees",
+      "file": "library/fees.py",
+      "id": "code:library.fees@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "kind": "module",
+      "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "start_line": 1
+    },
+    {
+      "end_line": 40,
+      "entity_id": "library.loans",
+      "file": "library/loans.py",
+      "id": "code:library.loans@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "kind": "module",
+      "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "start_line": 1
+    },
+    {
+      "end_line": 9,
+      "entity_id": "library.fees.charge",
+      "file": "library/fees.py",
+      "id": "code:library.fees.charge@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "kind": "function",
+      "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "start_line": 3
+    },
+    {
+      "end_line": 30,
+      "entity_id": "library.loans.return_book",
+      "file": "library/loans.py",
+      "id": "code:library.loans.return_book@bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "kind": "function",
+      "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "start_line": 10
+    }
+  ],
+  "schema_version": "graph-view-v1",
+  "snapshot": {
+    "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "repo": "codeatlas-fyp/codeatlas-sandbox"
+  },
+  "status": "available"
+}

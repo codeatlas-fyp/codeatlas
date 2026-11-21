@@ -57,3 +57,11 @@ def test_fixture_worker_freezes_calls_edges(tmp_path, monkeypatch) -> None:
             e["kind"] == "CALLS" and e["src"] == "loans.invoke" and e["dst"] == "loans.local_helper"
             for e in bundle["edges"]
         )
+        graph = client.get(f"/api/cases/{response.json()['bundle_hash']}/graph")
+        assert graph.status_code == 200
+        assert any(
+            edge["kind"] == "CALLS"
+            and "loans.invoke@" in edge["src"]
+            and "loans.local_helper@" in edge["dst"]
+            for edge in graph.json()["edges"]
+        )

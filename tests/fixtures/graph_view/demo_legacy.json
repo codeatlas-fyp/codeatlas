@@ -1,0 +1,435 @@
+{
+  "edges": [
+    {
+      "confident": true,
+      "dst": "code:books.Member@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "evidence_refs": [
+        "changed:books.py:48-53:books.Member"
+      ],
+      "id": "edge:932111c4aa72aa57d8460d10a94d826b01d9bde7500632ce2d2e9f20bc65dba7",
+      "kind": "CHANGES",
+      "resolution_status": "modified",
+      "src": "change:codeatlas-fyp/codeatlas-sandbox#3@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789"
+    },
+    {
+      "confident": true,
+      "dst": "code:books.renew_membership@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "evidence_refs": [
+        "changed:books.py:56-65:books.renew_membership"
+      ],
+      "id": "edge:2815e950727f75b7574d207e03cc79f6d216d353ff57361ac70e3dc16d212c77",
+      "kind": "CHANGES",
+      "resolution_status": "modified",
+      "src": "change:codeatlas-fyp/codeatlas-sandbox#3@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789"
+    },
+    {
+      "confident": true,
+      "dst": "crit:SBX-60:v1:ac1",
+      "evidence_refs": [],
+      "id": "edge:62cf88ea37ce347046ccc31b5052c6246e027a32c5b5031c1396a6f5c8875300",
+      "kind": "HAS_CRITERION",
+      "resolution_status": "acceptance_criteria",
+      "src": "req:SBX-60"
+    },
+    {
+      "confident": true,
+      "dst": "crit:SBX-60:v1:ac2",
+      "evidence_refs": [],
+      "id": "edge:761a653b4572d055e307a6ff617381c26ad7afa3fcd628028c40dc36644f5291",
+      "kind": "HAS_CRITERION",
+      "resolution_status": "acceptance_criteria",
+      "src": "req:SBX-60"
+    },
+    {
+      "confident": true,
+      "dst": "code:books.Member@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "evidence_refs": [
+        "changed:books.py:48-53:books.Member",
+        "commit:50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789"
+      ],
+      "id": "edge:f98bf17ce1e269040d8e2240bd4be28b034506d0aa31f6f84a37de0a942e67b3",
+      "kind": "TRACE",
+      "resolution_status": "observed",
+      "src": "req:SBX-60"
+    },
+    {
+      "confident": true,
+      "dst": "code:books.renew_membership@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "evidence_refs": [
+        "changed:books.py:56-65:books.renew_membership",
+        "commit:50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789"
+      ],
+      "id": "edge:a3ea8c63629d0d6a3b89eec02d9dbd06aaa482b68f461a962daf2ab29eaf4205",
+      "kind": "TRACE",
+      "resolution_status": "observed",
+      "src": "req:SBX-60"
+    },
+    {
+      "confident": true,
+      "dst": "code:books@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "evidence_refs": [],
+      "id": "edge:0478973715fc5340d66bf9b9ea338b020626173e2fc89f22d5130ad0f357218b",
+      "kind": "IMPORTS",
+      "resolution_status": "resolved",
+      "src": "code:tests.test_smoke@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789"
+    },
+    {
+      "confident": true,
+      "dst": "code:loans@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "evidence_refs": [],
+      "id": "edge:48b8d45575b9a8bf68fba4e89e8b48af2074c7a88e39abe5c4dd138c80ee050f",
+      "kind": "IMPORTS",
+      "resolution_status": "resolved",
+      "src": "code:tests.test_smoke@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789"
+    },
+    {
+      "confident": true,
+      "dst": "code:payments.fees@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "evidence_refs": [],
+      "id": "edge:0ca863fc8a2c0798470790f0c661751cfe927be5f5806686d89864e7d214bd6b",
+      "kind": "IMPORTS",
+      "resolution_status": "resolved",
+      "src": "code:tests.test_smoke@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789"
+    }
+  ],
+  "limitations": [
+    "Static edges do not prove execution.",
+    "CALLS and IMPORTS edges are never used to create trace links.",
+    "IMPORTS and CALLS edges carry no source span; their provenance is the extractor version recorded in the bundle.",
+    "6 IMPORTS edge(s) to modules outside the repository are not drawn.",
+    "This bundle was collected without CALLS extraction, so it has no CALLS edges."
+  ],
+  "nodes": [
+    {
+      "end_line": null,
+      "entity_id": null,
+      "file": null,
+      "id": "change:codeatlas-fyp/codeatlas-sandbox#3@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "change",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": null
+    },
+    {
+      "end_line": null,
+      "entity_id": null,
+      "file": null,
+      "id": "req:SBX-60",
+      "kind": "requirement",
+      "revision": null,
+      "start_line": null
+    },
+    {
+      "end_line": null,
+      "entity_id": null,
+      "file": null,
+      "id": "crit:SBX-60:v1:ac1",
+      "kind": "criterion",
+      "revision": null,
+      "start_line": null
+    },
+    {
+      "end_line": null,
+      "entity_id": null,
+      "file": null,
+      "id": "crit:SBX-60:v1:ac2",
+      "kind": "criterion",
+      "revision": null,
+      "start_line": null
+    },
+    {
+      "end_line": 66,
+      "entity_id": "books",
+      "file": "books.py",
+      "id": "code:books@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "module",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 1
+    },
+    {
+      "end_line": 65,
+      "entity_id": "loans",
+      "file": "loans.py",
+      "id": "code:loans@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "module",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 1
+    },
+    {
+      "end_line": 29,
+      "entity_id": "payments.fees",
+      "file": "payments/fees.py",
+      "id": "code:payments.fees@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "module",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 1
+    },
+    {
+      "end_line": 2,
+      "entity_id": "payments",
+      "file": "payments/__init__.py",
+      "id": "code:payments@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "module",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 1
+    },
+    {
+      "end_line": 43,
+      "entity_id": "tests.test_smoke",
+      "file": "tests/test_smoke.py",
+      "id": "code:tests.test_smoke@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "module",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 1
+    },
+    {
+      "end_line": 17,
+      "entity_id": "books.Book",
+      "file": "books.py",
+      "id": "code:books.Book@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "class",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 11
+    },
+    {
+      "end_line": 44,
+      "entity_id": "books.Catalog",
+      "file": "books.py",
+      "id": "code:books.Catalog@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "class",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 21
+    },
+    {
+      "end_line": 53,
+      "entity_id": "books.Member",
+      "file": "books.py",
+      "id": "code:books.Member@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "class",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 48
+    },
+    {
+      "end_line": 34,
+      "entity_id": "loans.Loan",
+      "file": "loans.py",
+      "id": "code:loans.Loan@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "class",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 15
+    },
+    {
+      "end_line": 64,
+      "entity_id": "loans.LoanLedger",
+      "file": "loans.py",
+      "id": "code:loans.LoanLedger@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "class",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 37
+    },
+    {
+      "end_line": 65,
+      "entity_id": "books.renew_membership",
+      "file": "books.py",
+      "id": "code:books.renew_membership@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "function",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 56
+    },
+    {
+      "end_line": 23,
+      "entity_id": "payments.fees.calculate_late_fee",
+      "file": "payments/fees.py",
+      "id": "code:payments.fees.calculate_late_fee@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "function",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 14
+    },
+    {
+      "end_line": 28,
+      "entity_id": "payments.fees.is_fee_waivable",
+      "file": "payments/fees.py",
+      "id": "code:payments.fees.is_fee_waivable@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "function",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 26
+    },
+    {
+      "end_line": 16,
+      "entity_id": "tests.test_smoke.test_catalog_add_and_find",
+      "file": "tests/test_smoke.py",
+      "id": "code:tests.test_smoke.test_catalog_add_and_find@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "function",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 11
+    },
+    {
+      "end_line": 42,
+      "entity_id": "tests.test_smoke.test_first_offence_short_delay_is_waivable",
+      "file": "tests/test_smoke.py",
+      "id": "code:tests.test_smoke.test_first_offence_short_delay_is_waivable@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "function",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 39
+    },
+    {
+      "end_line": 36,
+      "entity_id": "tests.test_smoke.test_late_fee_capped",
+      "file": "tests/test_smoke.py",
+      "id": "code:tests.test_smoke.test_late_fee_capped@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "function",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 35
+    },
+    {
+      "end_line": 32,
+      "entity_id": "tests.test_smoke.test_late_fee_scales_with_days",
+      "file": "tests/test_smoke.py",
+      "id": "code:tests.test_smoke.test_late_fee_scales_with_days@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "function",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 31
+    },
+    {
+      "end_line": 28,
+      "entity_id": "tests.test_smoke.test_late_fee_zero_when_not_overdue",
+      "file": "tests/test_smoke.py",
+      "id": "code:tests.test_smoke.test_late_fee_zero_when_not_overdue@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "function",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 27
+    },
+    {
+      "end_line": 24,
+      "entity_id": "tests.test_smoke.test_loan_lifecycle_marks_returned",
+      "file": "tests/test_smoke.py",
+      "id": "code:tests.test_smoke.test_loan_lifecycle_marks_returned@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "function",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 19
+    },
+    {
+      "end_line": 29,
+      "entity_id": "books.Catalog.add",
+      "file": "books.py",
+      "id": "code:books.Catalog.add@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "method",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 26
+    },
+    {
+      "end_line": 44,
+      "entity_id": "books.Catalog.count",
+      "file": "books.py",
+      "id": "code:books.Catalog.count@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "method",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 43
+    },
+    {
+      "end_line": 37,
+      "entity_id": "books.Catalog.find",
+      "file": "books.py",
+      "id": "code:books.Catalog.find@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "method",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 36
+    },
+    {
+      "end_line": 34,
+      "entity_id": "books.Catalog.remove",
+      "file": "books.py",
+      "id": "code:books.Catalog.remove@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "method",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 31
+    },
+    {
+      "end_line": 41,
+      "entity_id": "books.Catalog.search_by_author",
+      "file": "books.py",
+      "id": "code:books.Catalog.search_by_author@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "method",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 39
+    },
+    {
+      "end_line": 34,
+      "entity_id": "loans.Loan.days_overdue",
+      "file": "loans.py",
+      "id": "code:loans.Loan.days_overdue@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "method",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 31
+    },
+    {
+      "end_line": 24,
+      "entity_id": "loans.Loan.due_date",
+      "file": "loans.py",
+      "id": "code:loans.Loan.due_date@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "method",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 23
+    },
+    {
+      "end_line": 29,
+      "entity_id": "loans.Loan.is_overdue",
+      "file": "loans.py",
+      "id": "code:loans.Loan.is_overdue@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "method",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 26
+    },
+    {
+      "end_line": 41,
+      "entity_id": "loans.LoanLedger.__init__",
+      "file": "loans.py",
+      "id": "code:loans.LoanLedger.__init__@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "method",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 40
+    },
+    {
+      "end_line": 64,
+      "entity_id": "loans.LoanLedger._open_for",
+      "file": "loans.py",
+      "id": "code:loans.LoanLedger._open_for@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "method",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 60
+    },
+    {
+      "end_line": 48,
+      "entity_id": "loans.LoanLedger.borrow",
+      "file": "loans.py",
+      "id": "code:loans.LoanLedger.borrow@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "method",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 43
+    },
+    {
+      "end_line": 58,
+      "entity_id": "loans.LoanLedger.open_loans",
+      "file": "loans.py",
+      "id": "code:loans.LoanLedger.open_loans@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "method",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 57
+    },
+    {
+      "end_line": 55,
+      "entity_id": "loans.LoanLedger.return_book",
+      "file": "loans.py",
+      "id": "code:loans.LoanLedger.return_book@50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "kind": "method",
+      "revision": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+      "start_line": 50
+    }
+  ],
+  "schema_version": "graph-view-v1",
+  "snapshot": {
+    "base_sha": "c44b680a47ace5164f08c881e6b5252cb6db11c7",
+    "head_sha": "50a919cb7c6d2f1ebffe64b0e319dbb03dfbc789",
+    "repo": "codeatlas-fyp/codeatlas-sandbox"
+  },
+  "status": "incomplete"
+}
