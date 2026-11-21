@@ -8,14 +8,19 @@ from codeatlas.evaluate.rules.c2_pr_modifies_governance import C2PrModifiesGover
 from codeatlas.evaluate.rules.c3_not_approved import NotApproved
 from codeatlas.evaluate.rules.c4_assignee_not_implementer import AssigneeNotImplementer
 from codeatlas.evaluate.rules.c5_legacy import C5Legacy
-from codeatlas.evaluate.rules.c5_owner_did_not_approve import C5OwnerDidNotApprove
+from codeatlas.evaluate.rules.c5_owner_did_not_approve import (
+    C5CompleteFileInventory,
+    C5OwnerDidNotApprove,
+)
 from codeatlas.evaluate.rules.c6_superseded_version import SupersededVersion
 from codeatlas.evaluate.rules.c7_test_evidence import TestEvidenceStub
 from codeatlas.evaluate.rules.c8_priority_authority import PriorityWithoutAuthority
 from codeatlas.evaluate.rules.c9_unexplained_change import C9UnexplainedChange
 
 
-def default_rules(*, legacy_c5: bool = False) -> tuple[Rule, ...]:
+def default_rules(
+    *, legacy_c5: bool = False, complete_file_inventory: bool = False
+) -> tuple[Rule, ...]:
     """The rules every evaluation runs, in no particular order (order never matters)."""
     return (
         ChangedAfterImplementation(),
@@ -25,7 +30,9 @@ def default_rules(*, legacy_c5: bool = False) -> tuple[Rule, ...]:
         SupersededVersion(),
         TestEvidenceStub(),
         PriorityWithoutAuthority(),
-        C5Legacy() if legacy_c5 else C5OwnerDidNotApprove(),
+        C5Legacy()
+        if legacy_c5
+        else (C5CompleteFileInventory() if complete_file_inventory else C5OwnerDidNotApprove()),
         C9UnexplainedChange(),
     )
 

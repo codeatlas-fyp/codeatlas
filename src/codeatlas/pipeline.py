@@ -29,7 +29,7 @@ from codeatlas.analyze import semantic as semantic_analysis
 from codeatlas.analyze.lifecycle import JiraHistory, LifecycleContext, TextForms, reconstruct
 from codeatlas.bundle.hashing import effective_policy_hash, sha256_hex, verdict_hash
 from codeatlas.bundle.store import BundleStore, load_bundle
-from codeatlas.collect.git.repo import DiffHunk
+from codeatlas.collect.git.repo import DiffHunk, FileDelta
 from codeatlas.collect.jira.adf import adf_to_text, wiki_to_text
 from codeatlas.config import ChangeFile
 from codeatlas.errors import (
@@ -45,6 +45,7 @@ from codeatlas.evaluate.verdict import decide, run_rules
 from codeatlas.logging import EventLog
 from codeatlas.schema import (
     ChangedEntity,
+    ChangedFile,
     ChangeEvent,
     ChangeRef,
     CodeEdge,
@@ -93,6 +94,7 @@ class GitSource(Protocol):
     """Read-only local-clone access; `collect.git.LocalRepo` satisfies it."""
 
     def merge_base(self, base_ref: str, head_sha: str) -> str: ...
+    def diff_files(self, base_sha: str, head_sha: str) -> list[FileDelta]: ...
     def diff_hunks(
         self, base_sha: str, head_sha: str, *, context_lines: int = 3
     ) -> list[DiffHunk]: ...
@@ -143,7 +145,10 @@ def evaluate_bundle(
     error has exit code 4.
     """
     chosen = tuple(
-        default_rules(legacy_c5="pr_author_login" not in bundle.model_fields_set)
+        default_rules(
+            legacy_c5="pr_author_login" not in bundle.model_fields_set,
+            complete_file_inventory="changed_files" in bundle.model_fields_set,
+        )
         if rules is None
         else rules
     )
@@ -375,7 +380,12 @@ def _decode(data: bytes | None) -> str | None:
 
 
 def _governance(
-    change: ChangeRef, hunks: list[DiffHunk], git: GitSource, policy: Policy, at: datetime
+    change: ChangeRef,
+    hunks: list[DiffHunk],
+    git: GitSource,
+    policy: Policy,
+    at: datetime,
+    file_deltas: list[FileDelta] | None = None,
 ) -> tuple[GovernanceSnapshot, list[GovernanceChange], list[str]]:
     """CODEOWNERS, ADRs and the policy file at the base commit; governance files in the diff."""
     notes: list[str] = []
@@ -406,7 +416,15 @@ def _governance(
         retrieved_at=at,
         codeowners_path=codeowners_path,
     )
-    changed_files = sorted({(h.file_path, h.change_type) for h in hunks})
+    changed_files: list[tuple[str, str]] = []
+    if file_deltas is not None:
+        for delta in file_deltas:
+            for maybe_path in (delta.old_path, delta.new_path):
+                if maybe_path is not None:
+                    changed_files.append((maybe_path, delta.change_type))
+    else:
+        changed_files = [(h.file_path, h.change_type) for h in hunks]
+    changed_files = sorted(set(changed_files))
     changes = governance_analysis.governance_changes_in_diff(
         changed_files=changed_files, policy=policy, retrieved_at=at
     )
@@ -677,6 +695,7 @@ def collect_bundle(
     criteria: list[Criterion] = []
     candidates: list[SemanticCandidate] = []
     model_ids: list[str] = []
+    changed_files: list[ChangedFile] | None = None
     people: list[ResolvedPerson] = []
 
     if request.target is not None and sources is not None:
@@ -689,12 +708,14 @@ def collect_bundle(
             "semantic": semantic_analysis.EXTRACTOR_VERSION,
         }
         with log.stage("diff"):
+            file_deltas = sources.git.diff_files(change.ref.merge_base_sha, change.ref.head_sha)
+            changed_files = [ChangedFile(**vars(delta)) for delta in file_deltas]
             hunks = sources.git.diff_hunks(
                 change.ref.merge_base_sha, change.ref.head_sha, context_lines=0
             )
         with log.stage("governance"):
             governance, governance_changes, governance_notes = _governance(
-                change.ref, hunks, sources.git, request.policy, at
+                change.ref, hunks, sources.git, request.policy, at, file_deltas
             )
             notes += governance_notes
         with log.stage("code"):
@@ -746,6 +767,7 @@ def collect_bundle(
             criteria=criteria,
             candidates=candidates,
             collection_notes=sorted(set(notes)),
+            changed_files=changed_files,
         )
 
 

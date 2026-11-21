@@ -9,6 +9,7 @@ from typing import Literal
 
 from codeatlas.schema.evidence import (
     ChangedEntity,
+    ChangedFile,
     ChangeEvent,
     ChangeRef,
     CodeEdge,
@@ -75,3 +76,4 @@ class EvidenceBundle(Model):
     criteria: list[Criterion]
     candidates: list[SemanticCandidate]
     collection_notes: list[str]  # e.g. "work item SBX-99 not found"
+    changed_files: list[ChangedFile] | None = None

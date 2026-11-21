@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from codeatlas.schema import (
     Adr,
     Approval,
+    ChangedFile,
     CheckResult,
     CodeEdge,
     CodeEntity,
@@ -33,6 +34,7 @@ from codeatlas.schema import (
 Identifier = tuple[str | int, ...]
 
 _IDENTIFIERS: dict[type[BaseModel], Callable[[Any], Identifier]] = {
+    ChangedFile: lambda m: (m.old_path or "", m.new_path or "", m.change_type),
     Evidence: lambda m: (m.evidence_id,),
     Approval: lambda m: (m.evidence_id,),
     PriorityChange: lambda m: (m.evidence_id,),
@@ -67,6 +69,8 @@ def _plain(value: Any) -> Any:
     """Turn models, datetimes, floats and tuples into JSON values; sort every list."""
     if isinstance(value, BaseModel):
         fields = type(value).model_fields
+        if isinstance(value, EvidenceBundle) and "changed_files" not in value.model_fields_set:
+            fields = {name: field for name, field in fields.items() if name != "changed_files"}
         if isinstance(value, EvidenceBundle) and value.effective_policy_hash is None:
             fields = {
                 name: field for name, field in fields.items() if name != "effective_policy_hash"
