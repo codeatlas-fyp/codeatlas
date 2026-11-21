@@ -130,6 +130,26 @@ class C9SemanticRun(C9UnexplainedChange):
     version = "2"
 
 
+class C9Advisory(C9SemanticRun):
+    """Keep the explanation heuristic advisory even for an unvalidated policy object."""
+
+    version = "3"
+
+    def check(self, bundle: EvidenceBundle, links: list[TraceLink], policy: Policy) -> CheckResult:
+        result = super().check(bundle, links, policy)
+        if result.outcome != "VIOLATED":
+            return result
+        return result.model_copy(
+            update={
+                "severity": "review" if result.severity == "block" else result.severity,
+                "message": result.message.replace(
+                    "changed entity(ies) with no linked requirement",
+                    "changed entity(ies) flagged by the advisory traceability heuristic",
+                ),
+            }
+        )
+
+
 def _is_test_path(path: str) -> bool:
     lower = path.lower()
     return any(p in lower for p in _TEST_PATH_PATTERNS)

@@ -80,3 +80,4 @@ class EvidenceBundle(Model):
     collection_notes: list[str]  # e.g. "work item SBX-99 not found"
     changed_files: list[ChangedFile] | None = None
     semantic_run: SemanticRunSummary | None = None
+    c9_rule_version: Literal["3"] | None = None

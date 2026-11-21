@@ -111,6 +111,7 @@ def evaluate_stored(bundle: EvidenceBundle, bundle_hash: str) -> Verdict:
         legacy_c5="pr_author_login" not in bundle.model_fields_set,
         complete_file_inventory="changed_files" in bundle.model_fields_set,
         semantic_run=bundle.semantic_run is not None,
+        advisory_c9=bundle.c9_rule_version == "3",
     )
     results = run_rules(rules, bundle, bundle_links(bundle))
     value = decide(results)

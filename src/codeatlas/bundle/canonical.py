@@ -77,6 +77,8 @@ def _plain(value: Any) -> Any:
             fields = {name: field for name, field in fields.items() if name != "changed_files"}
         if isinstance(value, EvidenceBundle) and value.semantic_run is None:
             fields = {name: field for name, field in fields.items() if name != "semantic_run"}
+        if isinstance(value, EvidenceBundle) and value.c9_rule_version is None:
+            fields = {name: field for name, field in fields.items() if name != "c9_rule_version"}
         if isinstance(value, SemanticCandidate):
             fields = {
                 name: field

@@ -3,14 +3,24 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
-from codeatlas.evaluate.rules.c9_unexplained_change import C9UnexplainedChange
+import pytest
+from pydantic import ValidationError
+
+from codeatlas.bundle.replay import replay
+from codeatlas.bundle.store import BundleStore
+from codeatlas.evaluate.rules import default_rules, ruleset_version
+from codeatlas.evaluate.rules.c9_unexplained_change import C9Advisory, C9UnexplainedChange
 from codeatlas.evaluate.verdict import decide
+from codeatlas.pipeline import evaluate_bundle
 from codeatlas.schema import (
     ApprovalPolicy,
     AuthorityPolicy,
+    CasePolicy,
     ChangedEntity,
     ChangeRef,
+    CheckResult,
     Commit,
     EvidenceBundle,
     GovernanceSnapshot,
@@ -20,6 +30,7 @@ from codeatlas.schema import (
     SemanticPolicy,
     WorkItemRef,
 )
+from tests.samples import SEMANTIC_RUN
 
 NOW = datetime(2026, 10, 11, 12, 0, 0, tzinfo=UTC)
 
@@ -296,3 +307,62 @@ def test_codet5_rank_alone_counts_as_evidence() -> None:
     )
     result = rule.check(bundle, [], bundle.policy)
     assert result.outcome == "SATISFIED"
+
+
+@pytest.mark.parametrize("candidate_state", ["missing", "unavailable", "abstained"])
+def test_current_c9_cannot_turn_semantic_uncertainty_into_block(candidate_state: str) -> None:
+    candidates = []
+    if candidate_state == "unavailable":
+        candidates = [_cand("SBX-4:v1:ac1", "pkg.fees.calc", 1).model_copy(
+            update={"bm25_rank": None, "dense_rank": None}
+        )]
+    elif candidate_state == "abstained":
+        candidates = [_cand("SBX-4:v1:ac1", "pkg.fees.calc", 1).model_copy(
+            update={"gate": "abstain"}
+        )]
+    bundle = _bundle(
+        changed=[_ce("pkg.fees.calc", "pkg/fees.py", ["sha1"])],
+        commits=[_commit("sha1", "SBX-4")],
+        work_items=[_ref("SBX-4", "sha1")],
+        candidates=candidates,
+    )
+    # model_copy bypasses validation: exercise the rule's defensive boundary too.
+    policy = bundle.policy.model_copy(update={"cases": {"C9": CasePolicy(severity="block")}})
+    result = C9Advisory().check(bundle, [], policy)
+    assert (result.outcome, result.severity, decide([result])) == ("VIOLATED", "review", "REVIEW")
+    assert "advisory" in result.message
+    governance = CheckResult(
+        case="C5", outcome="VIOLATED", severity="block", required=True,
+        message="owner did not approve", evidence_ids=[],
+    )
+    assert decide([result, governance]) == "FAIL"
+
+
+def test_blocking_c9_policy_is_rejected_and_legacy_rule_versions_remain_available() -> None:
+    raw = _policy().model_dump()
+    raw["cases"] = {"C9": {"severity": "block"}}
+    with pytest.raises(ValidationError, match="C9 is advisory"):
+        Policy.model_validate(raw)
+    assert "C9@1" in ruleset_version(default_rules())
+    assert "C9@2" in ruleset_version(default_rules(semantic_run=True))
+    assert "C9@3" in ruleset_version(default_rules(advisory_c9=True))
+
+
+@pytest.mark.parametrize("version", [1, 2, 3])
+def test_c9_version_is_persisted_and_replays(version: int, tmp_path: Path) -> None:
+    bundle = _bundle(
+        changed=[_ce("pkg.fees.calc", "pkg/fees.py", ["sha1"])],
+        commits=[_commit("sha1", "SBX-4")],
+        work_items=[_ref("SBX-4", "sha1")],
+        candidates=[],
+    )
+    if version >= 2:
+        bundle = bundle.model_copy(update={"semantic_run": SEMANTIC_RUN})
+    if version == 3:
+        bundle = bundle.model_copy(update={"c9_rule_version": "3"})
+    store = BundleStore(tmp_path)
+    digest = store.save(bundle)
+    verdict = evaluate_bundle(bundle, digest)
+    assert f"C9@{version}" in verdict.ruleset_version
+    store.save_verdict(verdict)
+    assert replay(store.folder(digest), evaluate_bundle).match

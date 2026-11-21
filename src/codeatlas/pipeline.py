@@ -152,6 +152,7 @@ def evaluate_bundle(
             legacy_c5="pr_author_login" not in bundle.model_fields_set,
             complete_file_inventory="changed_files" in bundle.model_fields_set,
             semantic_run=bundle.semantic_run is not None,
+            advisory_c9=bundle.c9_rule_version == "3",
         )
         if rules is None
         else rules
@@ -797,6 +798,7 @@ def collect_bundle(
             collection_notes=sorted(set(notes)),
             changed_files=changed_files,
             semantic_run=semantic_run,
+            c9_rule_version="3",
         )
 
 
