@@ -9,6 +9,9 @@ test("initial view identifies the real evaluation workflow", () => {
   assert.match(html, /Start an evaluation/);
   assert.match(html, /Select an evaluation to inspect its progress and evidence/);
   assert.match(html, /Connections and classic view/);
+  assert.match(html, /Workspace navigation/);
+  assert.match(html, /href="#history"/);
+  assert.doesNotMatch(html, /href="#evidence"/);
   assert.match(html, /At least two completed evaluations are needed/);
 });
 
