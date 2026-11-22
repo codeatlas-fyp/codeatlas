@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from codeatlas import __version__
+from codeatlas.analyze import calls as calls_analysis
 from codeatlas.analyze import code as code_analysis
 from codeatlas.analyze import criteria as criteria_analysis
 from codeatlas.analyze import governance as governance_analysis
@@ -474,7 +475,7 @@ def _split_by_entity(span: tuple[int, int], entities: list[CodeEntity]) -> list[
 def _code(
     change: ChangeRef, hunks: list[DiffHunk], commits: list[Commit], git: GitSource, at: datetime
 ) -> tuple[list[CodeEntity], list[ChangedEntity], list[CodeEdge], dict[str, bytes]]:
-    """Entities of every Python file at head, the entity each hunk falls in, and imports.
+    """Entities of every Python file at head, the entity each hunk falls in, imports and calls.
 
     The last item is the text of every file read at head (deleted files, read at the merge
     base, are left out): the semantic corpus is built from it.
@@ -531,6 +532,7 @@ def _code(
         entities += code_analysis.extract_entities(file_path=path, source=source)
     entities.sort(key=lambda e: (e.file, e.start_line, e.entity_id))
     edges = code_analysis.build_import_graph(entities=entities, file_sources=sources)
+    edges += calls_analysis.build_call_graph(entities=entities, file_sources=sources)
     head_sources = {path: text for path, text in sources.items() if path not in deleted_files}
     return entities, changed, edges, head_sources
 
@@ -695,6 +697,7 @@ def collect_bundle(
             "keys": keys_analysis.EXTRACTOR_VERSION,
             "governance": governance_analysis.EXTRACTOR_VERSION,
             "code": code_analysis.EXTRACTOR_VERSION,
+            "calls": calls_analysis.EXTRACTOR_VERSION,
             "criteria": criteria_analysis.EXTRACTOR_VERSION,
             "semantic": semantic_run_analysis.EXTRACTOR_VERSION,
         }
