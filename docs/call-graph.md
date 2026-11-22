@@ -197,9 +197,10 @@ inference, and any language other than Python.
 
 1. SG-06: graph-view export (nodes, edges, `confident`, file, span, revision, provenance) for
    Areej's UI, in a format agreed with her.
-2. SG-07: a labelled call-site fixture (about 40 call sites, build plan C12) and precision/recall
-   for confident and unconfident edges, reported separately, plus a hand spot-check of 20 random
-   CALLS edges per dataset repository.
+2. SG-07: precision and recall on labelled call sites, confident and unconfident edges
+   reported separately. The tooling is on `feature/calls-eval` (`resolve_call_sites`,
+   `analyze/calls_eval.py`, `scripts/calls_eval.py`); see `docs/calls-evaluation.md`. The
+   labels are still to be made.
 
 ## Merging
 
