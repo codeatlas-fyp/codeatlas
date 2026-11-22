@@ -1,7 +1,7 @@
 """Strict, offline adapters for a checksummed evaluation-repository case.
 
-This adapter requires historical status-category evidence in addition to the current
-evaluation-repository manifest. It refuses cases that cannot be reconstructed safely.
+Legacy cases require historical status-category evidence. Contract v4 stores cutoff
+snapshots and treats unavailable lifecycle information conservatively.
 """
 
 from __future__ import annotations
@@ -55,10 +55,13 @@ def _json(path: Path) -> Any:
 class FrozenJira:
     """Read only the issue, history, categories and memberships covered by a manifest."""
 
-    def __init__(self, root: Path, listed: set[str], cutoff: datetime):
+    def __init__(
+        self, root: Path, listed: set[str], cutoff: datetime, *, contract_v4: bool = False
+    ):
         self.root = root
         self.listed = listed
         self.cutoff = cutoff
+        self.contract_v4 = contract_v4
 
     def _read(self, relative: str) -> Any:
         if relative not in self.listed:
@@ -102,6 +105,70 @@ class FrozenJira:
         if not categories:
             raise ConfigError("Frozen Jira status categories are empty.")
         return categories
+
+    def fetch_cutoff_snapshot(self, key: str) -> dict[str, Any]:
+        """Read v4 cutoff evidence, without consulting the as-fetched issue."""
+        if not self.contract_v4 or not _KEY.fullmatch(key):
+            raise ConfigError("Frozen cutoff evidence is unavailable.")
+        relative = f"sources/jira_{key}_at_cutoff.txt"
+        if relative not in self.listed:
+            raise ConfigError(f"Frozen case lacks required evidence: {relative}")
+        try:
+            raw = (self.root / relative).read_text(encoding="utf-8")
+        except OSError as error:
+            raise ConfigError("Frozen cutoff text cannot be read.") from error
+        header, separator, body = raw.partition("\n---\n")
+        if not separator:
+            raise ConfigError("Frozen cutoff text is invalid.")
+        fields = dict(line.split(": ", 1) for line in header.splitlines() if ": " in line)
+        status = fields.get("reconstruction_status")
+        if fields.get("key") != key or _time(fields.get("cutoff")) != self.cutoff:
+            raise ConfigError("Frozen cutoff text does not match the case.")
+        if status not in {"reconstructed", "created_text_only", "unverifiable", "inaccessible"}:
+            raise ConfigError("Frozen cutoff text reconstruction status is invalid.")
+        if status in {"unverifiable", "inaccessible"} and body.strip():
+            raise ConfigError("Unavailable frozen cutoff text must be empty.")
+        state = self._read(f"sources/jira_{key}_state_at_cutoff.json")
+        if not isinstance(state, dict) or state.get("key") != key:
+            raise ConfigError("Frozen Jira cutoff state does not match its key.")
+        if _time(state.get("cutoff")) != self.cutoff:
+            raise ConfigError("Frozen Jira cutoff state has the wrong cutoff.")
+        states = state.get("fields")
+        category = state.get("status_category")
+        if not isinstance(states, dict) or not isinstance(category, dict):
+            raise ConfigError("Frozen Jira cutoff state is incomplete.")
+        if category.get("reconstruction") != "unavailable" or category.get("value") is not None:
+            raise ConfigError("Frozen status category must be unavailable.")
+        for name in ("status", "priority", "assignee", "resolution"):
+            entry = states.get(name)
+            if not isinstance(entry, dict) or entry.get("reconstruction") not in {
+                "reconstructed", "unverifiable", "unavailable"
+            }:
+                raise ConfigError("Frozen Jira cutoff field status is invalid.")
+            if (
+                state.get("changelog_complete") is False
+                and entry["reconstruction"] == "reconstructed"
+            ):
+                raise ConfigError("Frozen Jira cutoff state has an incomplete changelog.")
+            if entry["reconstruction"] != "reconstructed" and (
+                entry.get("value") is not None or entry.get("value_id") is not None
+            ):
+                raise ConfigError("Unavailable frozen Jira state must not contain a value.")
+            changes = entry.get("changes_up_to_cutoff")
+            if not isinstance(changes, list) or any(
+                not isinstance(change, dict)
+                or _time(change.get("at")) > self.cutoff
+                for change in changes
+            ):
+                raise ConfigError("Frozen Jira transitions are invalid or after the cutoff.")
+        return {
+            "key": key,
+            "cutoff": self.cutoff.isoformat(),
+            "text": body.rstrip("\n") if status in {"reconstructed", "created_text_only"} else None,
+            "text_status": status,
+            "text_note": fields.get("reconstruction_note", ""),
+            "state": state,
+        }
 
     def group_members(self, group: str) -> set[str]:
         if not re.fullmatch(r"[\w.-]+", group):
@@ -208,7 +275,8 @@ def load_frozen_case(case_dir: Path, repo_path: Path) -> FrozenCase:
     if not isinstance(repo, str) or not _REPO.fullmatch(repo) or not isinstance(number, int):
         raise ConfigError("Frozen case repository or pull request is invalid.")
     cutoff = _time(metadata.get("decision_cutoff_utc"))
-    if metadata.get("status_categories_at_cutoff") is not True:
+    contract_v4 = manifest.get("freeze_tool_version") == "freeze_case.py 4"
+    if not contract_v4 and metadata.get("status_categories_at_cutoff") is not True:
         raise ConfigError("Frozen case lacks verified historical status-category evidence.")
     if (
         any(path.startswith("sources/groups/") for path in files)
@@ -353,11 +421,14 @@ def load_frozen_case(case_dir: Path, repo_path: Path) -> FrozenCase:
     )
     if {item.key for item in found} != {item.get("key") for item in links["links"]}:
         raise ConfigError("Frozen requirement links cannot be reproduced from historical sources.")
-    jira = FrozenJira(root, set(files), cutoff)
+    jira = FrozenJira(root, set(files), cutoff, contract_v4=contract_v4)
     for key in {item.key for item in found}:
-        jira.fetch_issue(key)
-        jira.fetch_changelog(key)
-        jira.fetch_status_categories(key.split("-")[0])
+        if contract_v4:
+            jira.fetch_cutoff_snapshot(key)
+        else:
+            jira.fetch_issue(key)
+            jira.fetch_changelog(key)
+            jira.fetch_status_categories(key.split("-")[0])
     digest = hashlib.sha256((root / "manifest.json").read_bytes()).hexdigest()
     return FrozenCase(
         repo,

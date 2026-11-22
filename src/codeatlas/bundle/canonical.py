@@ -79,6 +79,8 @@ def _plain(value: Any) -> Any:
             fields = {name: field for name, field in fields.items() if name != "semantic_run"}
         if isinstance(value, EvidenceBundle) and value.c9_rule_version is None:
             fields = {name: field for name, field in fields.items() if name != "c9_rule_version"}
+        if isinstance(value, EvidenceBundle) and value.frozen_jira_cutoff is None:
+            fields = {name: field for name, field in fields.items() if name != "frozen_jira_cutoff"}
         if isinstance(value, SemanticCandidate):
             fields = {
                 name: field

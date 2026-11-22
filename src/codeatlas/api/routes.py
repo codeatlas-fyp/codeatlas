@@ -42,12 +42,15 @@ def get_case(bundle_hash: str, store: Store) -> dict[str, Any]:
 @router.get("/cases/{bundle_hash}/requirements/{key}")
 def get_requirement(bundle_hash: str, key: str, store: Store) -> dict[str, Any]:
     bundle = store.requirement(bundle_hash, key).bundle
-    return {
+    result: dict[str, Any] = {
         "key": key,
         "versions": [v.model_dump(mode="json") for v in bundle.versions if v.key == key],
         "change_events": [e.model_dump(mode="json") for e in bundle.change_events if e.key == key],
         "lifecycle": [f.model_dump(mode="json") for f in bundle.lifecycle if f.key == key],
     }
+    if bundle.frozen_jira_cutoff and key in bundle.frozen_jira_cutoff:
+        result["frozen_cutoff"] = bundle.frozen_jira_cutoff[key]
+    return result
 
 
 @router.get("/cases/{bundle_hash}/links")

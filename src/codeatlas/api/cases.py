@@ -112,6 +112,7 @@ def evaluate_stored(bundle: EvidenceBundle, bundle_hash: str) -> Verdict:
         complete_file_inventory="changed_files" in bundle.model_fields_set,
         semantic_run=bundle.semantic_run is not None,
         advisory_c9=bundle.c9_rule_version == "3",
+        frozen_cutoff=bundle.frozen_jira_cutoff is not None,
     )
     results = run_rules(rules, bundle, bundle_links(bundle))
     value = decide(results)

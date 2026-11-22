@@ -5,7 +5,7 @@ Additions approved in docs/specs/step-2-schema.md (S3): `collected_at`, `run_id`
 content-addressed, and the hash travels in `Verdict.bundle_hash`.
 """
 
-from typing import Literal
+from typing import Any, Literal
 
 from codeatlas.schema.evidence import (
     ChangedEntity,
@@ -81,3 +81,4 @@ class EvidenceBundle(Model):
     changed_files: list[ChangedFile] | None = None
     semantic_run: SemanticRunSummary | None = None
     c9_rule_version: Literal["3"] | None = None
+    frozen_jira_cutoff: dict[str, dict[str, Any]] | None = None

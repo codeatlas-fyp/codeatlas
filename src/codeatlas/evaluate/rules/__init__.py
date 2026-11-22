@@ -13,27 +13,29 @@ from codeatlas.evaluate.rules.c5_owner_did_not_approve import (
     C5OwnerDidNotApprove,
 )
 from codeatlas.evaluate.rules.c6_superseded_version import SupersededVersion
-from codeatlas.evaluate.rules.c7_test_evidence import TestEvidenceStub
+from codeatlas.evaluate.rules.c7_test_evidence import FrozenTestEvidenceStub, TestEvidenceStub
 from codeatlas.evaluate.rules.c8_priority_authority import PriorityWithoutAuthority
 from codeatlas.evaluate.rules.c9_unexplained_change import (
     C9Advisory,
     C9SemanticRun,
     C9UnexplainedChange,
 )
+from codeatlas.evaluate.rules.frozen_cutoff import FrozenCutoffRule
 
 
 def default_rules(
     *, legacy_c5: bool = False, complete_file_inventory: bool = False, semantic_run: bool = False,
     advisory_c9: bool = False,
+    frozen_cutoff: bool = False,
 ) -> tuple[Rule, ...]:
     """The rules every evaluation runs, in no particular order (order never matters)."""
-    return (
+    rules: tuple[Rule, ...] = (
         ChangedAfterImplementation(),
         C2PrModifiesGovernance(),
         NotApproved(),
         AssigneeNotImplementer(),
         SupersededVersion(),
-        TestEvidenceStub(),
+        FrozenTestEvidenceStub() if frozen_cutoff else TestEvidenceStub(),
         PriorityWithoutAuthority(),
         C5Legacy()
         if legacy_c5
@@ -42,6 +44,12 @@ def default_rules(
         if advisory_c9
         else (C9SemanticRun() if semantic_run else C9UnexplainedChange()),
     )
+    if frozen_cutoff:
+        return tuple(
+            FrozenCutoffRule(rule) if rule.case in {"C1", "C3", "C4", "C6", "C8"} else rule
+            for rule in rules
+        )
+    return rules
 
 
 def ruleset_version(rules: Iterable[Rule]) -> str:

@@ -153,6 +153,7 @@ def evaluate_bundle(
             complete_file_inventory="changed_files" in bundle.model_fields_set,
             semantic_run=bundle.semantic_run is not None,
             advisory_c9=bundle.c9_rule_version == "3",
+            frozen_cutoff=bundle.frozen_jira_cutoff is not None,
         )
         if rules is None
         else rules
@@ -637,6 +638,9 @@ def collect_bundle(
     events: list[ChangeEvent] = []
     versions: list[RequirementVersion] = []
     lifecycle: list[LifecycleFacts] = []
+    frozen_cutoff: dict[str, dict[str, Any]] | None = (
+        {} if getattr(source, "contract_v4", False) else None
+    )
     keys = sorted({item.key for item in change.work_items})
     if request.target is not None and not keys:
         notes.append("no work-item key found in the branch, PR title, PR body or commits")
@@ -647,6 +651,18 @@ def collect_bundle(
         authorities = _members(source, authority.group, authority.account_ids, notes)
         categories: dict[str, dict[str, str]] = {}
         for key in keys:
+            if frozen_cutoff is not None:
+                read_cutoff = getattr(source, "fetch_cutoff_snapshot", None)
+                if not callable(read_cutoff):
+                    raise ConfigError("Frozen cutoff adapter is unavailable.")
+                frozen_cutoff[key] = read_cutoff(key)
+                notes.append(
+                    f"{key}: cutoff text and state are snapshots; lifecycle history is incomplete"
+                )
+                notes.append(
+                    f"{key}: semantic ranking unavailable without a historical version identity"
+                )
+                continue
             try:
                 issue = source.fetch_issue(key)
             except CollectionError as error:
@@ -799,6 +815,7 @@ def collect_bundle(
             changed_files=changed_files,
             semantic_run=semantic_run,
             c9_rule_version="3",
+            frozen_jira_cutoff=frozen_cutoff,
         )
 
 
