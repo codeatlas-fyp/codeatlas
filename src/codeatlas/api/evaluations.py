@@ -1,5 +1,6 @@
 """Evaluation submission, persisted job progress/history, and result access."""
 
+import math
 import re
 from typing import Annotated
 
@@ -23,6 +24,7 @@ _SHA = re.compile(r"[0-9a-fA-F]{40,64}\Z")
 class EvaluationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     pull_request_number: int = Field(gt=0, le=2_147_483_647)
+    profile_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,64}$")
 
 
 class EvaluationAccepted(BaseModel):
@@ -155,10 +157,15 @@ def submit_evaluation(
             head_sha,
             source_mode=settings.source_mode,
             actor_scope=settings.web_user or "local-single-user",
+            profile_id=body.profile_id,
         )
     except SubmissionConflict as error:
         raise HTTPException(
             409, detail={"code": "idempotency_conflict", "message": str(error)}
+        ) from error
+    except ValueError as error:
+        raise HTTPException(
+            422, detail={"code": "invalid_evaluation_profile", "message": str(error)}
         ) from error
     response.headers["Location"] = f"/api/evaluations/{job.id}"
     return EvaluationAccepted(
@@ -225,12 +232,19 @@ def evaluation_case(evaluation_id: str, request: Request):
             },
         )
     case = CaseStore(request.app.state.settings.bundle_dir).get(bundle_ref.bundle_hash)
+    bundle_data = case.bundle.model_dump(mode="json")
+    semantic_run = bundle_data.get("semantic_run")
+    if isinstance(semantic_run, dict):
+        for name in ("accept_threshold", "review_threshold"):
+            value = semantic_run.get(name)
+            if isinstance(value, float) and not math.isfinite(value):
+                semantic_run[name] = str(value)
     return {
         "evaluation_id": evaluation_id,
         "bundle_hash": bundle_ref.bundle_hash,
         "case": case.summary.model_dump(mode="json"),
         "change": case.bundle.change.model_dump(mode="json"),
-        "bundle": case.bundle.model_dump(mode="json"),
+        "bundle": bundle_data,
         "verdict": case.verdict.model_dump(mode="json"),
         "collection_notes": case.bundle.collection_notes,
         "replay_url": f"/api/cases/{bundle_ref.bundle_hash}/replay",

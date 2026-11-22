@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from codeatlas.schema import (
     Adr,
     Approval,
+    ChangedFile,
     CheckResult,
     CodeEdge,
     CodeEntity,
@@ -35,6 +36,7 @@ from codeatlas.schema import (
 Identifier = tuple[str | int, ...]
 
 _IDENTIFIERS: dict[type[BaseModel], Callable[[Any], Identifier]] = {
+    ChangedFile: lambda m: (m.old_path or "", m.new_path or "", m.change_type),
     Evidence: lambda m: (m.evidence_id,),
     Approval: lambda m: (m.evidence_id,),
     PriorityChange: lambda m: (m.evidence_id,),
@@ -58,7 +60,7 @@ _IDENTIFIERS: dict[type[BaseModel], Callable[[Any], Identifier]] = {
 # Fields added after schema v0 was frozen. When None they are left out of the canonical bytes,
 # so a bundle written before the field existed keeps its hash (and its folder name).
 _OMIT_WHEN_NONE: dict[type[BaseModel], frozenset[str]] = {
-    EvidenceBundle: frozenset({"effective_policy_hash", "semantic_run"}),
+    EvidenceBundle: frozenset({"effective_policy_hash", "semantic_run", "c9_rule_version", "frozen_jira_cutoff"}),
     SemanticCandidate: frozenset({"codet5_rank", "gate"}),
 }
 
@@ -83,10 +85,16 @@ def _plain(value: Any) -> Any:
             name: field for name, field in type(value).model_fields.items()
             if not (name in omit and getattr(value, name) is None)
         }
+        if isinstance(value, EvidenceBundle) and "changed_files" not in value.model_fields_set:
+            fields = {name: field for name, field in fields.items() if name != "changed_files"}
         if isinstance(value, EvidenceBundle) and "pr_author_login" not in value.model_fields_set:
             fields = {name: field for name, field in fields.items() if name != "pr_author_login"}
         if isinstance(value, EvidenceBundle) and value.policy_source is None:
             fields = {name: field for name, field in fields.items() if name != "policy_source"}
+        if isinstance(value, EvidenceBundle) and value.identity_map_source is None:
+            fields = {
+                name: field for name, field in fields.items() if name != "identity_map_source"
+            }
         return {name: _plain(getattr(value, name)) for name in fields}
     if value is None or isinstance(value, bool | int | str):
         return value

@@ -15,6 +15,7 @@ from codeatlas.schema import (
     AuthorityPolicy,
     CasePolicy,
     ChangedEntity,
+    ChangedFile,
     ChangeEvent,
     ChangeRef,
     CheckResult,
@@ -293,6 +294,15 @@ BUNDLE = EvidenceBundle(
 )
 
 SAMPLES: list[BaseModel] = [
+    ChangedFile(
+        old_path="old.py",
+        new_path="new.py",
+        change_type="renamed",
+        old_mode=33188,
+        new_mode=33188,
+        old_oid="old",
+        new_oid="new",
+    ),
     EVIDENCE,
     CHANGE_REF,
     WORK_ITEM,

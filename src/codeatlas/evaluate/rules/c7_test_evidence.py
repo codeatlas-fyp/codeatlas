@@ -37,3 +37,22 @@ class TestEvidenceStub:
             message="no requirement asks for test evidence",
             evidence_ids=[],
         )
+
+
+class FrozenTestEvidenceStub(TestEvidenceStub):
+    """Historical labels are unavailable in the v4 cutoff contract."""
+
+    version = "0-stub-frozen4"
+
+    def check(self, bundle: EvidenceBundle, links: list[TraceLink], policy: Policy) -> CheckResult:
+        configured = policy.cases.get(self.case)
+        if bundle.frozen_jira_cutoff and configured and configured.required_when_label:
+            return CheckResult(
+                case=self.case,
+                outcome="INSUFFICIENT_EVIDENCE",
+                severity=severity(policy, self.case, "review"),
+                required=True,
+                message="Historical requirement labels are unavailable in the frozen case.",
+                evidence_ids=[],
+            )
+        return super().check(bundle, links, policy)

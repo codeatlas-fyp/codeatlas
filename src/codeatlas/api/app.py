@@ -70,7 +70,9 @@ def create_app(settings: WebSettings | None = None) -> FastAPI:
     application.state.engine = make_engine(settings.database_url)
     application.state.session_factory = make_session_factory(application.state.engine)
     application.state.jobs = JobService(
-        application.state.session_factory, lease_seconds=settings.job_lease_seconds
+        application.state.session_factory,
+        lease_seconds=settings.job_lease_seconds,
+        profiles_path=settings.evaluation_profiles_path,
     )
 
     @application.get("/health")

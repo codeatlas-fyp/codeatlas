@@ -30,6 +30,18 @@ class ChangeRef(Model):
     merge_base_sha: str
 
 
+class ChangedFile(Model):
+    """Complete Git delta; revisions are the bundle's merge base and head."""
+
+    old_path: str | None
+    new_path: str | None
+    change_type: Literal["added", "modified", "deleted", "renamed"]
+    old_mode: int
+    new_mode: int
+    old_oid: str
+    new_oid: str
+
+
 class WorkItemRef(Evidence):
     key: str
     found_in: Literal["branch", "pr_title", "pr_body", "commit"]

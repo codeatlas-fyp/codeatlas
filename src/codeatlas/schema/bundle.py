@@ -5,10 +5,11 @@ Additions approved in docs/specs/step-2-schema.md (S3): `collected_at`, `run_id`
 content-addressed, and the hash travels in `Verdict.bundle_hash`.
 """
 
-from typing import Literal
+from typing import Any, Literal
 
 from codeatlas.schema.evidence import (
     ChangedEntity,
+    ChangedFile,
     ChangeEvent,
     ChangeRef,
     CodeEdge,
@@ -60,6 +61,7 @@ class EvidenceBundle(Model):
     policy: Policy  # copied in so replay never reads live files
     effective_policy_hash: str | None = None
     policy_source: str | None = None
+    identity_map_source: str | None = None
     identity_map: IdentityMap
     work_items: list[WorkItemRef]
     change_events: list[ChangeEvent]
@@ -76,5 +78,7 @@ class EvidenceBundle(Model):
     criteria: list[Criterion]
     candidates: list[SemanticCandidate]
     collection_notes: list[str]  # e.g. "work item SBX-99 not found"
-    # CA-02: None in bundles made before semantic-run-v1, and then left out of the hash.
+    changed_files: list[ChangedFile] | None = None
     semantic_run: SemanticRunSummary | None = None
+    c9_rule_version: Literal["3"] | None = None
+    frozen_jira_cutoff: dict[str, dict[str, Any]] | None = None

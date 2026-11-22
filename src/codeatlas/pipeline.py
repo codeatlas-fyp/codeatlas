@@ -30,7 +30,7 @@ from codeatlas.analyze import semantic_run as semantic_run_analysis
 from codeatlas.analyze.lifecycle import JiraHistory, LifecycleContext, TextForms, reconstruct
 from codeatlas.bundle.hashing import effective_policy_hash, sha256_hex, verdict_hash
 from codeatlas.bundle.store import BundleStore, load_bundle
-from codeatlas.collect.git.repo import DiffHunk
+from codeatlas.collect.git.repo import DiffHunk, FileDelta
 from codeatlas.collect.jira.adf import adf_to_text, wiki_to_text
 from codeatlas.config import ChangeFile
 from codeatlas.errors import (
@@ -46,6 +46,7 @@ from codeatlas.evaluate.verdict import decide, run_rules
 from codeatlas.logging import EventLog
 from codeatlas.schema import (
     ChangedEntity,
+    ChangedFile,
     ChangeEvent,
     ChangeRef,
     CodeEdge,
@@ -95,6 +96,7 @@ class GitSource(Protocol):
     """Read-only local-clone access; `collect.git.LocalRepo` satisfies it."""
 
     def merge_base(self, base_ref: str, head_sha: str) -> str: ...
+    def diff_files(self, base_sha: str, head_sha: str) -> list[FileDelta]: ...
     def diff_hunks(
         self, base_sha: str, head_sha: str, *, context_lines: int = 3
     ) -> list[DiffHunk]: ...
@@ -130,6 +132,7 @@ class CollectRequest:
     bm25_only: bool = False  # skip the embedding model (offline runs and tests)
     policy_source: str | None = None
     require_unchanged_jira: bool = False
+    identity_map_source: str | None = None
 
 
 def evaluate_bundle(
@@ -145,7 +148,13 @@ def evaluate_bundle(
     error has exit code 4.
     """
     chosen = tuple(
-        default_rules(legacy_c5="pr_author_login" not in bundle.model_fields_set)
+        default_rules(
+            legacy_c5="pr_author_login" not in bundle.model_fields_set,
+            complete_file_inventory="changed_files" in bundle.model_fields_set,
+            semantic_run=bundle.semantic_run is not None,
+            advisory_c9=bundle.c9_rule_version == "3",
+            frozen_cutoff=bundle.frozen_jira_cutoff is not None,
+        )
         if rules is None
         else rules
     )
@@ -377,7 +386,12 @@ def _decode(data: bytes | None) -> str | None:
 
 
 def _governance(
-    change: ChangeRef, hunks: list[DiffHunk], git: GitSource, policy: Policy, at: datetime
+    change: ChangeRef,
+    hunks: list[DiffHunk],
+    git: GitSource,
+    policy: Policy,
+    at: datetime,
+    file_deltas: list[FileDelta] | None = None,
 ) -> tuple[GovernanceSnapshot, list[GovernanceChange], list[str]]:
     """CODEOWNERS, ADRs and the policy file at the base commit; governance files in the diff."""
     notes: list[str] = []
@@ -408,7 +422,15 @@ def _governance(
         retrieved_at=at,
         codeowners_path=codeowners_path,
     )
-    changed_files = sorted({(h.file_path, h.change_type) for h in hunks})
+    changed_files: list[tuple[str, str]] = []
+    if file_deltas is not None:
+        for delta in file_deltas:
+            for maybe_path in (delta.old_path, delta.new_path):
+                if maybe_path is not None:
+                    changed_files.append((maybe_path, delta.change_type))
+    else:
+        changed_files = [(h.file_path, h.change_type) for h in hunks]
+    changed_files = sorted(set(changed_files))
     changes = governance_analysis.governance_changes_in_diff(
         changed_files=changed_files, policy=policy, retrieved_at=at
     )
@@ -532,6 +554,12 @@ def _code(
         entities += code_analysis.extract_entities(file_path=path, source=source)
     entities.sort(key=lambda e: (e.file, e.start_line, e.entity_id))
     edges = code_analysis.build_import_graph(entities=entities, file_sources=sources)
+    try:
+        code_analysis._parser()
+    except ImportError as error:
+        raise CollectionError(
+            "calls", status=None, retryable=False, detail="CALLS parser is unavailable"
+        ) from error
     edges += calls_analysis.build_call_graph(entities=entities, file_sources=sources)
     head_sources = {path: text for path, text in sources.items() if path not in deleted_files}
     return entities, changed, edges, head_sources
@@ -613,6 +641,9 @@ def collect_bundle(
     events: list[ChangeEvent] = []
     versions: list[RequirementVersion] = []
     lifecycle: list[LifecycleFacts] = []
+    frozen_cutoff: dict[str, dict[str, Any]] | None = (
+        {} if getattr(source, "contract_v4", False) else None
+    )
     keys = sorted({item.key for item in change.work_items})
     if request.target is not None and not keys:
         notes.append("no work-item key found in the branch, PR title, PR body or commits")
@@ -623,6 +654,18 @@ def collect_bundle(
         authorities = _members(source, authority.group, authority.account_ids, notes)
         categories: dict[str, dict[str, str]] = {}
         for key in keys:
+            if frozen_cutoff is not None:
+                read_cutoff = getattr(source, "fetch_cutoff_snapshot", None)
+                if not callable(read_cutoff):
+                    raise ConfigError("Frozen cutoff adapter is unavailable.")
+                frozen_cutoff[key] = read_cutoff(key)
+                notes.append(
+                    f"{key}: cutoff text and state are snapshots; lifecycle history is incomplete"
+                )
+                notes.append(
+                    f"{key}: semantic ranking unavailable without a historical version identity"
+                )
+                continue
             try:
                 issue = source.fetch_issue(key)
             except CollectionError as error:
@@ -689,6 +732,7 @@ def collect_bundle(
     model_ids: list[str] = []
     model_file_hashes: dict[str, str] = {}
     semantic_run: SemanticRunSummary | None = None
+    changed_files: list[ChangedFile] | None = None
     people: list[ResolvedPerson] = []
 
     if request.target is not None and sources is not None:
@@ -702,12 +746,14 @@ def collect_bundle(
             "semantic": semantic_run_analysis.EXTRACTOR_VERSION,
         }
         with log.stage("diff"):
+            file_deltas = sources.git.diff_files(change.ref.merge_base_sha, change.ref.head_sha)
+            changed_files = [ChangedFile(**vars(delta)) for delta in file_deltas]
             hunks = sources.git.diff_hunks(
                 change.ref.merge_base_sha, change.ref.head_sha, context_lines=0
             )
         with log.stage("governance"):
             governance, governance_changes, governance_notes = _governance(
-                change.ref, hunks, sources.git, request.policy, at
+                change.ref, hunks, sources.git, request.policy, at, file_deltas
             )
             notes += governance_notes
         with log.stage("code"):
@@ -732,9 +778,9 @@ def collect_bundle(
             model_file_hashes = run.model_file_hashes
             semantic_run = run.summary if criteria else None
             notes += [
-                f"semantic ranker {r.name} {r.state}: {r.reason}"
-                for r in run.summary.rankers
-                if r.state != "ok" and not request.bm25_only
+                f"semantic ranker {ranker.name} {ranker.state}: {ranker.reason}"
+                for ranker in run.summary.rankers
+                if ranker.state != "ok"
             ]
         people = _people(change.commits, change.reviews, request.identity_map)
 
@@ -753,6 +799,7 @@ def collect_bundle(
             effective_policy_hash=effective_policy_hash(request.policy),
             policy_source=request.policy_source,
             identity_map=request.identity_map,
+            identity_map_source=request.identity_map_source,
             work_items=change.work_items,
             change_events=events,
             versions=versions,
@@ -768,7 +815,10 @@ def collect_bundle(
             criteria=criteria,
             candidates=candidates,
             collection_notes=sorted(set(notes)),
+            changed_files=changed_files,
             semantic_run=semantic_run,
+            c9_rule_version="3",
+            frozen_jira_cutoff=frozen_cutoff,
         )
 
 

@@ -62,23 +62,21 @@ class SemanticRun(Model):
     model_id: str | None = None
     model_revision: str | None = None
     representation_version: str | None = None
-    status: Literal["accepted", "abstained", "unavailable", "fallback"]
+    status: Literal["accepted", "review", "abstained", "unavailable", "fallback"]
     gate_profile: str | None = None
     reason: str
+    rankers: list[dict[str, str | None]] = Field(default_factory=list)
     candidates: list[SemanticRunCandidate] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_decision(self) -> Self:
         accepted = any(candidate.accepted is True for candidate in self.candidates)
         if self.status == "accepted":
-            if not accepted:
-                raise ValueError("accepted runs must contain an accepted candidate")
             if not all(
                 (
                     self.source_revision,
                     self.candidate_universe_hash,
                     self.model_id,
-                    self.model_revision,
                     self.representation_version,
                     self.gate_profile,
                 )

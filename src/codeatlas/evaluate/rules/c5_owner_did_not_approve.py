@@ -37,6 +37,9 @@ class C5OwnerDidNotApprove:
     version: str = VERSION
     required_evidence: tuple[str, ...] = REQUIRED_EVIDENCE
 
+    def changed_paths(self, bundle: EvidenceBundle) -> list[str]:
+        return sorted({ce.file for ce in bundle.changed})
+
     def check(self, bundle: EvidenceBundle, links: list[TraceLink], policy: Policy) -> CheckResult:
         rule_severity: Severity = severity(policy, CASE, "block")
 
@@ -66,7 +69,7 @@ class C5OwnerDidNotApprove:
 
         pr_author = bundle.pr_author_login.casefold() if bundle.pr_author_login else None
 
-        changed_paths = sorted({ce.file for ce in bundle.changed})
+        changed_paths = self.changed_paths(bundle)
         missing: list[tuple[str, list[str]]] = []
         insufficient_reasons: list[str] = []
         owned_paths = 0
@@ -159,4 +162,30 @@ class C5OwnerDidNotApprove:
             required=False,
             message=f"All owned paths have an owner APPROVED review at head {head_sha[:12]}.",
             evidence_ids=sorted({r.evidence_id for r in bundle.reviews if r.state == "APPROVED"}),
+        )
+
+
+class C5CompleteFileInventory(C5OwnerDidNotApprove):
+    """C5 v3 uses the complete Git delta inventory frozen in newer bundles."""
+
+    version = "3"
+    required_evidence = (*REQUIRED_EVIDENCE, "changed_files")
+
+    def check(self, bundle: EvidenceBundle, links: list[TraceLink], policy: Policy) -> CheckResult:
+        if bundle.changed_files is None:
+            return CheckResult(
+                case=CASE,
+                outcome="INSUFFICIENT_EVIDENCE",
+                severity="none",
+                required=True,
+                message="Complete changed-file evidence was not collected.",
+                evidence_ids=[],
+            )
+        return super().check(bundle, links, policy)
+
+    def changed_paths(self, bundle: EvidenceBundle) -> list[str]:
+        if bundle.changed_files is None:
+            raise ValueError("C5 v3 requires a complete changed-file inventory")
+        return sorted(
+            {path for delta in bundle.changed_files if (path := delta.new_path or delta.old_path)}
         )

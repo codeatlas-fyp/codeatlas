@@ -42,6 +42,19 @@ class DiffHunk:
     change_type: str  # "added" | "modified" | "deleted" | "renamed"
 
 
+@dataclass(frozen=True)
+class FileDelta:
+    """A Git file change independent of whether a textual hunk exists."""
+
+    old_path: str | None
+    new_path: str | None
+    change_type: str
+    old_mode: int
+    new_mode: int
+    old_oid: str
+    new_oid: str
+
+
 class LocalRepo:
     """Thin wrapper around pygit2.Repository with the three ops above."""
 
@@ -94,6 +107,30 @@ class LocalRepo:
                 )
         return hunks
 
+    def diff_files(self, base_sha: str, head_sha: str) -> list[FileDelta]:
+        """Return every file delta, including binary, rename-only and mode changes."""
+        base = self._repo.get(self._resolve(base_sha))
+        head = self._repo.get(self._resolve(head_sha))
+        if base is None or head is None:
+            raise ValueError("base or head commit not in local repo")
+        diff = self._repo.diff(base.id, head.id, context_lines=0)
+        diff.find_similar()
+        result = []
+        for delta in diff.deltas:
+            change = _change_type(delta.status)
+            result.append(
+                FileDelta(
+                    old_path=None if change == "added" else delta.old_file.path,
+                    new_path=None if change == "deleted" else delta.new_file.path,
+                    change_type=change,
+                    old_mode=delta.old_file.mode,
+                    new_mode=delta.new_file.mode,
+                    old_oid=str(delta.old_file.id),
+                    new_oid=str(delta.new_file.id),
+                )
+            )
+        return result
+
     def file_bytes(self, sha: str, path: str) -> bytes | None:
         """Raw bytes of `path` at commit `sha`, or None if absent at that commit."""
         import pygit2
@@ -114,10 +151,11 @@ class LocalRepo:
         """Convenience: unique file paths in the diff. C2 only needs these."""
         seen: set[str] = set()
         order: list[str] = []
-        for hunk in self.diff_hunks(base_sha, head_sha):
-            if hunk.file_path not in seen:
-                seen.add(hunk.file_path)
-                order.append(hunk.file_path)
+        for delta in self.diff_files(base_sha, head_sha):
+            path = delta.new_path or delta.old_path
+            if path and path not in seen:
+                seen.add(path)
+                order.append(path)
         return order
 
     def list_files(self, sha: str, prefix: str = "") -> list[str]:

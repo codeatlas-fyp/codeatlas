@@ -77,6 +77,7 @@ def _execute(job, settings: WebSettings, factory, jobs: JobService, lease_token:
                 policy_source=contract.policy_source,
                 require_unchanged_jira=True,
                 identity_map=contract.identity_map,
+                identity_map_source=contract.identity_map_source,
                 run_id=log.run_id,
                 collected_at=contract.cutoff,
                 notes=[

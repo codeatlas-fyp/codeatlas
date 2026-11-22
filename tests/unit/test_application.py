@@ -251,7 +251,12 @@ def test_fixture_dashboard_evaluation_persists_history_bundle_and_replay(
         assert graph.json()["schema_version"] == "graph-view-v1"
         runs = client.get(f"/api/cases/{data['bundle_hash']}/semantic-runs")
         assert runs.status_code == 200
-        assert all(run["status"] == "unavailable" for run in runs.json())
+        assert runs.json()
+        assert all(run["status"] in {"fallback", "abstained"} for run in runs.json())
+        assert all(
+            any(r["name"] == "bm25" and r["state"] == "ok" for r in run["rankers"])
+            for run in runs.json()
+        )
         assert client.get("/api/evaluations").json()[0]["id"] == job_id
 
     restarted = _app(tmp_path, database_url=settings.database_url)
