@@ -60,7 +60,9 @@ _IDENTIFIERS: dict[type[BaseModel], Callable[[Any], Identifier]] = {
 # Fields added after schema v0 was frozen. When None they are left out of the canonical bytes,
 # so a bundle written before the field existed keeps its hash (and its folder name).
 _OMIT_WHEN_NONE: dict[type[BaseModel], frozenset[str]] = {
-    EvidenceBundle: frozenset({"effective_policy_hash", "semantic_run", "c9_rule_version", "frozen_jira_cutoff"}),
+    EvidenceBundle: frozenset(
+        {"effective_policy_hash", "semantic_run", "c9_rule_version", "frozen_jira_cutoff"}
+    ),
     SemanticCandidate: frozenset({"codet5_rank", "gate"}),
 }
 
