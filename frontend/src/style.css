@@ -29,4 +29,12 @@ summary { cursor: pointer; color: #3156b8; }
 .notice { background: #f2f5fc; padding: .75rem; border-radius: 6px; }
 .error { color: #a32424; }
 li small { display: block; }
+.graph-visualization svg { display: block; width: min(100%, 600px); height: auto; background: #f7f9fc; border: 1px solid #dce3ed; border-radius: 6px; }
+.graph-visualization circle { fill: #3156b8; }
+.graph-visualization text { fill: white; font-size: 10px; font-weight: 700; }
+.graph-visualization marker path { fill: #56657a; }
+.graph-edge { stroke: #56657a; stroke-width: 1.5; }
+.graph-edge.uncertain { stroke-dasharray: 5 4; }
+.graph-edge.unknown { stroke-dasharray: 1 4; }
+.graph-legend { columns: 2; overflow-wrap: anywhere; }
 @media (max-width: 700px) { .app { padding: 1.25rem .8rem 3rem; } header, .form-grid { flex-direction: column; align-items: stretch; } .columns { grid-template-columns: 1fr; } }

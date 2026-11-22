@@ -10,7 +10,8 @@ type PullRequest = { number: number; title: string; author: string };
 type Job = { id: string; repository: string; pull_request_number: number; status: string; stage: string; created_at: string; verdict: string | null; error: string | null; events: { id: number; message: string; at: string }[] };
 type Check = { case: string; outcome: string; severity: string; message: string; evidence_ids: string[] };
 type Result = { bundle_hash: string; verdict: { value: string; results: Check[] }; bundle: { policy_source: string | null }; collection_notes: string[] };
-type Graph = { status: string; limitations: string[]; nodes: unknown[]; edges: { id: string; src: string; dst: string; kind: string; confident: boolean | null }[] };
+type GraphNode = { id: string; kind: string; entity_id?: string | null };
+type Graph = { status: string; limitations: string[]; nodes: GraphNode[]; edges: { id: string; src: string; dst: string; kind: string; confident: boolean | null }[] };
 type Semantic = { criterion_id: string; status: string; reason: string; rankers: { name: string; model_id: string; state: string; reason: string | null }[]; candidates: { entity_id: string; rank: number; accepted: boolean | null }[] };
 type Replay = { match: boolean; refused: boolean; message: string; limitations: string[] };
 type ComparisonSide = { evaluation_id: string; repo: string; pr_number: number; verdict: string; policy_source: string | null; policy_hash: string; base_sha: string; head_sha: string; merge_base_sha: string; cutoff: string; source_mode: string | null; ruleset_version: string; graph: { entities: number; edges: number }; semantic: { criteria: number; candidates: number } };
@@ -18,6 +19,31 @@ type Comparison = { before: ComparisonSide; after: ComparisonSide; directly_comp
 
 export function findingLabel(change: string): string {
   return change.replaceAll("_", " ");
+}
+
+export function GraphVisualization({ graph }: { graph: Graph }) {
+  const nodes = graph.nodes.slice(0, 20);
+  const positions = new Map(nodes.map((node, index) => {
+    const angle = 2 * Math.PI * index / Math.max(nodes.length, 1) - Math.PI / 2;
+    return [node.id, { x: 300 + 230 * Math.cos(angle), y: 240 + 190 * Math.sin(angle) }] as const;
+  }));
+  const edges = graph.edges.filter((edge) => positions.has(edge.src) && positions.has(edge.dst)).slice(0, 60);
+  if (!nodes.length) return <p>No graph nodes are available to display.</p>;
+  return <div className="graph-visualization">
+    <p>Showing {nodes.length} of {graph.nodes.length} nodes and {edges.length} of {graph.edges.length} edges. Dashed lines indicate uncertain resolution, dotted lines have no recorded confidence, and arrowheads show direction.</p>
+    <svg viewBox="0 0 600 480" role="img" aria-label="Recorded evidence graph; the edge list below gives the full details shown">
+      <defs><marker id="graph-arrow" markerWidth="8" markerHeight="8" refX="18" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" /></marker></defs>
+      {edges.map((edge) => {
+        const from = positions.get(edge.src)!; const to = positions.get(edge.dst)!;
+        return <line key={edge.id} x1={from.x} y1={from.y} x2={to.x} y2={to.y} className={edge.confident === false ? "graph-edge uncertain" : edge.confident === null ? "graph-edge unknown" : "graph-edge"} markerEnd="url(#graph-arrow)"><title>{`${edge.kind}: ${edge.src} to ${edge.dst}`}</title></line>;
+      })}
+      {nodes.map((node, index) => {
+        const point = positions.get(node.id)!;
+        return <g key={node.id}><circle cx={point.x} cy={point.y} r="12"><title>{`${node.kind}: ${node.entity_id || node.id}`}</title></circle><text x={point.x} y={point.y + 4} textAnchor="middle">{index + 1}</text></g>;
+      })}
+    </svg>
+    <ol className="graph-legend">{nodes.map((node) => <li key={node.id}>{node.kind}: {node.entity_id || node.id}</li>)}</ol>
+  </div>;
 }
 
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
@@ -70,9 +96,13 @@ export function App() {
   }, [loadHistory]);
   useEffect(() => {
     if (!saved || !repository.includes("/")) { setPrs([]); return; }
+    let stopped = false;
+    setPrs([]);
     const [owner, name] = repository.split("/");
     api<PullRequest[]>(`/api/github/repositories/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/pull-requests`)
-      .then(setPrs).catch((e: Error) => setError(e.message));
+      .then((items) => { if (!stopped) setPrs(items); })
+      .catch((e: Error) => { if (!stopped) setError(e.message); });
+    return () => { stopped = true; };
   }, [repository, saved]);
   useEffect(() => {
     if (!selected) return;
@@ -123,7 +153,7 @@ export function App() {
     <header><div><p className="eyebrow">CODEATLAS / WORKSPACE</p><h1>Evaluations</h1><p>Review changes against frozen evidence and the effective policy.</p></div><a href="/setup">Connections and classic view ↗</a></header>
     {error && <p className="notice error" role="alert">{error}</p>}
     <section className="card"><div className="section-head"><div><h2>Start an evaluation</h2><p>Select a configured Jira project and GitHub repository.</p></div><span className="tag">{setup ? `${setup.source_mode} mode` : "Loading"}</span></div>
-      <div className="form-grid"><label>Jira project<select value={project} onChange={(e) => { setProject(e.target.value); setSaved(false); }}><option value="">Select project</option>{projects.map((p) => <option key={p.key} value={p.key}>{p.name} ({p.key})</option>)}</select></label>
+      <div className="form-grid"><label>Jira project<select value={project} onChange={(e) => { setProject(e.target.value); setSaved(false); setPr(""); }}><option value="">Select project</option>{projects.map((p) => <option key={p.key} value={p.key}>{p.name} ({p.key})</option>)}</select></label>
       <label>Repository<select value={repository} onChange={(e) => { setRepository(e.target.value); setSaved(false); setPr(""); }}><option value="">Select repository</option>{repositories.map((r) => <option key={r.full_name}>{r.full_name}</option>)}</select></label>
       <button disabled={busy || !project || !repository || saved} onClick={() => void saveProject()}>Save selection</button></div>
       <div className="form-grid"><label>Pull request<select value={pr} disabled={!saved} onChange={(e) => setPr(e.target.value)}><option value="">{saved ? "Select pull request" : "Save selection first"}</option>{prs.map((p) => <option key={p.number} value={p.number}>#{p.number} · {p.title} · {p.author}</option>)}</select></label><button disabled={busy || !saved || !pr} onClick={() => void submit()}>Evaluate</button></div>
@@ -142,7 +172,7 @@ export function App() {
     {result && <section className="card"><div className="section-head"><div><p className="eyebrow">FROZEN BUNDLE</p><h2>Verdict: {result.verdict.value}</h2></div><a href={`/cases/${result.bundle_hash}`}>Open detailed evidence ↗</a></div><p>Policy source: {result.bundle.policy_source || "Not recorded"}</p><p>Replay: {replay ? (replay.refused ? "Refused" : replay.match ? "Match" : "Mismatch") : "Not loaded"}</p>{replay?.limitations.map((note) => <p key={note}>{note}</p>)}
       <ul className="checks">{result.verdict.results.map((check) => <li key={check.case}><strong>{check.case} · {check.outcome}</strong><p>{check.message}</p><small>{check.evidence_ids.join(", ") || "No evidence references"}</small></li>)}</ul>
       {result.collection_notes.map((note) => <p key={note} className="notice">{note}</p>)}
-      <h3>Graph evidence</h3><p>{graph ? `${graph.status} · ${graph.nodes.length} entities · ${graph.edges.length} edges` : "Not loaded"}</p>{graph?.limitations.map((note) => <p key={note}>{note}</p>)}<ul>{graph?.edges.slice(0, 25).map((edge) => <li key={edge.id}>{edge.kind}: {edge.src} → {edge.dst} · {edge.confident === null ? "confidence unavailable" : edge.confident ? "confident static resolution" : "uncertain static resolution"}</li>)}</ul>{graph && graph.edges.length > 25 && <p>Showing 25 of {graph.edges.length} edges.</p>}
+      <h3>Graph evidence</h3><p>{graph ? `${graph.status} · ${graph.nodes.length} nodes · ${graph.edges.length} edges` : "Not loaded"}</p>{graph?.limitations.map((note) => <p key={note}>{note}</p>)}{graph && <GraphVisualization graph={graph} />}<ul>{graph?.edges.slice(0, 25).map((edge) => <li key={edge.id}>{edge.kind}: {edge.src} → {edge.dst} · {edge.confident === null ? "confidence unavailable" : edge.confident ? "confident static resolution" : "uncertain static resolution"}</li>)}</ul>{graph && graph.edges.length > 25 && <details><summary>Show the remaining {graph.edges.length - 25} recorded edges</summary><ul>{graph.edges.slice(25).map((edge) => <li key={edge.id}>{edge.kind}: {edge.src} → {edge.dst} · {edge.confident === null ? "confidence unavailable" : edge.confident ? "confident static resolution" : "uncertain static resolution"}</li>)}</ul></details>}
       <h3>Semantic suggestions</h3>{semantic === null && <p>Not loaded.</p>}{semantic?.length === 0 && <p>No criteria are available.</p>}{semantic?.map((run) => <div key={run.criterion_id}><strong>{run.criterion_id} · {run.status}</strong><p>{run.reason}</p>{run.rankers?.map((ranker) => <p key={ranker.name}>{ranker.name} · {ranker.state} · {ranker.model_id}{ranker.reason ? ` · ${ranker.reason}` : ""}</p>)}<ul>{run.candidates.map((candidate) => <li key={`${candidate.rank}-${candidate.entity_id}`}>#{candidate.rank} {candidate.entity_id} · {candidate.accepted === null ? "acceptance not recorded" : candidate.accepted ? "accepted" : "not accepted"}</li>)}</ul></div>)}
     </section>}
   </main>;
