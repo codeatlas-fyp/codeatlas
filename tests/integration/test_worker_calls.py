@@ -48,7 +48,12 @@ def test_fixture_worker_freezes_calls_edges(tmp_path, monkeypatch) -> None:
         assert response.status_code == 202
         job_id = response.json()["id"]
     run_worker(settings, once=True)
-    with TestClient(app) as client:
+    # A fresh application instance must recover the job and its frozen results from disk.
+    restarted_app = _app(tmp_path, database_url=settings.database_url)
+    with TestClient(restarted_app) as client:
+        history = client.get("/api/evaluations")
+        assert history.status_code == 200
+        assert any(job["id"] == job_id and job["status"] == "succeeded" for job in history.json())
         response = client.get(f"/api/evaluations/{job_id}/case")
         assert response.status_code == 200
         bundle = response.json()["bundle"]
