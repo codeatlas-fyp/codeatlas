@@ -186,6 +186,9 @@ class Criterion(Model):
     derived_from_description: bool
 
 
+SemanticGate = Literal["accept", "review", "abstain"]
+
+
 class SemanticCandidate(Model):
     criterion_id: str
     entity_id: str
@@ -194,6 +197,43 @@ class SemanticCandidate(Model):
     fused_rank: int
     fused_score: float  # rounded to 4 decimals before hashing (step 3)
     model_id: str  # "<name>@<revision>"
+    # CA-02 (semantic-run-v1). None in bundles made before it; left out of the canonical
+    # bytes when None, so those bundles keep their hash.
+    codet5_rank: int | None = None
+    gate: SemanticGate | None = None
+
+
+class RankerRun(Model):
+    """One ranker in a semantic run, and whether it really ran."""
+
+    name: Literal["bm25", "minilm", "codet5p"]
+    model_id: str  # "<name>@<revision>", or "<name>@unavailable"
+    state: Literal["ok", "unavailable", "fallback"]
+    reason: str | None  # why it is unavailable, or what it fell back to
+
+
+class CriterionGate(Model):
+    """The accept/review/abstain decision for one criterion."""
+
+    criterion_id: str
+    gate: Literal["accept", "review", "abstain", "unavailable"]
+    top_score: float | None  # the score the thresholds were applied to
+    reason: str
+
+
+class SemanticRunSummary(Model):
+    """How the semantic candidates were made (semantic-run-v1), frozen into the bundle so
+    replay never reads a live model, corpus or calibration file."""
+
+    schema_id: Literal["semantic-run-v1"]
+    pinned_sha: str  # the commit the corpus was read at
+    corpus_hash: str
+    chunker_version: str
+    rankers: list[RankerRun]
+    calibration_id: str  # e.g. "gate@dev-2026-11-20"
+    accept_threshold: float
+    review_threshold: float
+    gates: list[CriterionGate]
 
 
 class TraceLink(Model):

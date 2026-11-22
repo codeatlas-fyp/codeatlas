@@ -18,12 +18,14 @@ from codeatlas.schema import (
     CodeEdge,
     CodeEntity,
     Criterion,
+    CriterionGate,
     Evidence,
     EvidenceBundle,
     IdentityEntry,
     LifecycleFacts,
     OwnerRule,
     PriorityChange,
+    RankerRun,
     RequirementVersion,
     ResolvedPerson,
     SemanticCandidate,
@@ -45,9 +47,19 @@ _IDENTIFIERS: dict[type[BaseModel], Callable[[Any], Identifier]] = {
     CodeEdge: lambda m: (m.src, m.dst, m.kind),
     Criterion: lambda m: (m.criterion_id,),
     SemanticCandidate: lambda m: (m.criterion_id, m.fused_rank, m.entity_id),
+    RankerRun: lambda m: (m.name,),
+    CriterionGate: lambda m: (m.criterion_id,),
     TraceLink: lambda m: (m.requirement_key, m.criterion_id or "", m.entity_id),
     CheckResult: lambda m: (m.case,),
     IdentityEntry: lambda m: (m.jira_account_id,),
+}
+
+
+# Fields added after schema v0 was frozen. When None they are left out of the canonical bytes,
+# so a bundle written before the field existed keeps its hash (and its folder name).
+_OMIT_WHEN_NONE: dict[type[BaseModel], frozenset[str]] = {
+    EvidenceBundle: frozenset({"effective_policy_hash", "semantic_run"}),
+    SemanticCandidate: frozenset({"codet5_rank", "gate"}),
 }
 
 
@@ -66,11 +78,11 @@ def has_identifier(model: type[BaseModel]) -> bool:
 def _plain(value: Any) -> Any:
     """Turn models, datetimes, floats and tuples into JSON values; sort every list."""
     if isinstance(value, BaseModel):
-        fields = type(value).model_fields
-        if isinstance(value, EvidenceBundle) and value.effective_policy_hash is None:
-            fields = {
-                name: field for name, field in fields.items() if name != "effective_policy_hash"
-            }
+        omit = _OMIT_WHEN_NONE.get(type(value), frozenset())
+        fields = {
+            name: field for name, field in type(value).model_fields.items()
+            if not (name in omit and getattr(value, name) is None)
+        }
         if isinstance(value, EvidenceBundle) and "pr_author_login" not in value.model_fields_set:
             fields = {name: field for name, field in fields.items() if name != "pr_author_login"}
         if isinstance(value, EvidenceBundle) and value.policy_source is None:

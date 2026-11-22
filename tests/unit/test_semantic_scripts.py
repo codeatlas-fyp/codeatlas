@@ -1,0 +1,228 @@
+"""The CA-02 scripts: target selection (--repo PATH@SHA) and the export run, BM25 only."""
+
+import csv
+import importlib.util
+import json
+import sys
+from pathlib import Path
+from types import ModuleType
+
+import pytest
+
+from codeatlas.analyze.semantic_gate import DevCriterion
+
+SCRIPTS = Path(__file__).parents[2] / "scripts"
+
+
+def _load(name: str) -> ModuleType:
+    # scripts/ is not a package; the scripts import semantic_target as a sibling module.
+    sys.path.insert(0, str(SCRIPTS))
+    try:
+        spec = importlib.util.spec_from_file_location(name, SCRIPTS / f"{name}.py")
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module  # dataclasses look their module up here
+        spec.loader.exec_module(module)
+        return module
+    finally:
+        sys.path.remove(str(SCRIPTS))
+
+
+target = _load("semantic_target")
+
+
+@pytest.mark.parametrize(
+    ("spec", "expected"),
+    [
+        ("D:/data/airflow@4f1c2ab", (Path("D:/data/airflow"), "4f1c2ab")),
+        ("D:/data/airflow", (Path("D:/data/airflow"), "HEAD")),
+        ("../arrow@main", (Path("../arrow"), "main")),
+        ("/srv/me@home/repo", (Path("/srv/me@home/repo"), "HEAD")),  # '@' inside the path
+    ],
+)
+def test_split_spec(spec: str, expected: tuple[Path, str]) -> None:
+    assert target.split_spec(spec) == expected
+
+
+def test_load_target_pins_a_git_repo_at_the_given_commit(tmp_path: Path) -> None:
+    pygit2 = pytest.importorskip("pygit2")
+    repo = pygit2.init_repository(str(tmp_path))
+    sig = pygit2.Signature("Test", "test@example.com")
+    (tmp_path / "fees.py").write_text("def late_fee(days):\n    return days * 2\n")
+    repo.index.add("fees.py")
+    repo.index.write()
+    first = repo.create_commit("refs/heads/main", sig, sig, "one", repo.index.write_tree(), [])
+    (tmp_path / "fees.py").write_text("def other():\n    return 0\n")
+    repo.index.add("fees.py")
+    repo.index.write()
+    repo.create_commit("refs/heads/main", sig, sig, "two", repo.index.write_tree(), [first])
+
+    loaded = target.load_target(f"{tmp_path}@{str(first)[:8]}")
+    assert loaded.pinned_sha == str(first)
+    assert loaded.label == tmp_path.name
+    assert "fees.late_fee" in {e.entity_id for e in loaded.entities}
+
+
+def test_load_target_without_repo_reads_codeatlas_src() -> None:
+    loaded = target.load_target(None)
+    assert (loaded.label, loaded.pinned_sha) == ("codeatlas", "working-tree")
+    assert "codeatlas/analyze/semantic_run.py" in loaded.sources
+
+
+def test_dev_criterion_keeps_key_version_and_text() -> None:
+    crit = DevCriterion("AIRFLOW-12:v3:ac2", "Retry the task.", frozenset()).as_criterion()
+    assert (crit.key, crit.version_no, crit.text) == ("AIRFLOW-12", 3, "Retry the task.")
+    assert DevCriterion("X-1", "t", frozenset()).as_criterion().version_no == 1
+
+
+def test_export_script_writes_a_run_folder(tmp_path: Path) -> None:
+    export = _load("export_semantic_run")
+    labels = tmp_path / "labels.csv"
+    labels.write_text(
+        "criterion_id,criterion_text,entity_id\n"
+        "DEV-01:v1:ac1,Split the acceptance criteria text into criteria.,"
+        "codeatlas.analyze.criteria.split_criteria\n",
+        encoding="utf-8",
+    )
+    code = export.main(
+        [
+            "--criteria",
+            str(labels),
+            "--out",
+            str(tmp_path / "runs"),
+            "--run-id",
+            "t1",
+            "--bm25-only",
+        ]
+    )
+    assert code == 0
+    run = tmp_path / "runs" / "t1"
+    doc = json.loads((run / "semantic-run-v1.json").read_text(encoding="utf-8"))
+    assert doc["corpus"]["pinned_sha"] == "working-tree"
+    rows = list(csv.DictReader((run / "predictions.csv").open(encoding="utf-8")))
+    assert rows and {r["ranker"] for r in rows} == {"bm25", "fused"}
+
+
+def test_run_name_has_no_double_dash_for_the_working_tree() -> None:
+    export = _load("export_semantic_run")
+    assert export.run_name("codeatlas", "working-tree", "T") == "codeatlas-worktree-T"
+    assert export.run_name("airflow", "4f1c2ab9" + "0" * 32, "T") == "airflow-4f1c2ab9-T"
+
+
+def test_evaluate_script_writes_tables_next_to_the_run(tmp_path: Path) -> None:
+    export = _load("export_semantic_run")
+    evaluate = _load("evaluate_semantic")
+    labels = tmp_path / "labels.csv"
+    labels.write_text(
+        "criterion_id,criterion_text,entity_id\n"
+        "DEV-01:v1:ac1,Split the acceptance criteria text into criteria.,"
+        "codeatlas.analyze.criteria.split_criteria\n"
+        "DEV-02:v1:ac1,Encrypt the zebra.,\n",
+        encoding="utf-8",
+    )
+    runs = tmp_path / "runs"
+    args = ["--criteria", str(labels), "--out", str(runs), "--run-id", "t2", "--bm25-only"]
+    assert export.main(args) == 0
+    assert evaluate.main(["--run", str(runs / "t2"), "--labels", str(labels)]) == 0
+    text = (runs / "t2" / "evaluation.md").read_text(encoding="utf-8")
+    assert "| bm25 | 1 |" in text and "no-match criteria abstained" in text
+    data = json.loads((runs / "t2" / "evaluation.json").read_text(encoding="utf-8"))
+    assert data["labels"] == "labels.csv"
+
+
+def test_evaluate_script_refuses_a_folder_without_predictions(tmp_path: Path) -> None:
+    evaluate = _load("evaluate_semantic")
+    labels = tmp_path / "labels.csv"
+    labels.write_text("criterion_id,criterion_text,entity_id\n", encoding="utf-8")
+    assert evaluate.main(["--run", str(tmp_path), "--labels", str(labels)]) == 1
+
+
+def _git_repo_with_code(path: Path) -> str:
+    pygit2 = pytest.importorskip("pygit2")
+    repo = pygit2.init_repository(str(path))
+    sig = pygit2.Signature("Test", "test@example.com")
+    (path / "lib").mkdir()
+    (path / "tests").mkdir()
+    (path / "lib" / "fees.py").write_text(
+        "class Fees:\n    def late(self, days):\n        return days * 2\n"
+    )
+    (path / "tests" / "test_fees.py").write_text("def test_late():\n    assert True\n")
+    repo.index.add_all()
+    repo.index.write()
+    return str(repo.create_commit("refs/heads/main", sig, sig, "one", repo.index.write_tree(), []))
+
+
+def test_prepare_case_writes_neutral_entities_and_criteria(tmp_path: Path) -> None:
+    prepare = _load("prepare_case")
+    sha = _git_repo_with_code(tmp_path / "repo")
+    issue = tmp_path / "issue.txt"
+    issue.write_text(
+        "Late fees.\n\nAcceptance criteria:\n- Charge two per day late.\n- Show the fee.\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "case"
+    args = ["--repo", f"{tmp_path / 'repo'}@{sha}", "--key", "LIB-7", "--version", "2"]
+    assert prepare.main([*args, "--issue-text", str(issue), "--out", str(out)]) == 0
+
+    entities = list(csv.DictReader((out / "entities.csv").open(encoding="utf-8")))
+    by_id = {e["entity_id"]: e for e in entities}
+    assert by_id["lib.fees.Fees.late"]["label_ref"] == "lib/fees.py::Fees.late"
+    assert by_id["lib.fees.Fees.late"]["is_test"] == "0"
+    assert by_id["tests.test_fees.test_late"]["is_test"] == "1"
+    assert "score" not in entities[0] and "rank" not in entities[0]  # a list, not a ranking
+    criteria = list(csv.DictReader((out / "criteria.csv").open(encoding="utf-8")))
+    assert [c["criterion_id"] for c in criteria] == ["LIB-7:v2:ac1", "LIB-7:v2:ac2"]
+    assert criteria[0]["criterion_text"] == "Charge two per day late."
+
+
+def test_prepare_case_root_limits_the_entity_list(tmp_path: Path) -> None:
+    prepare = _load("prepare_case")
+    sha = _git_repo_with_code(tmp_path / "repo")
+    issue = tmp_path / "issue.txt"
+    issue.write_text("Acceptance criteria:\n- Charge late fees.\n", encoding="utf-8")
+    out = tmp_path / "case"
+    args = ["--repo", f"{tmp_path / 'repo'}@{sha}", "--key", "LIB-7", "--root", "lib/"]
+    assert prepare.main([*args, "--issue-text", str(issue), "--out", str(out)]) == 0
+    files = {e["file"] for e in csv.DictReader((out / "entities.csv").open(encoding="utf-8"))}
+    assert files == {"lib/fees.py"}
+
+
+def test_is_test_file() -> None:
+    prepare = _load("prepare_case")
+    assert prepare.is_test_file("tests/unit/test_x.py")
+    assert prepare.is_test_file("pkg/test_fees.py")
+    assert prepare.is_test_file("pkg/fees_test.py")
+    assert not prepare.is_test_file("pkg/fees.py")
+
+
+def test_evaluate_script_writes_full_ranking_outputs(tmp_path: Path) -> None:
+    export = _load("export_semantic_run")
+    evaluate = _load("evaluate_semantic")
+    labels = tmp_path / "labels.csv"
+    labels.write_text(
+        "criterion_id,criterion_text,entity_id\n"
+        "DEV-01:v1:ac1,Split the acceptance criteria text into criteria.,"
+        "codeatlas/analyze/criteria.py::split_criteria\n",
+        encoding="utf-8",
+    )
+    runs = tmp_path / "runs"
+    args = ["--criteria", str(labels), "--out", str(runs), "--run-id", "t3", "--bm25-only"]
+    assert export.main(args) == 0
+    assert (runs / "t3" / "rankings.csv").is_file()
+    assert evaluate.main(["--run", str(runs / "t3"), "--labels", str(labels)]) == 0
+    for name in ("evaluation.md", "evaluation.json", "recall_curve.csv", "recall_curve.svg"):
+        assert (runs / "t3" / name).is_file()
+    data = json.loads((runs / "t3" / "evaluation.json").read_text(encoding="utf-8"))
+    assert data["source"] == "rankings.csv (full)"
+    assert data["rankers"][0]["first_ranks"][0] is not None  # BM25 found it somewhere
+
+
+def test_evaluate_script_needs_out_for_several_runs(tmp_path: Path) -> None:
+    evaluate = _load("evaluate_semantic")
+    labels = tmp_path / "labels.csv"
+    labels.write_text("criterion_id,criterion_text,entity_id\n", encoding="utf-8")
+    for name in ("a", "b"):
+        (tmp_path / name).mkdir()
+        (tmp_path / name / "predictions.csv").write_text("run_id\n", encoding="utf-8")
+    runs = ["--run", str(tmp_path / "a"), "--run", str(tmp_path / "b")]
+    assert evaluate.main([*runs, "--labels", str(labels)]) == 1

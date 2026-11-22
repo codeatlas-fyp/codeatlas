@@ -1,0 +1,25 @@
+criterion_id,criterion_text,entity_id
+DEV-01:v1:ac1,The same evidence must produce byte-identical JSON on every machine before hashing.,codeatlas.bundle.canonical.canonical_bytes
+DEV-02:v1:ac1,Work out which people must approve changes to a given path.,codeatlas.codeowners.owners_for
+DEV-03:v1:ac1,Re-evaluate a stored bundle and refuse it when the verdict hash differs.,codeatlas.bundle.replay.replay
+DEV-04:v1:ac1,"Extract Jira issue keys from the branch name, PR title, body and commit messages.",codeatlas.analyze.keys.find_keys
+DEV-05:v1:ac1,Split the acceptance criteria text into separate criteria.,codeatlas.analyze.criteria.split_criteria
+DEV-06:v1:ac1,Convert Atlassian document format descriptions into plain text.,codeatlas.collect.jira.adf.adf_to_text
+DEV-07:v1:ac1,Rebuild the history of a requirement from its change log to know which version was approved.,codeatlas.analyze.lifecycle.reconstruct
+DEV-08:v1:ac1,Hide secrets such as tokens before anything is written to the log.,codeatlas.logging.redact
+DEV-09:v1:ac1,Read the repository policy file and validate it.,codeatlas.config.load_policy
+DEV-10:v1:ac1,"Combine the individual rule outcomes into a single pass, review or fail decision.",codeatlas.evaluate.verdict.decide
+DEV-11:v1:ac1,Map each changed diff region onto the function or class it touches.,codeatlas.analyze.code.map_hunks_to_entities
+DEV-12:v1:ac1,Record which modules import which other modules.,codeatlas.analyze.code.build_import_graph
+DEV-13:v1:ac1,Detect edits to governance files such as CODEOWNERS inside the pull request.,codeatlas.analyze.governance.governance_changes_in_diff
+DEV-14:v1:ac1,Parse an architecture decision record and the requirements it covers.,codeatlas.analyze.governance.parse_adr
+DEV-15:v1:ac1,Compute the hash of the evaluated outcome so it can be verified later.,codeatlas.bundle.hashing.verdict_hash
+DEV-16:v1:ac1,Show the list of evaluated cases on a web page.,codeatlas.web.pages.case_list
+DEV-17:v1:ac1,Create the web application with its routes.,codeatlas.api.app.create_app
+DEV-18:v1:ac1,Turn Jira wiki markup into readable text.,codeatlas.collect.jira.adf.wiki_to_text
+DEV-19:v1:ac1,Match a commit author to a Jira account to see who wrote the code.,codeatlas.evaluate.rules.c4_assignee_not_implementer.resolve_author
+DEV-20:v1:ac1,Send a weekly email digest of open requirements to project managers.,
+DEV-21:v1:ac1,Export the traceability report as a PDF file.,
+DEV-22:v1:ac1,Let users reset their password through an emailed link.,
+DEV-23:v1:ac1,Charge a late fee when a library book is returned after the due date.,
+DEV-24:v1:ac1,Resize uploaded profile pictures to thumbnails.,
