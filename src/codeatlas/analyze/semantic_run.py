@@ -13,6 +13,7 @@ reason "disabled (bm25_only)", so a bundle always says which rankers did not run
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -73,10 +74,13 @@ def run_semantic(
     bm25_only: bool = False,
     calibration: GateCalibration | None = None,
     loaders: dict[str, Loader] | None = None,
+    cache_root: Path | None = None,
 ) -> SemanticRunResult:
+    """`cache_root` is where the default loaders keep embedding vectors between runs (a
+    folder `embeddings/` inside it); None keeps no cache. Ignored when `loaders` is given."""
     corpus = build_corpus(entities=entities, file_sources=file_sources, pinned_sha=pinned_sha)
     calibration = calibration or load_calibration()
-    loaders = loaders if loaders is not None else default_loaders()
+    loaders = loaders if loaders is not None else default_loaders(cache_root)
 
     outputs = [rankers.rank_bm25(corpus, criteria)]
     for name in ("minilm", "codet5p"):
@@ -111,8 +115,8 @@ def run_semantic(
         ],
         calibration_id=calibration.calibration_id
         + (" (provisional)" if calibration.provisional else ""),
-        accept_threshold=limits.accept if limits else float("inf"),
-        review_threshold=limits.review if limits else float("inf"),
+        accept_threshold=_finite(limits.accept) if limits else None,
+        review_threshold=_finite(limits.review) if limits else None,
         gates=gates,
     )
     ran = [o for o in outputs if o.state != "unavailable"]
@@ -125,6 +129,12 @@ def run_semantic(
         model_ids=sorted(o.model_id for o in ran) if candidates else [],
         model_file_hashes={o.model_id: o.weights[1] for o in ran if o.weights is not None},
     )
+
+
+def _finite(value: float) -> float | None:
+    """A threshold as stored in the bundle: +inf ("never") becomes None, as in the
+    calibration file, so the summary is strict JSON."""
+    return None if math.isinf(value) else value
 
 
 __all__ = [
