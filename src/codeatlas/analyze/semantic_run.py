@@ -64,6 +64,23 @@ def default_loaders(cache_root: Path | None = None) -> dict[str, Loader]:
     }
 
 
+def load_once(loaders: dict[str, Loader]) -> dict[str, Loader]:
+    """The same loaders, but each model is loaded the first time it is asked for and then
+    reused, so a run over many cases does not reload the weights for every case. A loader
+    that fails is tried again next time (nothing is stored for it)."""
+    loaded: dict[str, Embedder] = {}
+
+    def once(name: str, load: Loader) -> Loader:
+        def get() -> Embedder:
+            if name not in loaded:
+                loaded[name] = load()
+            return loaded[name]
+
+        return get
+
+    return {name: once(name, load) for name, load in loaders.items()}
+
+
 def run_semantic(
     *,
     criteria: list[Criterion],
@@ -143,5 +160,6 @@ __all__ = [
     "EmbedderUnavailable",
     "SemanticRunResult",
     "default_loaders",
+    "load_once",
     "run_semantic",
 ]
