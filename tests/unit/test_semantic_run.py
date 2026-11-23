@@ -168,3 +168,36 @@ def test_shipped_calibration_gives_a_strict_json_summary() -> None:
     summary = _run(calibration=load_calibration()).summary
     json.dumps(summary.model_dump(mode="json"), allow_nan=False)
     assert summary.accept_threshold is None or math.isfinite(summary.accept_threshold)
+
+
+def test_load_once_loads_each_model_a_single_time() -> None:
+    from codeatlas.analyze.semantic_run import load_once
+
+    calls: list[str] = []
+
+    def make() -> BagOfWords:
+        calls.append("x")
+        return BagOfWords()
+
+    loaders = load_once({"minilm": make, "codet5p": make})
+    first = loaders["minilm"]()
+    assert loaders["minilm"]() is first and calls == ["x"]
+    loaders["codet5p"]()
+    assert calls == ["x", "x"]  # one load per model, not per call
+
+
+def test_load_once_retries_a_loader_that_failed() -> None:
+    from codeatlas.analyze.semantic_run import load_once
+
+    attempts: list[int] = []
+
+    def flaky() -> BagOfWords:
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise EmbedderUnavailable("OSError: offline")
+        return BagOfWords()
+
+    loaders = load_once({"codet5p": flaky})
+    with pytest.raises(EmbedderUnavailable):
+        loaders["codet5p"]()
+    assert isinstance(loaders["codet5p"](), BagOfWords) and len(attempts) == 2
