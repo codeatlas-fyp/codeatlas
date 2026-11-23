@@ -14,7 +14,11 @@ here. Each question gets its own measure:
    on, and the precision of `accept` (the fused top-1 is relevant).
 4. How sure are we? Every rate comes with its count and a 95% Wilson interval, and the
    ranking measures are repeated per repository, because cases in one repository are
-   not independent.
+   not independent. The primary measures (MRR, recall at 1, 5 and 10) also get a 95%
+   bootstrap interval that resamples whole cases (runs), not single criteria, because
+   criteria of one PR share its code and its wording.
+5. How much of what is shown is right? Precision, recall and F1 of the top k (k = 1, 5,
+   10) against the labelled relevant set, averaged over criteria.
 
 Inputs are CSV files only (`rankings.csv` from `semantic_export`, plus a labels CSV with
 criterion_id, criterion_text, entity_id), so anyone can recompute the numbers. An older
@@ -26,15 +30,19 @@ from __future__ import annotations
 
 import csv
 import math
+import random
 import statistics
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from codeatlas.analyze.semantic_gate import DevCriterion
 
-EVAL_VERSION = "semantic-eval@2"
+EVAL_VERSION = "semantic-eval@3"
 KS = (1, 5, 10, 20, 50)
+PRIMARY_KS = (1, 5, 10)  # the dataset plan's primary recall cut-offs; also the P/R/F1 cut-offs
+BOOTSTRAP_ROUNDS = 2000
+BOOTSTRAP_SEED = 20261114  # the dataset's seed, so the intervals are reproducible
 RANKER_ORDER = ("bm25", "minilm", "codet5p", "fused")
 Z = 1.96
 
@@ -76,6 +84,11 @@ class RankerScore:
     recall: dict[int, float]  # k -> mean share of relevant entities in the top k
     hit: dict[int, Rate]  # k -> criteria with a relevant entity in the top k
     mrr: float
+    cases: int = 0  # runs (cases) the criteria come from
+    precision: dict[int, float] = field(default_factory=dict)  # k -> mean |relevant in top k|/k
+    f1: dict[int, float] = field(default_factory=dict)  # k -> mean per-criterion F1 at k
+    # "mrr", "recall@1", ... -> 95% bootstrap interval over whole cases; None below 2 cases
+    bootstrap: dict[str, tuple[float, float] | None] = field(default_factory=dict)
 
     @property
     def not_ranked(self) -> int:
@@ -127,8 +140,15 @@ def evaluate(
     ranked: dict[tuple[str, str], list[tuple[int, str]]] = {}
     gates: dict[str, str] = {}
     repo_of: dict[str, str] = {}
+    run_of: dict[str, str] = {}
     for row in rows:
         cid = row["criterion_id"]
+        run = row.get("run_id", "") or "-"
+        if run_of.setdefault(cid, run) != run:
+            raise ValueError(
+                f"criterion {cid} is in runs {run_of[cid]} and {run}: "
+                "each criterion must come from one case"
+            )
         ranked.setdefault((row["ranker"], cid), []).append((int(row["rank"]), row["entity_id"]))
         gates[cid] = row.get("gate", "")
         repo_of[cid] = row.get("repo", "") or "-"
@@ -142,14 +162,25 @@ def evaluate(
         firsts: list[int | None] = []
         recalls: dict[int, list[float]] = {k: [] for k in KS}
         hits: dict[int, int] = dict.fromkeys(KS, 0)
+        precisions: dict[int, list[float]] = {k: [] for k in PRIMARY_KS}
+        f1s: dict[int, list[float]] = {k: [] for k in PRIMARY_KS}
+        per_case: dict[str, dict[str, list[float]]] = {}
         for d in items:
             order = orders.get((name, d.criterion_id), [])
             first = next((i for i, e in enumerate(order, start=1) if e in d.relevant), None)
             firsts.append(first)
+            case = per_case.setdefault(run_of[d.criterion_id], {})
+            case.setdefault("mrr", []).append(1.0 / first if first else 0.0)
             for k in KS:
                 found = len(d.relevant.intersection(order[:k]))
                 recalls[k].append(found / len(d.relevant))
                 hits[k] += 1 if found else 0
+                if k in PRIMARY_KS:
+                    p, r = found / k, found / len(d.relevant)
+                    precisions[k].append(p)
+                    f1s[k].append(2 * p * r / (p + r) if p + r else 0.0)
+                    case.setdefault(f"recall@{k}", []).append(r)
+        metrics = ["mrr", *(f"recall@{k}" for k in PRIMARY_KS)]
         return RankerScore(
             ranker=name,
             repo=repo,
@@ -158,6 +189,12 @@ def evaluate(
             recall={k: _mean(v) for k, v in recalls.items()},
             hit={k: Rate(hits[k], len(items)) for k in KS},
             mrr=_mean([1.0 / r if r else 0.0 for r in firsts]),
+            cases=len(per_case),
+            precision={k: _mean(v) for k, v in precisions.items()},
+            f1={k: _mean(v) for k, v in f1s.items()},
+            bootstrap={
+                m: case_bootstrap({c: vals[m] for c, vals in per_case.items()}) for m in metrics
+            },
         )
 
     match = [d for d in labelled if d.relevant]
@@ -199,6 +236,38 @@ def _mean(values: list[float]) -> float:
     return round(sum(values) / len(values), 4) if values else 0.0
 
 
+def case_bootstrap(
+    values_by_case: dict[str, list[float]],
+    *,
+    rounds: int = BOOTSTRAP_ROUNDS,
+    seed: int = BOOTSTRAP_SEED,
+) -> tuple[float, float] | None:
+    """95% percentile bootstrap interval of a per-criterion mean, resampling whole cases.
+
+    Each round draws as many cases as there are, with replacement, and averages every
+    criterion of the drawn cases. None below 2 cases (one case says nothing about spread).
+    Seeded, so the same inputs always give the same interval.
+    """
+    cases = sorted(c for c, values in values_by_case.items() if values)
+    if len(cases) < 2:
+        return None
+    rng = random.Random(seed)  # noqa: S311 - a reproducible statistics draw, not security
+    means: list[float] = []
+    for _ in range(rounds):
+        drawn = [value for _ in cases for value in values_by_case[rng.choice(cases)]]
+        means.append(sum(drawn) / len(drawn))
+    means.sort()
+    low = means[math.floor(0.025 * (rounds - 1))]
+    high = means[math.ceil(0.975 * (rounds - 1))]
+    return round(low, 4), round(high, 4)
+
+
+def _interval_text(value: float, interval: tuple[float, float] | None) -> str:
+    if interval is None:
+        return f"{value:.3f} (no interval: under 2 cases)"
+    return f"{value:.3f} [{interval[0]:.3f}, {interval[1]:.3f}]"
+
+
 def _median_text(score: RankerScore) -> str:
     median = score.median_rank
     if median is None:
@@ -227,6 +296,30 @@ def markdown(result: Evaluation) -> str:
             f"| {s.ranker} | {s.criteria} | {_median_text(s)} | {s.not_ranked} | "
             f"{s.mrr:.3f} | {cells} |"
         )
+    cases = max((s.cases for s in result.rankers), default=0)
+    lines += [
+        "",
+        f"Primary measures with a 95% bootstrap interval resampling whole cases ({cases} cases, "
+        f"{BOOTSTRAP_ROUNDS} rounds, seed {BOOTSTRAP_SEED}):",
+        "",
+        "| ranker | criteria | MRR | " + " | ".join(f"recall@{k}" for k in PRIMARY_KS) + " |",
+        "|" + "---|" * (3 + len(PRIMARY_KS)),
+    ]
+    for s in result.rankers:
+        primary = [_interval_text(s.mrr, s.bootstrap.get("mrr"))] + [
+            _interval_text(s.recall[k], s.bootstrap.get(f"recall@{k}")) for k in PRIMARY_KS
+        ]
+        lines.append(f"| {s.ranker} | {s.criteria} | " + " | ".join(primary) + " |")
+    lines += [
+        "",
+        "Top-k precision, recall and F1 against the labelled relevant set (mean per criterion):",
+        "",
+        "| ranker | " + " | ".join(f"P@{k} | R@{k} | F1@{k}" for k in PRIMARY_KS) + " |",
+        "|" + "---|" * (1 + 3 * len(PRIMARY_KS)),
+    ]
+    for s in result.rankers:
+        prf = [f"{s.precision[k]:.3f} | {s.recall[k]:.3f} | {s.f1[k]:.3f}" for k in PRIMARY_KS]
+        lines.append(f"| {s.ranker} | " + " | ".join(prf) + " |")
     lines += [
         "",
         "Criteria with a relevant entity within the first k (count, rate, 95% Wilson interval):",
@@ -288,6 +381,10 @@ def _score_dict(s: RankerScore) -> dict[str, object]:
         "mrr": s.mrr,
         "recall": {str(k): v for k, v in s.recall.items()},
         "hit": {str(k): _rate_dict(r) for k, r in s.hit.items()},
+        "cases": s.cases,
+        "precision": {str(k): v for k, v in s.precision.items()},
+        "f1": {str(k): v for k, v in s.f1.items()},
+        "bootstrap95": {m: list(i) if i else None for m, i in s.bootstrap.items()},
     }
 
 
@@ -297,6 +394,8 @@ def as_dict(result: Evaluation) -> dict[str, object]:
         "run_ids": list(result.run_ids),
         "source": result.source,
         "ks": list(KS),
+        "primary_ks": list(PRIMARY_KS),
+        "bootstrap": {"rounds": BOOTSTRAP_ROUNDS, "seed": BOOTSTRAP_SEED, "resampled": "cases"},
         "rankers": [_score_dict(s) for s in result.rankers],
         "per_repo": [_score_dict(s) for s in result.per_repo],
         "gate": {
@@ -380,13 +479,17 @@ def recall_curve_svg(result: Evaluation) -> str:
 
 
 __all__ = [
+    "BOOTSTRAP_ROUNDS",
+    "BOOTSTRAP_SEED",
     "EVAL_VERSION",
     "KS",
+    "PRIMARY_KS",
     "Evaluation",
     "GateScore",
     "RankerScore",
     "Rate",
     "as_dict",
+    "case_bootstrap",
     "evaluate",
     "markdown",
     "read_predictions",
