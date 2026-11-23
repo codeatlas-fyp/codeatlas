@@ -280,3 +280,24 @@ def test_group_lookup_server_error_is_not_swallowed() -> None:
 
     with pytest.raises(CollectionError):
         _members(Broken(), "approvers", [], [])  # type: ignore[arg-type]
+
+
+def test_embedding_cache_option_reaches_the_collect_request(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import codeatlas.cli as cli
+
+    made: list[Any] = []
+    real = cli.CollectRequest
+
+    def spy(**kwargs: Any) -> Any:
+        made.append(real(**kwargs))
+        return made[-1]
+
+    monkeypatch.setattr(cli, "CollectRequest", spy)
+    cache = tmp_path / "vectors"
+    result = collect(tmp_path, ["SBX-1"], "--embedding-cache", str(cache))
+    assert result.exit_code in EXIT_CODES.values(), result.output
+    assert made and made[-1].embedding_cache_dir == cache
+    collect(tmp_path, ["SBX-1"])
+    assert made[-1].embedding_cache_dir is None
