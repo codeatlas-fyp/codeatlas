@@ -18,6 +18,7 @@ Either way the Jira stages are the same, and nothing is stored unless collection
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, Protocol
 
 from codeatlas import __version__
@@ -119,6 +120,9 @@ class CollectRequest:
     run_id: str
     collected_at: datetime
     notes: list[str] = field(default_factory=list)
+    # CA-02: folder that keeps embedding vectors between runs, so a repository is embedded
+    # once, not on every collect. None: no cache (vectors are computed every time).
+    embedding_cache_dir: Path | None = None
     target: PullRequestTarget | None = None
     embedding_model: str | None = None  # ignored since CA-02: models come from model_registry
     bm25_only: bool = False  # skip the embedding model (offline runs and tests)
@@ -683,6 +687,7 @@ def collect_bundle(
                 pinned_sha=change.ref.head_sha,
                 top_k=request.policy.semantic.top_k,
                 bm25_only=request.bm25_only,
+                cache_root=request.embedding_cache_dir,
             )
             candidates = run.candidates
             model_ids = run.model_ids
