@@ -243,8 +243,10 @@ class SemanticRunSummary(Model):
     chunker_version: str
     rankers: list[RankerRun]
     calibration_id: str  # e.g. "gate@dev-2026-11-20"
-    accept_threshold: float
-    review_threshold: float
+    # None: no finite threshold ("never accept", or no calibrated gate ranker ran). Never inf,
+    # because strict JSON (the API, the export) has no Infinity.
+    accept_threshold: float | None
+    review_threshold: float | None
     gates: list[CriterionGate]
 
 

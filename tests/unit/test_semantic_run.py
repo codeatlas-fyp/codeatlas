@@ -1,6 +1,11 @@
 """One semantic run end to end: corpus, three rankers, fusion, gate, summary (CA-02)."""
 
+import json
 import math
+from pathlib import Path
+from typing import Any
+
+import pytest
 
 from codeatlas.analyze.code import extract_entities
 from codeatlas.analyze.codet5p import EmbedderUnavailable
@@ -84,7 +89,8 @@ def test_bm25_only_records_dense_rankers_as_disabled() -> None:
     assert states["minilm"] == ("unavailable", "disabled (bm25_only)")
     assert states["codet5p"] == ("unavailable", "disabled (bm25_only)")
     assert result.model_file_hashes == {}
-    assert math.isinf(result.summary.accept_threshold)  # no calibrated gate ranker ran
+    # no calibrated gate ranker ran: no threshold, stored as None (never inf)
+    assert (result.summary.accept_threshold, result.summary.review_threshold) == (None, None)
     assert all(g.gate in ("review", "abstain") for g in result.gates)  # BM25 never accepts
 
 
@@ -115,3 +121,83 @@ def test_run_is_deterministic() -> None:
 
 def test_default_loaders_cover_both_dense_rankers() -> None:
     assert sorted(default_loaders()) == ["codet5p", "minilm"]
+
+
+def test_cache_root_reaches_the_default_loaders(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from codeatlas.analyze import semantic_run
+
+    seen: list[Path | None] = []
+
+    def fake_default_loaders(cache_root: Path | None = None) -> dict[str, Any]:
+        seen.append(cache_root)
+        return {"minilm": BagOfWords, "codet5p": BagOfWords}
+
+    monkeypatch.setattr(semantic_run, "default_loaders", fake_default_loaders)
+    result = _run(loaders=None, cache_root=tmp_path)
+    assert seen == [tmp_path]
+    assert {r.name: r.state for r in result.summary.rankers}["codet5p"] == "ok"
+
+
+def test_given_loaders_win_over_cache_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from codeatlas.analyze import semantic_run
+
+    def must_not_run(cache_root: Path | None = None) -> dict[str, Any]:
+        raise AssertionError("default loaders used although loaders were given")
+
+    monkeypatch.setattr(semantic_run, "default_loaders", must_not_run)
+    _run(cache_root=tmp_path)
+
+
+def test_never_accept_threshold_is_none_and_the_summary_is_strict_json() -> None:
+    never = GateCalibration(
+        calibration_id="gate@never",
+        provisional=True,
+        order=("codet5p",),
+        thresholds={"codet5p": Thresholds(math.inf, 0.2)},
+    )
+    summary = _run(calibration=never).summary
+    assert (summary.accept_threshold, summary.review_threshold) == (None, 0.2)
+    json.dumps(summary.model_dump(mode="json"), allow_nan=False)  # an API can return it
+
+
+def test_shipped_calibration_gives_a_strict_json_summary() -> None:
+    from codeatlas.analyze.semantic_gate import load_calibration
+
+    summary = _run(calibration=load_calibration()).summary
+    json.dumps(summary.model_dump(mode="json"), allow_nan=False)
+    assert summary.accept_threshold is None or math.isfinite(summary.accept_threshold)
+
+
+def test_load_once_loads_each_model_a_single_time() -> None:
+    from codeatlas.analyze.semantic_run import load_once
+
+    calls: list[str] = []
+
+    def make() -> BagOfWords:
+        calls.append("x")
+        return BagOfWords()
+
+    loaders = load_once({"minilm": make, "codet5p": make})
+    first = loaders["minilm"]()
+    assert loaders["minilm"]() is first and calls == ["x"]
+    loaders["codet5p"]()
+    assert calls == ["x", "x"]  # one load per model, not per call
+
+
+def test_load_once_retries_a_loader_that_failed() -> None:
+    from codeatlas.analyze.semantic_run import load_once
+
+    attempts: list[int] = []
+
+    def flaky() -> BagOfWords:
+        attempts.append(1)
+        if len(attempts) == 1:
+            raise EmbedderUnavailable("OSError: offline")
+        return BagOfWords()
+
+    loaders = load_once({"codet5p": flaky})
+    with pytest.raises(EmbedderUnavailable):
+        loaders["codet5p"]()
+    assert isinstance(loaders["codet5p"](), BagOfWords) and len(attempts) == 2

@@ -8,6 +8,7 @@ from codeatlas.analyze.semantic_eval import (
     KS,
     Rate,
     as_dict,
+    case_bootstrap,
     evaluate,
     markdown,
     recall_curve_csv,
@@ -129,3 +130,52 @@ def test_markdown_json_and_curve_views() -> None:
     svg = recall_curve_svg(result)
     assert svg.startswith("<svg") and svg.count("<polyline") == 3
     assert not math.isnan(codet5["mrr"])
+
+
+def test_precision_recall_and_f1_of_the_top_k() -> None:
+    s = _score("codet5p")  # C1: a.fee at rank 1; C2: nothing relevant in the top 10
+    assert (s.precision[1], s.recall[1], s.f1[1]) == (0.5, 0.5, 0.5)
+    assert s.precision[5] == 0.1  # C1: 1 of 5, C2: 0 of 5
+    assert s.f1[5] == round((2 * 0.2 * 1.0 / 1.2 + 0.0) / 2, 4)
+
+
+def _two_cases() -> list[dict]:
+    rows = [dict(r, run_id="AF-01") for r in ROWS if r["criterion_id"] == "C1:v1:ac1"]
+    return rows + [dict(r, run_id="AR-01") for r in ROWS if r["criterion_id"] != "C1:v1:ac1"]
+
+
+def test_one_case_has_no_bootstrap_interval() -> None:
+    s = _score("codet5p")  # every row is run r1
+    assert s.cases == 1 and s.bootstrap["mrr"] is None
+
+
+def test_bootstrap_resamples_whole_cases_and_is_reproducible() -> None:
+    first = next(s for s in evaluate(_two_cases(), LABELS).rankers if s.ranker == "codet5p")
+    again = next(s for s in evaluate(_two_cases(), LABELS).rankers if s.ranker == "codet5p")
+    assert first.cases == 2 and first.bootstrap == again.bootstrap
+    low, high = first.bootstrap["mrr"]  # type: ignore[misc]
+    # AF-01 has MRR 1 (C1), AR-01 has 1/23 (C2): a draw is one of three means
+    assert low <= first.mrr <= high and low >= 1 / 23 - 1e-9 and high <= 1.0
+
+
+def test_case_bootstrap_bounds() -> None:
+    assert case_bootstrap({"a": [0.5, 0.5], "b": [0.5]}) == (0.5, 0.5)
+    low, high = case_bootstrap({"a": [1.0], "b": [0.0]}, rounds=200)  # type: ignore[misc]
+    assert 0.0 <= low <= 0.5 <= high <= 1.0
+    assert case_bootstrap({"a": [1.0], "b": []}) is None  # one case with criteria
+
+
+def test_a_criterion_in_two_runs_is_refused() -> None:
+    rows = ROWS + [dict(_row("C1:v1:ac1", "codet5p", 1, "a.fee", "accept"), run_id="r2")]
+    with pytest.raises(ValueError, match="one case"):
+        evaluate(rows, LABELS)
+
+
+def test_new_measures_appear_in_markdown_and_json() -> None:
+    result = evaluate(_two_cases(), LABELS)
+    text = markdown(result)
+    assert "bootstrap interval resampling whole cases (2 cases" in text and "F1@5" in text
+    data = as_dict(result)
+    codet5 = next(r for r in data["rankers"] if r["ranker"] == "codet5p")  # type: ignore[union-attr]
+    assert codet5["cases"] == 2 and codet5["bootstrap95"]["mrr"] is not None
+    assert set(codet5["f1"]) == {"1", "5", "10"} and data["bootstrap"]["resampled"] == "cases"

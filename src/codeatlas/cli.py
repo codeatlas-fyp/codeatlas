@@ -91,6 +91,10 @@ def collect(
     bm25_only: Annotated[
         bool, typer.Option(help="Rank criteria with BM25 only (no embedding model).")
     ] = False,
+    embedding_cache: Annotated[
+        Path | None,
+        typer.Option(help="Folder that keeps embedding vectors between runs (default: none)."),
+    ] = None,
     policy: Annotated[Path | None, typer.Option(help="Policy YAML (default: built-in).")] = None,
     identity_map: Annotated[Path | None, typer.Option(help="Identity map YAML.")] = None,
     fixtures: Annotated[
@@ -126,6 +130,7 @@ def collect(
             run_id=log.run_id,
             collected_at=now_utc(),
             notes=notes,
+            embedding_cache_dir=embedding_cache,
             target=target,
             embedding_model=settings.embedding_model,
             bm25_only=bm25_only,

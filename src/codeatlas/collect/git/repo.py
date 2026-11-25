@@ -159,7 +159,13 @@ class LocalRepo:
         return order
 
     def list_files(self, sha: str, prefix: str = "") -> list[str]:
-        """Every file path at commit `sha` under folder `prefix` (sorted). Used to find ADRs."""
+        """Every file path at commit `sha` under folder `prefix` (sorted). Used to find ADRs.
+
+        Entries are told apart by their tree entry type, without loading the object: a submodule
+        (gitlink, type "commit") points to a commit of another repository that is not in this one,
+        so loading it raised KeyError (Apache Arrow has submodules). Submodules are skipped, and
+        blobs are listed without being read.
+        """
         import pygit2
 
         commit = self._repo.get(self._resolve(sha))
@@ -182,10 +188,11 @@ class LocalRepo:
             base, current = stack.pop()
             for item in current:
                 path = f"{base}/{item.name}" if base else str(item.name)
-                obj = self._repo[item.id]
-                if isinstance(obj, pygit2.Tree):
-                    stack.append((path, obj))
-                elif isinstance(obj, pygit2.Blob):
+                if item.type_str == "tree":
+                    sub_tree = self._repo[item.id]
+                    if isinstance(sub_tree, pygit2.Tree):
+                        stack.append((path, sub_tree))
+                elif item.type_str == "blob":
                     paths.append(path)
         return sorted(paths)
 
