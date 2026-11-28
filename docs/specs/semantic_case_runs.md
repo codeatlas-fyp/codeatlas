@@ -24,6 +24,8 @@ For each case the runner does three things:
 
 If a case fails that check, it is listed and never scored, and the exit code is 3.
 
+A no-key case such as SP-03 (`jira_keys: [none]` in `case.yaml`) has no requirement, so it has no packet and nothing to rank. The runner lists it in `cases_summary.json` and `.md` with status `no_criteria` and the reason, adds it to `no_criteria` in `evaluation.json`, and carries on. It is not a failure and is never scored for CA-02, but it still counts in the rule results (C1, C2, C9 and the verdict), which this runner does not compute. A case that has Jira keys but no `packet/criteria.csv` or `packet/entities.csv` still stops the run with exit code 1 before anything is ranked, so a broken packet is never mistaken for a no-key case.
+
 `--labels` is a CSV of the adjudicated semantic labels with the columns `criterion_id, criterion_text, entity_id`. A criterion has one row per relevant entity, and an empty `entity_id` means no match. The `entity_id` can be the `label_ref` form, for example `airflow/models/dag.py::DAG.clear`.
 
 ## What the results contain

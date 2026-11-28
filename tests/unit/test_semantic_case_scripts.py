@@ -122,6 +122,26 @@ def test_read_case_takes_the_four_facts(tmp_path: Path) -> None:
     assert case.criteria_csv == folder / "packet" / "criteria.csv"
 
 
+def test_read_case_reads_the_jira_keys(tmp_path: Path) -> None:
+    head = f"head_at_merge: {'a' * 40}\nrepo: apache/arrow\n"
+    (tmp_path / "case.yaml").write_text(
+        head + "jira_keys: [ARROW-1, ARROW-2]                 # every key\n", encoding="utf-8"
+    )
+    case = frozen.read_case(tmp_path)
+    assert case.jira_keys == ("ARROW-1", "ARROW-2") and not case.no_key
+    (tmp_path / "case.yaml").write_text(head + "jira_keys: [none]   # B4\n", encoding="utf-8")
+    assert frozen.read_case(tmp_path).jira_keys == () and frozen.read_case(tmp_path).no_key
+    (tmp_path / "case.yaml").write_text(head, encoding="utf-8")  # no jira_keys line at all
+    case = frozen.read_case(tmp_path)
+    assert case.jira_keys is None and not case.no_key  # unknown is never treated as no key
+
+
+def test_parse_keys() -> None:
+    assert frozen.parse_keys("[SPARK-1]") == ("SPARK-1",)
+    assert frozen.parse_keys("[none]") == () == frozen.parse_keys("[]") == frozen.parse_keys("")
+    assert frozen.parse_keys("['AIRFLOW-2', \"AIRFLOW-3\"]") == ("AIRFLOW-2", "AIRFLOW-3")
+
+
 def test_read_case_refuses_a_folder_without_a_full_head(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="case.yaml"):
         frozen.read_case(tmp_path)
@@ -245,6 +265,72 @@ def test_run_refuses_a_case_without_a_packet(tmp_path: Path) -> None:
     (cases / "LB-01" / "packet" / "criteria.csv").unlink()
     args = ["--cases-dir", str(cases), "--repos-dir", str(tmp_path / "repos")]
     assert runner.main([*args, "--out", str(tmp_path / "out"), "--bm25-only"]) == 1
+
+
+def _no_key_case(cases: Path, case_id: str, sha: str) -> None:
+    """A no_key case as freeze_case.py leaves it: case.yaml with jira_keys: [none], no packet."""
+    folder = cases / case_id
+    folder.mkdir()
+    (folder / "case.yaml").write_text(
+        f"case_id: {case_id}\nset: pilot\nrepo: apache/lib\nhead_at_merge: {sha}\n"
+        "analysis_root: lib/\njira_keys: [none]                 # every key (B4)\n",
+        encoding="utf-8",
+    )
+
+
+def test_a_no_key_case_is_listed_as_no_criteria_not_a_failure(tmp_path: Path) -> None:
+    cases, sha = _sprint(tmp_path)
+    _no_key_case(cases, "LB-03", sha)
+    labels = tmp_path / "labels.csv"
+    labels.write_text(
+        "criterion_id,criterion_text,entity_id\n"
+        "LB-01K-1:v1:ac1,Charge two per day late.,lib/fees.py::Fees.late\n",
+        encoding="utf-8",
+    )
+    args = ["--cases-dir", str(cases), "--repos-dir", str(tmp_path / "repos")]
+    args += ["--out", str(tmp_path / "out"), "--bm25-only", "--labels", str(labels)]
+    assert runner.main(args) == 0
+    out = tmp_path / "out"
+    summary = json.loads((out / "cases_summary.json").read_text(encoding="utf-8"))
+    assert [r["case_id"] for r in summary] == ["LB-01", "LB-02", "LB-03"]
+    assert [r["status"] for r in summary] == ["ran", "ran", "no_criteria"]
+    assert "no Jira key" in str(summary[2]["reason"]) and not (out / "LB-03").exists()
+    assert "| LB-03 | lib | lib | - | 0 | not run: no Jira key" in (
+        out / "cases_summary.md"
+    ).read_text(encoding="utf-8")
+    data = json.loads((out / "evaluation.json").read_text(encoding="utf-8"))
+    assert data["no_criteria"] == ["LB-03"] and data["not_scored"] == []
+    assert data["run_ids"] == ["LB-01", "LB-02"]
+    text = (out / "evaluation.md").read_text(encoding="utf-8")
+    assert "Not run (no Jira key, so no criteria): LB-03" in text
+
+
+def test_a_keyed_case_without_a_packet_still_fails_next_to_a_no_key_case(
+    tmp_path: Path,
+) -> None:
+    cases, sha = _sprint(tmp_path)
+    _no_key_case(cases, "LB-03", sha)
+    text = (cases / "LB-01" / "case.yaml").read_text(encoding="utf-8")
+    (cases / "LB-01" / "case.yaml").write_text(text + "jira_keys: [LB-01K-1]\n", encoding="utf-8")
+    (cases / "LB-01" / "packet" / "entities.csv").unlink()
+    args = ["--cases-dir", str(cases), "--repos-dir", str(tmp_path / "repos")]
+    assert runner.main([*args, "--out", str(tmp_path / "out"), "--bm25-only"]) == 1
+    assert not (tmp_path / "out").exists()
+
+
+def test_only_no_key_cases_load_no_model(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    cases = tmp_path / "cases"
+    cases.mkdir()
+    _no_key_case(cases, "SP-03", "b" * 40)
+
+    def no_models(*_: object) -> dict[str, object]:
+        raise AssertionError("a model was loaded for a run with nothing to rank")
+
+    monkeypatch.setattr(runner, "load_once", no_models)
+    args = ["--cases-dir", str(cases), "--repos-dir", str(tmp_path / "repos")]
+    assert runner.main([*args, "--out", str(tmp_path / "out")]) == 0
+    summary = json.loads((tmp_path / "out" / "cases_summary.json").read_text(encoding="utf-8"))
+    assert [(r["case_id"], r["status"]) for r in summary] == [("SP-03", "no_criteria")]
 
 
 def test_run_needs_cases() -> None:
