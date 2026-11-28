@@ -17,6 +17,11 @@ For each case folder (case.yaml plus packet/criteria.csv and packet/entities.csv
    report per repository;
 4. checks that every model ranked exactly packet/entities.csv (universe_check.json).
 
+A no-key case (case.yaml `jira_keys: [none]`, e.g. SP-03) has no requirement and so no packet:
+it is listed in the summary as "no criteria" with its reason, and never ranked or scored. It
+does not fail the run, and it still counts in the rule results, which this script does not
+compute. A case with Jira keys but no packet is still an error (exit 1): build its packet.
+
 Then it writes <out>/cases_summary.json and .md. With --labels (the adjudicated labels as a
 CSV: criterion_id, criterion_text, entity_id) it scores only the cases whose check passed and
 writes evaluation.md/.json and the recall curve to <out>; failed cases are listed, never scored.
@@ -51,7 +56,12 @@ UNIVERSE_NAME = "universe_check.json"
 EXIT_CHECK_FAILED = 3
 
 
-def find_cases(args: argparse.Namespace) -> list[FrozenCase]:
+NO_CRITERIA = "no_criteria"
+NO_KEY_REASON = "no Jira key (jira_keys: [none]), so no criteria to rank"
+
+
+def find_cases(args: argparse.Namespace) -> tuple[list[FrozenCase], list[FrozenCase]]:
+    """(cases to run, no-key cases to list as "no criteria")."""
     folders = list(args.case)
     if args.cases_dir is not None:
         folders += sorted(p for p in args.cases_dir.iterdir() if (p / "case.yaml").is_file())
@@ -59,11 +69,24 @@ def find_cases(args: argparse.Namespace) -> list[FrozenCase]:
     ids = [c.case_id for c in cases]
     if len(set(ids)) != len(ids):
         raise ValueError(f"a case id is given twice: {sorted(ids)}")
-    for case in cases:
+    no_key = [c for c in cases if c.no_key]
+    to_run = [c for c in cases if not c.no_key]
+    for case in to_run:
         for path in (case.criteria_csv, case.entities_csv):
             if not path.is_file():
                 raise ValueError(f"{case.case_id}: no {path} (build the packet first)")
-    return cases
+    return to_run, no_key
+
+
+def no_criteria_row(case: FrozenCase) -> dict[str, object]:
+    return {
+        "case_id": case.case_id,
+        "repo": case.repo_name,
+        "head_at_merge": case.head_at_merge,
+        "analysis_root": case.analysis_root or "/",
+        "status": NO_CRITERIA,
+        "reason": NO_KEY_REASON,
+    }
 
 
 def run_case(
@@ -99,6 +122,7 @@ def run_case(
         "repo": case.repo_name,
         "head_at_merge": case.head_at_merge,
         "analysis_root": case.analysis_root or "/",
+        "status": "ran",
         "entities": check.corpus,
         "criteria": len(criteria),
         "rankers": {r.name: r.state for r in result.summary.rankers},
@@ -115,6 +139,12 @@ def summary_markdown(rows: list[dict[str, object]]) -> str:
         "|---|---|---|---|---|---|---|",
     ]
     for r in rows:
+        if r["status"] == NO_CRITERIA:
+            lines.append(
+                f"| {r['case_id']} | {r['repo']} | {r['analysis_root']} | - | 0 | "
+                f"not run: {r['reason']} | - |"
+            )
+            continue
         check = "OK" if r["universe_ok"] else f"FAILED ({r['missing']} missing, {r['extra']} extra)"
         lines.append(
             f"| {r['case_id']} | {r['repo']} | {r['analysis_root']} | {r['entities']} | "
@@ -140,12 +170,15 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("give --cases-dir or at least one --case")
 
     try:
-        cases = find_cases(args)
+        cases, no_key = find_cases(args)
     except ValueError as exc:
         print(exc)
         return 1
-    loaders = load_once(default_loaders(args.cache))
     rows: list[dict[str, object]] = []
+    for case in no_key:
+        print(f"[{case.case_id}] not run: {NO_KEY_REASON}")
+        rows.append(no_criteria_row(case))
+    loaders = load_once(default_loaders(args.cache)) if cases else {}
     for case in cases:
         print(
             f"[{case.case_id}] {case.repo_name} @ {case.head_at_merge[:8]} "
@@ -158,6 +191,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         rows.append(row)
 
+    rows.sort(key=lambda r: str(r["case_id"]))
     args.out.mkdir(parents=True, exist_ok=True)
     (args.out / "cases_summary.json").write_text(
         json.dumps(rows, indent=2, sort_keys=True) + "\n", encoding="utf-8"
@@ -165,17 +199,25 @@ def main(argv: list[str] | None = None) -> int:
     table = summary_markdown(rows)
     (args.out / "cases_summary.md").write_text(table, encoding="utf-8")
     print(table)
-    failed = [str(r["case_id"]) for r in rows if not r["universe_ok"]]
+    ran = [r for r in rows if r["status"] == "ran"]
+    failed = [str(r["case_id"]) for r in ran if not r["universe_ok"]]
+    not_run = [str(r["case_id"]) for r in rows if r["status"] == NO_CRITERIA]
 
     if args.labels is not None:
-        ok = [str(r["case_id"]) for r in rows if r["universe_ok"]]
+        ok = [str(r["case_id"]) for r in ran if r["universe_ok"]]
         ranking_rows = [row for cid in ok for row in read_rows(args.out / cid / RANKINGS_NAME)]
         result = evaluate(ranking_rows, read_dev_labels(args.labels))
         text = markdown(result)
         if failed:
             text += f"\nNot scored (entity list check failed): {', '.join(failed)}\n"
+        if not_run:
+            text += f"\nNot run (no Jira key, so no criteria): {', '.join(not_run)}\n"
         (args.out / "evaluation.md").write_text(text, encoding="utf-8")
-        data = as_dict(result) | {"labels": args.labels.name, "not_scored": failed}
+        data = as_dict(result) | {
+            "labels": args.labels.name,
+            "not_scored": failed,
+            "no_criteria": not_run,
+        }
         (args.out / "evaluation.json").write_text(
             json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8"
         )
