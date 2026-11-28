@@ -11,6 +11,7 @@ from codeatlas.schema import (
     Commit,
     GovernanceSnapshot,
     SemanticCandidate,
+    SemanticGate,
     WorkItemRef,
 )
 
@@ -79,7 +80,7 @@ def _empty_governance() -> GovernanceSnapshot:
     )
 
 
-def _cand(crit: str, entity: str, rank: int) -> SemanticCandidate:
+def _cand(crit: str, entity: str, rank: int, gate: SemanticGate | None = None) -> SemanticCandidate:
     return SemanticCandidate(
         criterion_id=crit,
         entity_id=entity,
@@ -88,6 +89,7 @@ def _cand(crit: str, entity: str, rank: int) -> SemanticCandidate:
         fused_rank=rank,
         fused_score=1.0 / (60 + rank),
         model_id="test@v1",
+        gate=gate,
     )
 
 
@@ -194,3 +196,32 @@ def test_multiple_requirements_each_get_their_own_link() -> None:
     sbx5 = next(x for x in links if x.requirement_key == "SBX-5")
     assert sbx4.state == "OBSERVED"
     assert sbx5.state == "UNRESOLVED"
+
+
+def test_abstained_candidate_is_not_a_semantic_link() -> None:
+    """The CA-02 gate said "no confident match": the candidate must not link the entity."""
+    links = assign_link_states(
+        requirement_keys=["SBX-4"],
+        changed=[_changed("pkg.fees.calc", "pkg/fees.py", ["sha2"])],
+        commits=[_commit("sha2", "generic cleanup")],
+        work_item_refs=[],
+        edges=[],
+        governance=_empty_governance(),
+        candidates=[_cand("SBX-4:v1:ac1", "pkg.fees.calc", rank=1, gate="abstain")],
+    )
+    assert links[0].state == "UNRESOLVED"
+
+
+def test_review_and_ungated_candidates_still_link() -> None:
+    """gate None (bundles from before CA-02) and "review" keep the old behaviour."""
+    for gate in (None, "review", "accept"):
+        links = assign_link_states(
+            requirement_keys=["SBX-4"],
+            changed=[_changed("pkg.fees.calc", "pkg/fees.py", ["sha2"])],
+            commits=[_commit("sha2", "generic cleanup")],
+            work_item_refs=[],
+            edges=[],
+            governance=_empty_governance(),
+            candidates=[_cand("SBX-4:v1:ac1", "pkg.fees.calc", rank=2, gate=gate)],
+        )
+        assert links[0].state == "SEMANTIC_CANDIDATE", gate

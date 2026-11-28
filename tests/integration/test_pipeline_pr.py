@@ -6,6 +6,7 @@ git repo with pygit2 and points each placeholder at a real commit in it. Jira an
 the recorded SBX issues. The network is blocked.
 """
 
+import dataclasses
 import json
 from datetime import UTC, datetime
 from pathlib import Path
@@ -174,6 +175,16 @@ def test_pr_bundle_holds_real_github_git_and_analysis_evidence(sandbox: dict[str
     ]
     assert bundle.criteria, "SBX-4's acceptance criteria were not split"
     assert bundle.candidates and bundle.model_ids
+    run = bundle.semantic_run  # CA-02: how the candidates were made is frozen in the bundle
+    assert run is not None and run.pinned_sha == head
+    assert {r.name: (r.state, r.reason) for r in run.rankers} == {
+        "bm25": ("ok", None),
+        "minilm": ("unavailable", "disabled (bm25_only)"),
+        "codet5p": ("unavailable", "disabled (bm25_only)"),
+    }
+    assert bundle.model_ids == ["bm25@rank-bm25-okapi"] and bundle.model_file_hashes == {}
+    assert {g.criterion_id for g in run.gates} == {c.criterion_id for c in bundle.criteria}
+    assert all(c.gate in ("review", "abstain") for c in bundle.candidates)  # BM25 never accepts
     assert {"github", "keys", "governance", "code", "criteria", "semantic"} <= set(
         bundle.extractor_versions
     )
@@ -330,3 +341,22 @@ def test_collect_evaluates_the_stored_bundle_not_the_in_memory_one(
         _request(1), FixtureJiraSource(JIRA), store, EventLog("t"), _sources(sandbox)
     )
     assert seen == [load_bundle(store.folder(bundle_hash))]
+
+
+def test_collect_passes_the_embedding_cache_to_the_semantic_run(
+    sandbox: dict[str, str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A live collect reuses vectors between runs instead of embedding the repository again."""
+    real = pipeline.semantic_run_analysis.run_semantic
+    seen: list[Any] = []
+
+    def spy(**kwargs: Any) -> Any:
+        seen.append(kwargs.get("cache_root"))
+        return real(**kwargs)
+
+    monkeypatch.setattr(pipeline.semantic_run_analysis, "run_semantic", spy)
+    cache = tmp_path / "cache"
+    request = dataclasses.replace(_request(1), embedding_cache_dir=cache)
+    collect_bundle(request, FixtureJiraSource(JIRA), EventLog("t"), _sources(sandbox))
+    collect_bundle(_request(1), FixtureJiraSource(JIRA), EventLog("t"), _sources(sandbox))
+    assert seen == [cache, None]

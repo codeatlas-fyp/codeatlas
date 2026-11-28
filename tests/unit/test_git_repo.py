@@ -74,3 +74,42 @@ def test_changed_paths_dedupes(tmp_path: Path) -> None:
     repo = LocalRepo(path)
     paths = repo.changed_paths(base, head)
     assert paths == sorted(paths) or set(paths) == {"foo.py", "bar.py"}
+
+
+def test_resolve_turns_a_branch_into_its_full_sha(tmp_path: Path) -> None:
+    path, _, head = _build_repo(tmp_path)
+    repo = LocalRepo(path)
+    assert repo.resolve("main") == head
+    assert repo.resolve(head[:8]) == head
+
+
+def test_python_sources_reads_every_py_file_at_that_commit(tmp_path: Path) -> None:
+    path, base, head = _build_repo(tmp_path)
+    (path / "notes.txt").write_text("not python\n")
+    repo = LocalRepo(path)
+    assert repo.python_sources(base) == {"foo.py": b"def a():\n    return 1\n"}
+    assert sorted(repo.python_sources(head)) == ["bar.py", "foo.py"]
+
+
+def _with_submodule(path: Path, head: str) -> str:
+    """A commit on top of `head` whose tree also holds a submodule (a gitlink to a commit that is
+    not in this repository, as Apache Arrow's cpp/submodules/* are) inside a folder."""
+    repo = pygit2.Repository(str(path))
+    sig = pygit2.Signature("Test", "test@example.com")
+    missing = pygit2.Oid(hex="53b498047109d9940fcfab388bd9d6aeb8c57425")
+    inner = repo.TreeBuilder()
+    inner.insert("arrow-testing", missing, pygit2.GIT_FILEMODE_COMMIT)
+    outer = repo.TreeBuilder(repo.get(head).tree)
+    outer.insert("submodules", inner.write(), pygit2.GIT_FILEMODE_TREE)
+    return str(
+        repo.create_commit("refs/heads/main", sig, sig, "add submodule", outer.write(), [head])
+    )
+
+
+def test_list_files_skips_a_submodule_whose_commit_is_not_in_the_repo(tmp_path: Path) -> None:
+    path, _, head = _build_repo(tmp_path)
+    with_sub = _with_submodule(path, head)
+    repo = LocalRepo(path)
+    assert repo.list_files(with_sub) == ["bar.py", "foo.py"]
+    assert repo.list_files(with_sub, "submodules") == []
+    assert sorted(repo.python_sources(with_sub)) == ["bar.py", "foo.py"]

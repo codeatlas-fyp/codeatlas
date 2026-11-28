@@ -22,6 +22,7 @@ from codeatlas.schema import (
     CodeEntity,
     Commit,
     Criterion,
+    CriterionGate,
     Evidence,
     EvidenceBundle,
     GovernanceChange,
@@ -32,11 +33,13 @@ from codeatlas.schema import (
     OwnerRule,
     Policy,
     PriorityChange,
+    RankerRun,
     RequirementVersion,
     ResolvedPerson,
     Review,
     SemanticCandidate,
     SemanticPolicy,
+    SemanticRunSummary,
     TraceLink,
     Verdict,
     WorkItemRef,
@@ -197,6 +200,29 @@ CANDIDATE = SemanticCandidate(
     fused_score=0.0328,
     model_id="all-MiniLM-L6-v2@rev1",
 )
+RANKER_RUN = RankerRun(
+    name="codet5p",
+    model_id="Salesforce/codet5p-110m-embedding@unavailable",
+    state="unavailable",
+    reason="transformers not installed",
+)
+CRITERION_GATE = CriterionGate(
+    criterion_id="SBX-2:v2:ac1", gate="review", top_score=0.5, reason="between thresholds"
+)
+SEMANTIC_RUN = SemanticRunSummary(
+    schema_id="semantic-run-v1",
+    pinned_sha="b" * 40,
+    corpus_hash="c" * 64,
+    chunker_version="chunker@1",
+    rankers=[
+        RankerRun(name="bm25", model_id="bm25@rank-bm25", state="ok", reason=None),
+        RANKER_RUN,
+    ],
+    calibration_id="gate@test",
+    accept_threshold=0.6,
+    review_threshold=0.4,
+    gates=[CRITERION_GATE],
+)
 TRACE_LINK = TraceLink(
     requirement_key="SBX-2",
     criterion_id=None,
@@ -226,7 +252,7 @@ CASE_POLICY = CasePolicy(severity="block")
 SEMANTIC_POLICY = SemanticPolicy(top_k=5)
 POLICY = Policy(
     version=1,
-    workitem_key_pattern="[A-Z]+-\d+",
+    workitem_key_pattern=r"[A-Z]+-\d+",
     requirement_fields=["summary", "description"],
     governance_paths=["CODEOWNERS", ".codeatlas/**"],
     approval=APPROVAL_POLICY,
@@ -287,6 +313,9 @@ SAMPLES: list[BaseModel] = [
     EDGE,
     CRITERION,
     CANDIDATE,
+    RANKER_RUN,
+    CRITERION_GATE,
+    SEMANTIC_RUN,
     TRACE_LINK,
     CHECK,
     VERDICT,
